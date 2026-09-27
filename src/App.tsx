@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { RefreshCw, Settings, Filter, FileEdit, ChevronDown, Store as StoreIcon, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import L from "leaflet";
@@ -12,15 +12,48 @@ import Sidebar from "./components/Sidebar";
 import KPIBar from "./components/KPIBar";
 import DetailPanel from "./components/DetailPanel";
 
+// Manually added stores get ids from here up, so they never collide with imported stores
+const MANUAL_ID_BASE = 1_000_000;
+
+/**
+ * Gives each store the same id on every load (keyed by DS code, else name + city), so a
+ * sheet refresh doesn't make the open store or the map pins jump to a different store
+ * when rows are inserted or removed in the sheet.
+ */
+function assignStableIds(list: Store[], idsByKey: Map<string, number>): Store[] {
+  const seen = new Map<string, number>();
+  return list.map((s) => {
+    const base = s.dsCode.trim()
+      ? `code:${s.dsCode.trim().toLowerCase()}`
+      : `name:${s.name.trim().toLowerCase()}|${s.city.trim().toLowerCase()}`;
+    const n = (seen.get(base) || 0) + 1;
+    seen.set(base, n);
+    const key = `${base}#${n}`;
+    let id = idsByKey.get(key);
+    if (id === undefined) {
+      id = idsByKey.size + 1;
+      idsByKey.set(key, id);
+    }
+    return { ...s, id };
+  });
+}
+
 export default function App() {
+  const storeIdsRef = useRef(new Map<string, number>());
+  // Bumped by every load or import; a sheet request that finishes after a newer one started is ignored
+  const loadSeqRef = useRef(0);
   const [sheetId, setSheetId] = useState<string>(() => sessionStorage.getItem("ds_sheet_id") || "");
   const [sheetTab, setSheetTab] = useState<string>(() => sessionStorage.getItem("ds_sheet_tab") || "All Countries");
-  const [stores, setStores] = useState<Store[]>(SAMPLE_STORES);
+  // Stores from the sample data, sheet or imported file; manual stores are kept separately so reloads don't wipe them
+  const [baseStores, setBaseStores] = useState<Store[]>(() => assignStableIds(SAMPLE_STORES, storeIdsRef.current));
+  const [manualStores, setManualStores] = useState<Store[]>([]);
+  const stores = useMemo(() => [...baseStores, ...manualStores], [baseStores, manualStores]);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("");
   const [loadingPct, setLoadingPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<string>("");
   const currency = "SAR";
 
@@ -45,18 +78,20 @@ export default function App() {
     setTimeout(() => setToastMsg(null), 2800);
   }, []);
 
-  const loadDataFromSheet = useCallback(async (id: string, tab?: string, isRefresh = false) => {
-    if (!id) return;
-    
+  const loadDataFromSheet = useCallback(async (id: string, tab?: string, isRefresh = false): Promise<boolean> => {
+    if (!id) return false;
+    const seq = ++loadSeqRef.current;
+
     try {
       if (!isRefresh) {
         setIsLoading(true);
         setLoadingPct(10);
         setLoadingMsg("Connecting to Google Sheets...");
       }
-      
+
       const data = await fetchSheetData(id, tab);
-      
+      if (seq !== loadSeqRef.current) return false;
+
       if (data.length === 0) {
         throw new Error("No store data found in this sheet. Please ensure it follows the required column schema.");
       }
@@ -65,27 +100,40 @@ export default function App() {
         setLoadingPct(80);
         setLoadingMsg("Parsing store data...");
       }
-      
-      setStores(data);
+
+      setBaseStores(assignStableIds(data, storeIdsRef.current));
       setLastSync(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
       setError(null);
+      setSyncError(null);
       setIsUploadModalOpen(false);
-      
+
       showToast(isRefresh ? "Dashboard refreshed" : `Loaded ${data.length} stores from Google Sheet`);
+      return true;
     } catch (err: unknown) {
+      if (seq !== loadSeqRef.current) return false;
       const errMsg = err instanceof Error ? err.message : String(err);
-      setError(errMsg || "Failed to load data. Please check Sheet URL and permissions.");
+      if (isRefresh) {
+        // Keep showing the last good data, but say that it's stale
+        setSyncError(errMsg || "Sheet sync failed");
+        showToast(`Sheet sync failed: ${errMsg}`);
+      } else {
+        setError(errMsg || "Failed to load data. Please check Sheet URL and permissions.");
+      }
+      return false;
     } finally {
-      setIsLoading(false);
-      setLoadingPct(100);
+      if (seq === loadSeqRef.current) {
+        setIsLoading(false);
+        setLoadingPct(100);
+      }
     }
   }, [showToast]);
 
+  // Reload the sheet remembered from earlier in this browser session
   useEffect(() => {
     if (sheetId) {
       loadDataFromSheet(sheetId, sheetTab);
     }
-  }, [sheetId, sheetTab, loadDataFromSheet]);
+  }, []);
 
   // Auto-refresh every 5 minutes if sheetId is loaded
   useEffect(() => {
@@ -98,33 +146,41 @@ export default function App() {
   }, [sheetId, sheetTab, loadDataFromSheet]);
 
   const handleAddStore = useCallback((newStore: Omit<Store, 'id'>) => {
-    setStores((prev) => {
-      const maxId = prev.reduce((max, s) => (s.id > max ? s.id : max), 0);
-      const storeWithId: Store = {
-        ...newStore,
-        id: maxId + 1,
-      };
-      return [...prev, storeWithId];
-    });
+    setManualStores((prev) => [...prev, { ...newStore, id: MANUAL_ID_BASE + prev.length + 1 }]);
   }, []);
 
   const handleStoresImported = (importedStores: Store[], sourceName: string) => {
-    setStores(importedStores);
+    // The file replaces the sheet as the data source, so stop syncing the sheet;
+    // otherwise the next auto-refresh would overwrite the imported stores
+    const wasSyncing = !!sheetId;
+    loadSeqRef.current++;
+    setIsLoading(false);
+    setSheetId("");
+    sessionStorage.removeItem("ds_sheet_id");
+    setSyncError(null);
+    setBaseStores(assignStableIds(importedStores, storeIdsRef.current));
     setLastSync(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
-    showToast(`Successfully imported ${importedStores.length} stores from ${sourceName}`);
+    showToast(`Successfully imported ${importedStores.length} stores from ${sourceName}${wasSyncing ? ". Google Sheet sync is off" : ""}`);
   };
 
-  const handleGoogleSheetImport = (url: string) => {
+  const handleGoogleSheetImport = async (url: string) => {
     const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9\-_]+)/);
     if (!m) {
       setError("Invalid Google Sheets URL. Please copy the full URL from your browser address bar.");
       return;
     }
     const id = m[1];
-    setSheetId(id);
-    sessionStorage.setItem("ds_sheet_id", id);
     setError(null);
-    loadDataFromSheet(id, sheetTab);
+    // Only remember (and auto-refresh) the sheet once it has loaded successfully
+    if (await loadDataFromSheet(id, sheetTab)) {
+      setSheetId(id);
+      sessionStorage.setItem("ds_sheet_id", id);
+    }
+  };
+
+  const openUploadModal = () => {
+    setError(null);
+    setIsUploadModalOpen(true);
   };
 
   const getGlobalFilter = useCallback((s: Store, query: string, live: string, paid: string) => {
@@ -210,13 +266,17 @@ export default function App() {
           ✦ LIVE NETWORK STATUS
         </div>
         
-        {lastSync && (
+        {syncError ? (
+          <span className="text-[11px] text-red-400 font-mono hidden md:inline" title={syncError}>
+            Sync failed{lastSync ? ` · data from ${lastSync}` : ""}
+          </span>
+        ) : lastSync && (
           <span className="text-[11px] text-gray-500 font-mono hidden md:inline">Synced: {lastSync}</span>
         )}
         
         <div className="flex items-center gap-2.5 relative">
           <button 
-            onClick={() => setIsUploadModalOpen(true)}
+            onClick={openUploadModal}
             className="px-3.5 py-2 bg-[#fbbf24] hover:bg-[#ffe169] text-black border-none rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 uppercase tracking-wider"
             title="Upload CSV/JSON file or sync Google Sheet"
           >
@@ -261,7 +321,7 @@ export default function App() {
                     <div className="p-1.5 flex flex-col gap-1">
                       <button
                         onClick={() => {
-                          setIsUploadModalOpen(true);
+                          openUploadModal();
                           setShowSettingsMenu(false);
                         }}
                         className="flex items-center gap-3 w-full px-3 py-2.5 text-[11px] font-black uppercase text-gray-300 hover:text-[#fbbf24] hover:bg-white/5 rounded-lg transition-all text-left"
@@ -272,8 +332,12 @@ export default function App() {
                       
                       <button
                         onClick={() => {
-                          setStores(SAMPLE_STORES);
+                          loadSeqRef.current++;
+                          setIsLoading(false);
+                          setBaseStores(assignStableIds(SAMPLE_STORES, storeIdsRef.current));
+                          setManualStores([]);
                           setSheetId("");
+                          setSyncError(null);
                           sessionStorage.removeItem("ds_sheet_id");
                           showToast("Reset to sample dark stores");
                           setShowSettingsMenu(false);
@@ -305,7 +369,7 @@ export default function App() {
           setCurrentTab={setCurrentTab}
           selectedId={selectedId}
           onSelectStore={setSelectedId}
-          onImportSheet={() => setIsUploadModalOpen(true)}
+          onImportSheet={openUploadModal}
           onCityFocus={(city) => {
             setCityFilter(city);
             setFocusedCity(city);

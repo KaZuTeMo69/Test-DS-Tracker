@@ -175,6 +175,12 @@ function MapUpdater({
     },
   });
   const storesWithCoords = useMemo(() => stores.filter(s => s.lat !== null && s.lng !== null), [stores]);
+  // Re-fit only when the set of pins changes, so a background refresh with the same
+  // data doesn't throw away the user's current zoom and position
+  const pinsKey = useMemo(() => storesWithCoords.map(s => `${s.id}:${s.lat},${s.lng}`).join("|"), [storesWithCoords]);
+  const selectedStore = selectedId === null ? undefined : stores.find(s => s.id === selectedId);
+  const selectedLat = selectedStore?.lat ?? null;
+  const selectedLng = selectedStore?.lng ?? null;
   
   useEffect(() => {
     // Small delay to ensure container is ready
@@ -210,19 +216,16 @@ function MapUpdater({
         console.warn("fitBounds failed", e);
       }
     }
-  }, [map, storesWithCoords, focusedCity, tempPin]);
+  }, [map, pinsKey, focusedCity, tempPin]);
 
   useEffect(() => {
-    if (!map || !map.getContainer() || selectedId === null) return;
-    const store = stores.find(s => s.id === selectedId);
-    if (store && store.lat !== null && store.lng !== null) {
-      try {
-        map.setView([store.lat, store.lng], Math.max(map.getZoom(), 14), { animate: true });
-      } catch (e) {
-        console.warn("setView failed", e);
-      }
+    if (!map || !map.getContainer() || selectedLat === null || selectedLng === null) return;
+    try {
+      map.setView([selectedLat, selectedLng], Math.max(map.getZoom(), 14), { animate: true });
+    } catch (e) {
+      console.warn("setView failed", e);
     }
-  }, [selectedId, map, stores]);
+  }, [selectedId, map, selectedLat, selectedLng]);
 
   useEffect(() => {
     if (!map) return;

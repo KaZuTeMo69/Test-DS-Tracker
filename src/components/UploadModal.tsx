@@ -1,4 +1,4 @@
-import { useState, useRef, ChangeEvent } from "react";
+import { useState, useRef, useEffect, ChangeEvent } from "react";
 import { X, Upload, FileText, Link, Check, AlertCircle } from "lucide-react";
 import { parseCSVData, parseJSONData } from "../lib/importer";
 import { Store } from "../types";
@@ -27,6 +27,11 @@ export default function UploadModal({
   const [pastedText, setPastedText] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Don't show an error left over from the last time the window was open
+  useEffect(() => {
+    if (isOpen) setLocalError(null);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
