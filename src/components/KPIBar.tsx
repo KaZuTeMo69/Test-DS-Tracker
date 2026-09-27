@@ -58,7 +58,7 @@ const KPIBar = memo(function KPIBar({ stores }: KPIBarProps) {
   ];
 
   return (
-    <div className="kpis-container flex gap-3 p-1.5 bg-[#0a0a0a] border border-[#222] rounded-xl shrink-0 overflow-x-auto scrollbar-hide">
+    <div className="kpis-container flex gap-3 p-1.5 bg-[#0a0a0a] border border-[#222] rounded-xl shrink-0 overflow-x-auto">
       {kpis.map((kpi, i) => (
         <div 
           key={i} 

@@ -493,7 +493,7 @@ export default function MapComponent({
             </button>
           </div>
           {searchError && (
-            <div className="text-[10px] font-bold text-red-500 whitespace-nowrap bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg text-center shadow-lg animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="text-[10px] font-bold text-red-500 whitespace-nowrap bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg text-center shadow-lg duration-200">
               {searchError}
             </div>
           )}
@@ -508,7 +508,7 @@ export default function MapComponent({
           onMouseDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
-          <div className="bg-[#111111] border border-[#333] rounded-2xl p-6 w-[400px] max-w-[90vw] shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-in fade-in zoom-in duration-300">
+          <div className="bg-[#111111] border border-[#333] rounded-2xl p-6 w-[400px] max-w-[90vw] shadow-[0_20px_50px_rgba(0,0,0,0.6)] duration-300">
             <div className="flex justify-between items-center mb-5 border-b border-white/5 pb-3">
               <h3 className="text-sm font-black font-sans text-[#fbbf24] uppercase tracking-wider">Add Manual Store</h3>
               <button 

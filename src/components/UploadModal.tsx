@@ -123,7 +123,7 @@ export default function UploadModal({
       onDrop={handleDrop}
     >
       <div 
-        className="relative bg-[#111111] border border-[#262626] rounded-[24px] p-6 sm:p-8 w-full max-w-[580px] animate-in fade-in zoom-in-95 duration-200 shadow-[0_30px_80px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[92vh] scrollbar-thin"
+        className="relative bg-[#111111] border border-[#262626] rounded-[24px] p-6 sm:p-8 w-full max-w-[580px] duration-200 shadow-[0_30px_80px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[92vh] scrollbar-thin"
         onClick={(e) => e.stopPropagation()}
       >
         <button 

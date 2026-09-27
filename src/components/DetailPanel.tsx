@@ -34,7 +34,7 @@ const DetailPanel = memo(function DetailPanel({ store, onClose }: DetailPanelPro
     >
       <div className="p-4 border-b border-[#262626] flex justify-between items-start">
         <div className="flex-1 mr-2 min-w-0">
-          <h3 className="detail-panel-title text-md text-white leading-tight truncate">{store.name}</h3>
+          <h3 className="detail-panel-title text-white leading-tight truncate">{store.name}</h3>
           <p className="detail-panel-subtext text-gray-500 mt-1">{store.dsCode || store.whCode} · {store.city}</p>
         </div>
         <button 
@@ -45,7 +45,7 @@ const DetailPanel = memo(function DetailPanel({ store, onClose }: DetailPanelPro
         </button>
       </div>
 
-      <div className="p-4 flex flex-col gap-3 overflow-y-auto flex-1 scrollbar-hide">
+      <div className="p-4 flex flex-col gap-3 overflow-y-auto flex-1">
         <div className="flex flex-wrap gap-2">
           <span className={`detail-panel-tag-live px-2.5 py-0.5 rounded-md ${isLive(store) ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
             {isLive(store) ? "LIVE" : "NOT LIVE"}

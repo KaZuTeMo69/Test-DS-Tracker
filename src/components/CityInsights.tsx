@@ -35,7 +35,7 @@ export default function CityInsights({ citySummaries }: CityInsightsProps) {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-8 duration-500">
       <section>
         <div className="flex items-center justify-between mb-4 px-1">
           <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Store Distribution</h3>

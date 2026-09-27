@@ -208,7 +208,7 @@ export default function Sidebar({
               <div 
                 key={s.id}
                 onClick={() => onSelectStore(s.id)}
-                className={`store-list-item store-list-card bg-[#111] border border-[#222] p-[20px_21px] rounded-lg cursor-pointer transition-all hover:border-[#333] shadow-sm animate-in fade-in duration-300 ${selectedId === s.id ? "border-[#fbbf24]/50 bg-[#161616] ring-1 ring-[#fbbf24]/20 shadow-lg" : "opacity-80 hover:opacity-100"}`}
+                className={`store-list-item store-list-card bg-[#111] border border-[#222] p-[20px_21px] rounded-lg cursor-pointer transition-all hover:border-[#333] shadow-sm duration-300 ${selectedId === s.id ? "border-[#fbbf24]/50 bg-[#161616] ring-1 ring-[#fbbf24]/20 shadow-lg" : "opacity-80 hover:opacity-100"}`}
               >
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex-1 min-w-0">
