@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Store } from "../types";
-import { isLive, isPaid, hasCoords, fmtN } from "../constants";
+import { isLive, isPaid, hasCoords, fmtN, dataIssues } from "../constants";
 import { X, AlertCircle } from "lucide-react";
 
 interface DetailPanelProps {
@@ -17,6 +17,10 @@ const DetailPanel = memo(function DetailPanel({ store, onClose, currency }: Deta
   const getMonthly = () => store.rentSARMonthly;
 
   const getSqm = () => store.rentSARsqm;
+
+  const sar = (n: number | null) => (n === null ? "—" : `SAR ${fmtN(n)}`);
+
+  const issues = dataIssues(store);
   
   const detailRows = [
     { label: "City", value: store.city || "—" },
@@ -24,9 +28,9 @@ const DetailPanel = memo(function DetailPanel({ store, onClose, currency }: Deta
     { label: "Contract Duration", value: store.whCode || "—" },
     { label: "Contract Start", value: store.startDate || "—" },
     { label: "Area", value: store.size ? `${store.size} m²` : "—" },
-    { label: "Rent / m²", value: `SAR ${fmtN(getSqm())}` },
-    { label: "Annual Rent", value: `SAR ${fmtN(getAnnual())}`, highlight: true },
-    { label: "Monthly Rent", value: `SAR ${fmtN(getMonthly())}`, highlight: true },
+    { label: "Rent / m²", value: sar(getSqm()) },
+    { label: "Annual Rent", value: sar(getAnnual()), highlight: true },
+    { label: "Monthly Rent", value: sar(getMonthly()), highlight: true },
   ];
 
   return (
@@ -57,11 +61,12 @@ const DetailPanel = memo(function DetailPanel({ store, onClose, currency }: Deta
           </span>
         </div>
 
-        {!hasCoords(store) && (
+        {issues.length > 0 && (
           <div className="bg-[#FB923C]/10 border border-[#FB923C]/20 rounded-lg p-2.5 flex gap-2 items-start">
             <AlertCircle size={14} className="text-[#FB923C] flex-shrink-0 mt-0.5" />
             <div className="text-[10px] text-[#FB923C] leading-relaxed">
-              No coordinates — add Lat/Lng to columns L & M in your sheet.
+              <div className="font-bold uppercase tracking-wider mb-0.5">Check the source data</div>
+              {issues.map((issue, i) => <div key={i}>{issue}</div>)}
             </div>
           </div>
         )}

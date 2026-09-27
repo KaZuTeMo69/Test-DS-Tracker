@@ -1,5 +1,5 @@
 import { Store, CitySummary } from "../types";
-import { isLive, isPaid, hasCoords, fmtR, fmtN, getRent } from "../constants";
+import { isLive, isPaid, hasCoords, fmtR, fmtN, getRent, dataIssues } from "../constants";
 import { Search, ChevronLeft, TrendingUp, FileUp, FileDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import CityInsights from "./CityInsights";
@@ -214,6 +214,16 @@ export default function Sidebar({
                     <span className={`px-2 py-0.5 text-[9px] font-bold rounded-full ${isLive(s) ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}>
                       {isLive(s) ? "LIVE" : "NOT LIVE"}
                     </span>
+                    {!hasCoords(s) && (
+                      <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]" title={s.locationIssue || "No coordinates"}>
+                        NO LOCATION
+                      </span>
+                    )}
+                    {hasCoords(s) && dataIssues(s).length > 0 && (
+                      <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]" title={dataIssues(s).join("\n")}>
+                        CHECK DATA
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="store-card-footer-metrics mt-3 flex gap-4 text-[11px] font-mono text-gray-400">

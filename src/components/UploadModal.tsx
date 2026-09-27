@@ -30,6 +30,12 @@ export default function UploadModal({
 
   if (!isOpen) return null;
 
+  // Choose the parser from the content itself: JSON starts with [ or {, anything else is CSV/TSV
+  const parseContent = (text: string): Store[] =>
+    /^\s*[[{]/.test(text) ? parseJSONData(text) : parseCSVData(text);
+
+  const errorText = (err: unknown, fallback: string) => (err instanceof Error && err.message ? err.message : fallback);
+
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     setLocalError(null);
     const file = e.target.files?.[0];
@@ -39,13 +45,7 @@ export default function UploadModal({
     reader.onload = (event) => {
       try {
         const content = event.target?.result as string;
-        let parsed: Store[] = [];
-
-        if (file.name.endsWith(".json")) {
-          parsed = parseJSONData(content);
-        } else {
-          parsed = parseCSVData(content);
-        }
+        const parsed = parseContent(content);
 
         if (parsed.length === 0) {
           setLocalError("No valid dark store records found in the uploaded file.");
@@ -55,7 +55,7 @@ export default function UploadModal({
         onStoresImported(parsed, file.name);
         onClose();
       } catch (err) {
-        setLocalError("Failed to parse file. Please check file format.");
+        setLocalError(errorText(err, "Failed to parse file. Please check file format."));
       }
     };
     reader.readAsText(file);
@@ -67,10 +67,7 @@ export default function UploadModal({
     if (!pastedText.trim()) return;
 
     try {
-      let parsed = parseCSVData(pastedText);
-      if (parsed.length === 0) {
-        parsed = parseJSONData(pastedText);
-      }
+      const parsed = parseContent(pastedText);
 
       if (parsed.length === 0) {
         setLocalError("Could not parse valid store rows from pasted content.");
@@ -80,7 +77,7 @@ export default function UploadModal({
       onStoresImported(parsed, "Pasted Data");
       onClose();
     } catch (err) {
-      setLocalError("Invalid data format.");
+      setLocalError(errorText(err, "Invalid data format."));
     }
   };
 

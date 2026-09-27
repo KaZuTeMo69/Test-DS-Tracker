@@ -5,22 +5,25 @@ export interface Store {
   name: string;
   country: string;
   city: string;
-  rentUSDAnnual: number;
-  rentUSDMonthly: number;
-  size: number;
+  // Rent and area are null when the source data leaves them blank
+  rentUSDAnnual: number | null;
+  rentUSDMonthly: number | null;
+  size: number | null;
   lat: number | null;
   lng: number | null;
-  rentAEDAnnual: number;
-  rentAEDMonthly: number;
-  rentAEDsqm: number;
+  rentAEDAnnual: number | null;
+  rentAEDMonthly: number | null;
+  rentAEDsqm: number | null;
   startDate: string;
   endDate: string;
-  rentSARAnnual: number;
-  rentSARMonthly: number;
-  rentSARsqm: number;
+  rentSARAnnual: number | null;
+  rentSARMonthly: number | null;
+  rentSARsqm: number | null;
   // status fields (optional/fallback)
   live?: string; 
   paid?: string;
+  // Why the store has no pin on the map (missing or implausible coordinates)
+  locationIssue?: string;
 }
 
 export interface CitySummary {

@@ -409,29 +409,28 @@ export default function MapComponent({
     }
     if (!tempPin) return;
 
-    const current_date = new Date().toISOString().split("T")[0];
-
+    // Only the name, city and pin are known; everything else stays blank and is flagged as missing
     const newStore: Omit<Store, 'id'> = {
       dsCode: "MANUAL",
-      whCode: "1 Year",
+      whCode: "",
       name: newStoreName.trim(),
       country: "KSA",
       city: newStoreCity.trim(),
-      rentUSDAnnual: 0,
-      rentUSDMonthly: 0,
-      size: 0,
+      rentUSDAnnual: null,
+      rentUSDMonthly: null,
+      size: null,
       lat: tempPin.lat,
       lng: tempPin.lng,
-      rentAEDAnnual: 0,
-      rentAEDMonthly: 0,
-      rentAEDsqm: 0,
-      startDate: current_date,
+      rentAEDAnnual: null,
+      rentAEDMonthly: null,
+      rentAEDsqm: null,
+      startDate: "",
       endDate: "",
-      rentSARAnnual: 0,
-      rentSARMonthly: 0,
-      rentSARsqm: 0,
-      live: "Yes",
-      paid: "Yes"
+      rentSARAnnual: null,
+      rentSARMonthly: null,
+      rentSARsqm: null,
+      live: "",
+      paid: ""
     };
 
     if (onAddStore) {

@@ -5,7 +5,7 @@ import L from "leaflet";
 import { Store, CitySummary } from "./types";
 import { fetchSheetData } from "./lib/sheets";
 import { SAMPLE_STORES } from "./data/sampleStores";
-import { isLive, isPaid } from "./constants";
+import { isLive, isPaid, hasCoords } from "./constants";
 import MapComponent from "./components/Map";
 import UploadModal from "./components/UploadModal";
 import Sidebar from "./components/Sidebar";
@@ -174,6 +174,8 @@ export default function App() {
   const selectedStore = useMemo(() => 
     stores.find(s => s.id === selectedId) || null
   , [stores, selectedId]);
+
+  const notOnMap = useMemo(() => filteredStores.filter(s => !hasCoords(s)).length, [filteredStores]);
 
   const allCities = useMemo(() => 
     Array.from(new Set(stores.map(s => s.city).filter(Boolean))).sort()
@@ -384,6 +386,11 @@ export default function App() {
               <div className="w-2 h-2 rounded-full bg-[#60a5fa] shadow-[0_0_5px_rgba(96,165,250,0.5)]"></div>
               <span>Selected</span>
             </div>
+            {notOnMap > 0 && (
+              <div className="flex items-center gap-2 text-[10px] text-[#FB923C] font-bold uppercase tracking-tight" title="Stores with missing or implausible coordinates. See the NO LOCATION tag in the list.">
+                <span>{notOnMap} not on map</span>
+              </div>
+            )}
           </div>
         </div>
       </main>

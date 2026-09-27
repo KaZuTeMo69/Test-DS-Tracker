@@ -1,155 +1,237 @@
 import { Store } from "../types";
+import { checkLocation } from "./location";
 
-function parseNum(val: unknown, fallback = 0): number {
-  if (val === null || val === undefined) return fallback;
-  const s = String(val).trim();
-  if (!s) return fallback;
-  
-  const cleaned = s.replace(/,/g, "").replace(/[^0-9.-]/g, "");
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? fallback : parsed;
+const SAR_TO_USD = 0.266667;
+const SAR_TO_AED = 0.979333;
+
+/**
+ * Reads a number from a cell such as "273,500", "SAR 1.5M", "273K" or "450 m2".
+ * Returns null for blank or non-numeric cells so missing data stays visible as missing.
+ * Set multipliers to false for fields where K/M/B can't mean thousand/million/billion (area, coordinates).
+ */
+export function parseNum(val: unknown, multipliers = true): number | null {
+  if (val === null || val === undefined) return null;
+  const s = String(val).replace(/,/g, "").trim();
+  const m = s.match(/-?\d+(?:\.\d+)?/);
+  if (!m) return null;
+  const n = parseFloat(m[0]);
+  if (!multipliers) return n;
+  // K/M/B only count when they stand alone, so "12 Months" isn't read as 12 million
+  const suffix = s.slice(m.index! + m[0].length).match(/^\s*([kmb])(?![a-z0-9²])/i);
+  if (!suffix) return n;
+  return n * { k: 1e3, m: 1e6, b: 1e9 }[suffix[1].toLowerCase() as "k" | "m" | "b"];
 }
 
-export function parseCSVData(csvText: string): Store[] {
-  const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
-  if (lines.length === 0) return [];
+/** Splits CSV/TSV text into rows of cells, honouring quotes, "" escapes and line breaks inside quotes. */
+function parseDelimited(text: string): string[][] {
+  text = text.replace(/^﻿/, "");
+  const firstLine = text.split(/\r?\n/, 1)[0];
+  const delimiter = [",", "\t", ";"].reduce((best, d) =>
+    firstLine.split(d).length > firstLine.split(best).length ? d : best, ",");
 
-  // Parse CSV line respecting quotes
-  const parseLine = (text: string): string[] => {
-    const result: string[] = [];
-    let cur = "";
-    let inQuotes = false;
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if ((char === ',' || char === '\t') && !inQuotes) {
-        result.push(cur.trim().replace(/^"|"$/g, ''));
-        cur = "";
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inQuotes) {
+      if (char === '"' && text[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = false;
       } else {
         cur += char;
       }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === delimiter) {
+      row.push(cur.trim());
+      cur = "";
+    } else if (char === "\n" || char === "\r") {
+      if (char === "\r" && text[i + 1] === "\n") i++;
+      row.push(cur.trim());
+      rows.push(row);
+      row = [];
+      cur = "";
+    } else {
+      cur += char;
     }
-    result.push(cur.trim().replace(/^"|"$/g, ''));
-    return result;
-  };
+  }
+  row.push(cur.trim());
+  rows.push(row);
+  return rows.filter(r => r.some(c => c !== ""));
+}
 
-  const headers = parseLine(lines[0]).map(h => h.toLowerCase().trim());
+type Field = "name" | "city" | "duration" | "dsCode" | "paid" | "live" | "startDate" | "rentSqm" | "size" | "rentAnnual" | "lat" | "lng";
 
-  // Find column indices
-  const findIdx = (keywords: string[]): number => {
-    for (const kw of keywords) {
-      const idx = headers.findIndex(h => h.includes(kw));
-      if (idx !== -1) return idx;
+// Header phrases per field, matched as whole words. Fields are assigned in this order and a
+// column taken by one field isn't reused, so "Rent/sqm" is claimed before the plain "rent"
+// fallback for annual rent, and "Payment Status" before the "status" fallback for live.
+const COLUMN_PATTERNS: Array<{ field: Field; phrases: string[]; exclude?: string[] }> = [
+  { field: "name", phrases: ["store name", "name", "title"] },
+  { field: "city", phrases: ["city", "location"] },
+  { field: "duration", phrases: ["contract duration", "duration", "wh code", "whcode"] },
+  { field: "dsCode", phrases: ["ds code", "dscode", "store code", "code", "id"] },
+  { field: "paid", phrases: ["paid", "payment"] },
+  { field: "live", phrases: ["live", "status"] },
+  { field: "startDate", phrases: ["contract start date", "start date", "contract start", "start"] },
+  { field: "rentSqm", phrases: ["rent sqm", "rent per sqm", "rent m2", "sqm rent"] },
+  { field: "size", phrases: ["area", "size", "sqm", "m2"] },
+  { field: "rentAnnual", phrases: ["annual rent", "rent annual", "yearly rent", "rent"], exclude: ["month", "monthly"] },
+  { field: "lat", phrases: ["lat", "latitude"] },
+  { field: "lng", phrases: ["lng", "lon", "long", "longitude"] },
+];
+
+const normalizeHeader = (h: string) => h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+function mapColumns(headers: string[]): Record<Field, number> {
+  const words = headers.map(h => ` ${normalizeHeader(h)} `);
+  const claimed = new Set<number>();
+  const result = {} as Record<Field, number>;
+
+  for (const { field, phrases, exclude = [] } of COLUMN_PATTERNS) {
+    result[field] = -1;
+    for (const phrase of phrases) {
+      const idx = words.findIndex((w, i) =>
+        !claimed.has(i) && w.includes(` ${phrase} `) && !exclude.some(x => w.includes(` ${x} `)));
+      if (idx !== -1) {
+        result[field] = idx;
+        claimed.add(idx);
+        break;
+      }
     }
-    return -1;
-  };
+  }
+  return result;
+}
 
-  const nameIdx = findIdx(["store name", "name", "title"]);
-  const cityIdx = findIdx(["city", "location"]);
-  const dsCodeIdx = findIdx(["ds code", "code", "ds_code", "id"]);
-  const durationIdx = findIdx(["contract duration", "duration", "wh code", "whcode"]);
-  const paidIdx = findIdx(["paid", "payment"]);
-  const liveIdx = findIdx(["live", "status"]);
-  const startDateIdx = findIdx(["start date", "start", "contract start"]);
-  const areaIdx = findIdx(["area", "size", "sqm"]);
-  const rentSqmIdx = findIdx(["rent/sqm", "rent sqm"]);
-  const rentAnnualIdx = findIdx(["annual rent", "rent", "annual"]);
-  const latIdx = findIdx(["lat", "latitude"]);
-  const lngIdx = findIdx(["lng", "lng", "longitude"]);
+export interface StoreFields {
+  name: string;
+  city: string;
+  country: string;
+  dsCode: string;
+  whCode: string;
+  paid: string;
+  live: string;
+  startDate: string;
+  endDate: string;
+  size: number | null;
+  rentSARsqm: number | null;
+  rentSARAnnual: number | null;
+  lat: number | null;
+  lng: number | null;
+}
+
+/** Fills in the derived currency fields and validates coordinates. Nothing missing is made up. */
+export function buildStore(id: number, f: StoreFields): Store {
+  const annual = f.rentSARAnnual;
+  const rentSARsqm = f.rentSARsqm ?? (annual !== null && f.size ? annual / f.size : null);
+  const scale = (n: number | null, k: number) => (n === null ? null : n * k);
+  const location = checkLocation(f.city, f.country, f.lat, f.lng);
+
+  return {
+    id,
+    dsCode: f.dsCode,
+    whCode: f.whCode,
+    name: f.name,
+    country: f.country,
+    city: f.city,
+    rentSARAnnual: annual,
+    rentSARMonthly: scale(annual, 1 / 12),
+    rentSARsqm,
+    size: f.size,
+    lat: location.lat,
+    lng: location.lng,
+    locationIssue: location.issue,
+    rentUSDAnnual: scale(annual, SAR_TO_USD),
+    rentUSDMonthly: scale(annual, SAR_TO_USD / 12),
+    rentAEDAnnual: scale(annual, SAR_TO_AED),
+    rentAEDMonthly: scale(annual, SAR_TO_AED / 12),
+    rentAEDsqm: scale(rentSARsqm, SAR_TO_AED),
+    startDate: f.startDate,
+    endDate: f.endDate,
+    live: f.live,
+    paid: f.paid,
+  };
+}
+
+/** Turns a header row plus data rows (from a CSV file or a Google Sheet) into stores. */
+export function rowsToStores(headers: string[], rows: string[][]): Store[] {
+  const col = mapColumns(headers);
+  if (col.name === -1) {
+    const found = headers.filter(h => h.trim()).join(", ") || "none";
+    throw new Error(`Couldn't find a "Store Name" column in the header row (columns found: ${found}).`);
+  }
+  const nameHeader = normalizeHeader(headers[col.name]);
 
   const stores: Store[] = [];
+  for (const cells of rows) {
+    const get = (idx: number) => (idx === -1 ? "" : (cells[idx] ?? "").trim());
+    const name = get(col.name);
+    // Skip blank rows and header rows repeated further down the data
+    if (!name || normalizeHeader(name) === nameHeader) continue;
 
-  for (let i = 1; i < lines.length; i++) {
-    const cols = parseLine(lines[i]);
-    if (cols.length === 0) continue;
-
-    const getCol = (idx: number, defaultVal = "") => (idx !== -1 && cols[idx] !== undefined) ? cols[idx] : defaultVal;
-
-    const name = getCol(nameIdx, `Store #${i}`);
-    if (!name || name.toLowerCase().includes("store name")) continue;
-
-    const city = getCol(cityIdx, "Unknown");
-    const dsCode = getCol(dsCodeIdx, `DS-${100 + i}`);
-    const whCode = getCol(durationIdx, "1 Year");
-    const paid = getCol(paidIdx, "Yes");
-    const live = getCol(liveIdx, "Yes");
-    const startDate = getCol(startDateIdx, new Date().toISOString().split("T")[0]);
-    const size = parseNum(getCol(areaIdx), 400);
-    const rentSARAnnual = parseNum(getCol(rentAnnualIdx), 200000);
-    const rentSARsqm = parseNum(getCol(rentSqmIdx), size > 0 ? rentSARAnnual / size : 500);
-    const rentSARMonthly = rentSARAnnual / 12;
-
-    const latVal = parseNum(getCol(latIdx), -999);
-    const lngVal = parseNum(getCol(lngIdx), -999);
-
-    const lat = latVal === -999 ? null : latVal;
-    const lng = lngVal === -999 ? null : lngVal;
-
-    stores.push({
-      id: i,
-      dsCode,
-      whCode,
+    stores.push(buildStore(stores.length + 1, {
       name,
+      city: get(col.city),
       country: "KSA",
-      city,
-      rentSARAnnual,
-      rentSARMonthly,
-      rentSARsqm,
-      size,
-      lat,
-      lng,
-      rentUSDAnnual: rentSARAnnual * 0.266667,
-      rentUSDMonthly: (rentSARAnnual * 0.266667) / 12,
-      rentAEDAnnual: rentSARAnnual * 0.979333,
-      rentAEDMonthly: (rentSARAnnual * 0.979333) / 12,
-      rentAEDsqm: rentSARsqm * 0.979333,
-      startDate,
+      dsCode: get(col.dsCode),
+      whCode: get(col.duration),
+      paid: get(col.paid),
+      live: get(col.live),
+      startDate: get(col.startDate),
       endDate: "",
-      live,
-      paid,
-    });
+      size: parseNum(get(col.size), false),
+      rentSARsqm: parseNum(get(col.rentSqm)),
+      rentSARAnnual: parseNum(get(col.rentAnnual)),
+      lat: parseNum(get(col.lat), false),
+      lng: parseNum(get(col.lng), false),
+    }));
   }
-
   return stores;
 }
 
+export function parseCSVData(csvText: string): Store[] {
+  const [headers, ...rows] = parseDelimited(csvText);
+  if (!headers) return [];
+  return rowsToStores(headers, rows);
+}
+
 export function parseJSONData(jsonText: string): Store[] {
+  let raw: any;
   try {
-    const raw = JSON.parse(jsonText);
-    const list = Array.isArray(raw) ? raw : (raw.stores || raw.data || []);
-    if (!Array.isArray(list)) return [];
-
-    return list.map((item: any, idx: number) => {
-      const rentAnnual = parseNum(item.rentSARAnnual || item.annualRent || item.rent, 200000);
-      const size = parseNum(item.size || item.area, 400);
-
-      return {
-        id: item.id || idx + 1,
-        dsCode: item.dsCode || item.code || `DS-${100 + idx}`,
-        whCode: item.whCode || item.duration || "1 Year",
-        name: item.name || item.storeName || `Dark Store #${idx + 1}`,
-        country: item.country || "KSA",
-        city: item.city || "Riyadh",
-        rentSARAnnual: rentAnnual,
-        rentSARMonthly: rentAnnual / 12,
-        rentSARsqm: parseNum(item.rentSARsqm || item.rentSqm, size > 0 ? rentAnnual / size : 500),
-        size,
-        lat: item.lat !== undefined ? parseNum(item.lat, null as any) : null,
-        lng: item.lng !== undefined ? parseNum(item.lng, null as any) : null,
-        rentUSDAnnual: rentAnnual * 0.266667,
-        rentUSDMonthly: (rentAnnual * 0.266667) / 12,
-        rentAEDAnnual: rentAnnual * 0.979333,
-        rentAEDMonthly: (rentAnnual * 0.979333) / 12,
-        rentAEDsqm: (rentAnnual / (size || 1)) * 0.979333,
-        startDate: item.startDate || "01 Jan 2024",
-        endDate: item.endDate || "",
-        live: item.live || "Yes",
-        paid: item.paid || "Yes",
-      } as Store;
-    });
+    raw = JSON.parse(jsonText);
   } catch (err) {
-    console.error("JSON parse error:", err);
-    return [];
+    throw new Error(`Invalid JSON: ${err instanceof Error ? err.message : String(err)}`);
   }
+  const list = Array.isArray(raw) ? raw : (raw?.stores || raw?.data || []);
+  if (!Array.isArray(list)) return [];
+
+  // First value that is actually present; unlike ||, keeps 0 and false
+  const pick = (...vals: unknown[]) => vals.find(v => v !== undefined && v !== null && String(v).trim() !== "");
+  const text = (...vals: unknown[]) => String(pick(...vals) ?? "").trim();
+
+  const stores: Store[] = [];
+  list.forEach((item: any) => {
+    const name = text(item?.name, item?.storeName);
+    if (!name) return;
+    stores.push(buildStore(stores.length + 1, {
+      name,
+      city: text(item.city),
+      country: text(item.country) || "KSA",
+      dsCode: text(item.dsCode, item.code),
+      whCode: text(item.whCode, item.duration),
+      paid: text(item.paid),
+      live: text(item.live),
+      startDate: text(item.startDate),
+      endDate: text(item.endDate),
+      size: parseNum(pick(item.size, item.area), false),
+      rentSARsqm: parseNum(pick(item.rentSARsqm, item.rentSqm)),
+      rentSARAnnual: parseNum(pick(item.rentSARAnnual, item.annualRent, item.rent)),
+      lat: parseNum(pick(item.lat), false),
+      lng: parseNum(pick(item.lng), false),
+    }));
+  });
+  return stores;
 }
