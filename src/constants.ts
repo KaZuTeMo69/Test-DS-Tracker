@@ -23,13 +23,6 @@ export const isPaid = (s: Store) => readStatus(s.paid, PAID_YES, PAID_NO) === tr
 
 export const hasCoords = (s: Store) => s.lat !== null && s.lng !== null;
 
-export function pn(v: string | number | null | undefined): number | null {
-  if (v === null || v === undefined) return null;
-  const s = String(v).replace(/[^0-9.-]/g, "");
-  const n = parseFloat(s);
-  return isNaN(n) ? null : n;
-}
-
 const UNITS: Array<[number, string]> = [[1e3, "K"], [1e6, "M"], [1e9, "B"]];
 
 export function fmtN(n: number): string {
@@ -53,10 +46,8 @@ export function getRent(s: Store, currency: "USD" | "AED" | "SAR"): number | nul
   return s.rentUSDAnnual;
 }
 
-export function fmtR(v: string | number | null | undefined): string {
-  const n = pn(v);
-  if (n === null) return String(v ?? "—");
-  return fmtN(n);
+export function fmtR(n: number | null): string {
+  return n === null ? "—" : fmtN(n);
 }
 
 /** Problems in a store's source data, shown so they can be fixed in the sheet or file. */

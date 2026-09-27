@@ -12,6 +12,9 @@ import Sidebar from "./components/Sidebar";
 import KPIBar from "./components/KPIBar";
 import DetailPanel from "./components/DetailPanel";
 
+// The sheet tab that holds the store list
+const SHEET_TAB = "All Countries";
+
 // Manually added stores get ids from here up, so they never collide with imported stores
 const MANUAL_ID_BASE = 1_000_000;
 
@@ -43,7 +46,6 @@ export default function App() {
   // Bumped by every load or import; a sheet request that finishes after a newer one started is ignored
   const loadSeqRef = useRef(0);
   const [sheetId, setSheetId] = useState<string>(() => sessionStorage.getItem("ds_sheet_id") || "");
-  const [sheetTab, setSheetTab] = useState<string>(() => sessionStorage.getItem("ds_sheet_tab") || "All Countries");
   // Stores from the sample data, sheet or imported file; manual stores are kept separately so reloads don't wipe them
   const [baseStores, setBaseStores] = useState<Store[]>(() => assignStableIds(SAMPLE_STORES, storeIdsRef.current));
   const [manualStores, setManualStores] = useState<Store[]>([]);
@@ -51,7 +53,6 @@ export default function App() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("");
-  const [loadingPct, setLoadingPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<string>("");
@@ -85,7 +86,6 @@ export default function App() {
     try {
       if (!isRefresh) {
         setIsLoading(true);
-        setLoadingPct(10);
         setLoadingMsg("Connecting to Google Sheets...");
       }
 
@@ -97,7 +97,6 @@ export default function App() {
       }
 
       if (!isRefresh) {
-        setLoadingPct(80);
         setLoadingMsg("Parsing store data...");
       }
 
@@ -123,7 +122,6 @@ export default function App() {
     } finally {
       if (seq === loadSeqRef.current) {
         setIsLoading(false);
-        setLoadingPct(100);
       }
     }
   }, [showToast]);
@@ -131,7 +129,7 @@ export default function App() {
   // Reload the sheet remembered from earlier in this browser session
   useEffect(() => {
     if (sheetId) {
-      loadDataFromSheet(sheetId, sheetTab);
+      loadDataFromSheet(sheetId, SHEET_TAB);
     }
   }, []);
 
@@ -139,11 +137,11 @@ export default function App() {
   useEffect(() => {
     const timer = setInterval(() => {
       if (sheetId) {
-        loadDataFromSheet(sheetId, sheetTab, true);
+        loadDataFromSheet(sheetId, SHEET_TAB, true);
       }
     }, 5 * 60 * 1000);
     return () => clearInterval(timer);
-  }, [sheetId, sheetTab, loadDataFromSheet]);
+  }, [sheetId, SHEET_TAB, loadDataFromSheet]);
 
   const handleAddStore = useCallback((newStore: Omit<Store, 'id'>) => {
     setManualStores((prev) => [...prev, { ...newStore, id: MANUAL_ID_BASE + prev.length + 1 }]);
@@ -172,7 +170,7 @@ export default function App() {
     const id = m[1];
     setError(null);
     // Only remember (and auto-refresh) the sheet once it has loaded successfully
-    if (await loadDataFromSheet(id, sheetTab)) {
+    if (await loadDataFromSheet(id, SHEET_TAB)) {
       setSheetId(id);
       sessionStorage.setItem("ds_sheet_id", id);
     }
@@ -213,7 +211,7 @@ export default function App() {
     baseStores.forEach((s) => {
       const city = s.city || "Unknown";
       if (!map.has(city)) {
-        map.set(city, { city, country: "KSA", count: 0, live: 0, paid: 0, annualRent: 0, area: 0 });
+        map.set(city, { city, count: 0, live: 0, paid: 0, annualRent: 0, area: 0 });
       }
       const c = map.get(city)!;
       c.count++;
@@ -286,7 +284,7 @@ export default function App() {
 
           {sheetId && (
             <button 
-              onClick={() => loadDataFromSheet(sheetId, sheetTab, true)}
+              onClick={() => loadDataFromSheet(sheetId, SHEET_TAB, true)}
               className="px-3 py-2 bg-[#1a1a1a] border border-[#333] hover:border-[#fbbf24] rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 text-[#EFEFEF] cursor-pointer shadow-sm active:scale-95"
               title="Sync from Google Sheet"
             >

@@ -1,5 +1,13 @@
 import L from "leaflet";
 
+// KML stores points as "lng,lat[,alt]" separated by whitespace; Leaflet wants [lat, lng]
+function parseCoordinates(text: string | null | undefined): [number, number][] {
+  return (text || "").trim().split(/\s+/).map((c) => {
+    const p = c.split(",");
+    return p.length >= 2 ? [parseFloat(p[1]), parseFloat(p[0])] as [number, number] : null;
+  }).filter((c): c is [number, number] => c !== null);
+}
+
 export function parseKML(kmlText: string): L.Layer[] {
   const doc = new DOMParser().parseFromString(kmlText, "application/xml");
   const layers: L.Layer[] = [];
@@ -9,15 +17,11 @@ export function parseKML(kmlText: string): L.Layer[] {
     
     // Polygons
     pm.querySelectorAll("Polygon").forEach((poly) => {
-      const outer = poly.querySelector("outerBoundaryIs LinearRing coordinates") || 
-                    poly.querySelector("outerBoundaryIs > LinearRing > coordinates");
+      const outer = poly.querySelector("outerBoundaryIs LinearRing coordinates");
       if (!outer) return;
-      const coords = outer.textContent?.trim().split(/\s+/).map((c) => {
-        const p = c.split(",");
-        return p.length >= 2 ? [parseFloat(p[1]), parseFloat(p[0])] as [number, number] : null;
-      }).filter((c): c is [number, number] => c !== null);
+      const coords = parseCoordinates(outer.textContent);
       
-      if (coords && coords.length >= 3) {
+      if (coords.length >= 3) {
         const layer = L.polygon(coords, {
           color: "#FECC00",
           weight: 2,
@@ -32,12 +36,9 @@ export function parseKML(kmlText: string): L.Layer[] {
 
     // Lines
     pm.querySelectorAll("LineString coordinates").forEach((ls) => {
-      const coords = ls.textContent?.trim().split(/\s+/).map((c) => {
-        const p = c.split(",");
-        return p.length >= 2 ? [parseFloat(p[1]), parseFloat(p[0])] as [number, number] : null;
-      }).filter((c): c is [number, number] => c !== null);
+      const coords = parseCoordinates(ls.textContent);
       
-      if (coords && coords.length >= 2) {
+      if (coords.length >= 2) {
         layers.push(L.polyline(coords, { color: "#FECC00", weight: 2, opacity: 0.7 }));
       }
     });

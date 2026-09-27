@@ -38,7 +38,7 @@ function kmBetween(lat1: number, lng1: number, lat2: number, lng2: number): numb
   return 6371 * 2 * Math.asin(Math.sqrt(a));
 }
 
-export interface CheckedLocation {
+interface CheckedLocation {
   lat: number | null;
   lng: number | null;
   issue?: string;

@@ -9,7 +9,7 @@ const SAR_TO_AED = 0.979333;
  * Returns null for blank or non-numeric cells so missing data stays visible as missing.
  * Set multipliers to false for fields where K/M/B can't mean thousand/million/billion (area, coordinates).
  */
-export function parseNum(val: unknown, multipliers = true): number | null {
+function parseNum(val: unknown, multipliers = true): number | null {
   if (val === null || val === undefined) return null;
   const s = String(val).replace(/,/g, "").trim();
   const m = s.match(/-?\d+(?:\.\d+)?/);
@@ -106,7 +106,7 @@ function mapColumns(headers: string[]): Record<Field, number> {
   return result;
 }
 
-export interface StoreFields {
+interface StoreFields {
   name: string;
   city: string;
   country: string;
@@ -124,7 +124,7 @@ export interface StoreFields {
 }
 
 /** Fills in the derived currency fields and validates coordinates. Nothing missing is made up. */
-export function buildStore(id: number, f: StoreFields): Store {
+function buildStore(id: number, f: StoreFields): Store {
   const annual = f.rentSARAnnual;
   const rentSARsqm = f.rentSARsqm ?? (annual !== null && f.size ? annual / f.size : null);
   const scale = (n: number | null, k: number) => (n === null ? null : n * k);

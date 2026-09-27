@@ -1,6 +1,6 @@
 import { Store, CitySummary } from "../types";
-import { isLive, isPaid, hasCoords, fmtR, fmtN, getRent, dataIssues } from "../constants";
-import { Search, ChevronLeft, TrendingUp, FileUp, FileDown } from "lucide-react";
+import { isLive, hasCoords, fmtR, fmtN, getRent, dataIssues } from "../constants";
+import { Search, ChevronLeft, FileUp, FileDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import CityInsights from "./CityInsights";
 
@@ -84,10 +84,6 @@ export default function Sidebar({
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const handleImport = () => {
-    onImportSheet(); // Triggering to open upload modal
-  };
-
   return (
     <AnimatePresence mode="wait">
       {isOpen && (
@@ -110,7 +106,7 @@ export default function Sidebar({
                   <FileUp size={16} />
                 </button>
                 <button 
-                  onClick={handleImport}
+                  onClick={onImportSheet}
                   className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#fbbf24] bg-white/5 rounded-full transition-colors"
                   title="Import / Upload Data"
                 >

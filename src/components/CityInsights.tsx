@@ -56,7 +56,7 @@ export default function CityInsights({ citySummaries, currency }: CityInsightsPr
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
               <Bar dataKey="count" name="Stores" radius={[0, 4, 4, 0]} barSize={12}>
-                {topByCount.map((entry, index) => (
+                {topByCount.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={index === 0 ? "#fbbf24" : "#444"} />
                 ))}
               </Bar>
@@ -84,7 +84,7 @@ export default function CityInsights({ citySummaries, currency }: CityInsightsPr
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
               <Bar dataKey="annualRent" name="Rent" radius={[0, 4, 4, 0]} barSize={12}>
-                {topByRent.map((entry, index) => (
+                {topByRent.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={index < 3 ? "#fbbf24" : "#666"} opacity={0.8 - index * 0.1} />
                 ))}
               </Bar>

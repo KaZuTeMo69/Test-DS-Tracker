@@ -21,11 +21,11 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-// 1. Declare a reference to hold the active route control at the top of your component script
+// The route currently drawn on the map (one at a time)
 let activeRoutingControl: any = null;
 
-// 2. Create a reusable function to draw routes when a store is selected
-export function calculateRouteToStore(userLat: number, userLng: number, storeLat: number, storeLng: number, mapInstance: L.Map) {
+// Draws a driving route from the searched coordinate to the selected store
+function calculateRouteToStore(userLat: number, userLng: number, storeLat: number, storeLng: number, mapInstance: L.Map) {
   // Clear any existing route from a previous search so they don't pile up on screen
   if (activeRoutingControl) {
     try {
@@ -289,8 +289,6 @@ export default function MapComponent({
   const [routingLoaded, setRoutingLoaded] = useState(false);
 
   useEffect(() => {
-    (window as any).L = L;
-
     if ((L as any).Routing && (L as any).Routing.control) {
       setRoutingLoaded(true);
       return;

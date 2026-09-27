@@ -37,7 +37,7 @@ const DetailPanel = memo(function DetailPanel({ store, onClose, currency }: Deta
   return (
     <div 
       onClick={(e) => e.stopPropagation()}
-      className={`absolute top-[70px] right-[45px] ml-0 pl-[15px] pr-[15px] pt-[15px] pb-[12px] w-[300px] bg-[#111111]/95 backdrop-blur-md border border-[#333] rounded-xl shadow-2xl overflow-hidden flex flex-col z-[500] transition-transform duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] ${store ? "translate-x-0" : "translate-x-[400px]"}`}
+      className={`absolute top-[70px] right-[45px] ml-0 pl-[15px] pr-[15px] pt-[15px] pb-[12px] w-[300px] bg-[#111111]/95 backdrop-blur-md border border-[#333] rounded-xl shadow-2xl overflow-hidden flex flex-col z-[500] transition-transform duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] translate-x-0`}
     >
       <div className="p-4 border-b border-[#262626] flex justify-between items-start">
         <div className="flex-1 mr-2 min-w-0">

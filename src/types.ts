@@ -28,7 +28,6 @@ export interface Store {
 
 export interface CitySummary {
   city: string;
-  country: string;
   count: number;
   live: number;
   paid: number;
