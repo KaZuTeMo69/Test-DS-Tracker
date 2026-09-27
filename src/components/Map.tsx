@@ -1,13 +1,13 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import { FileUp, Moon, Search, Sun, X } from "lucide-react";
 import { Store } from "../types";
-import { pinColor, PIN_SEL, isLive, isPaid } from "../constants";
-import { Moon, Sun, FileUp, X, Search } from "lucide-react";
+import { isLive, isPaid, pinColor, PIN_SEL } from "../constants";
 import { parseKML } from "../lib/kml";
 
 // Fix for default marker icons in Leaflet
@@ -20,6 +20,20 @@ L.Icon.Default.mergeOptions({
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
 });
+
+interface MapComponentProps {
+  stores: Store[];
+  selectedId: number | null;
+  onSelectStore: (id: number) => void;
+  onMapClick?: () => void;
+  isNightMode: boolean;
+  setIsNightMode: (night: boolean) => void;
+  focusedCity?: string | null;
+  kmlLayers: L.Layer[];
+  setKmlLayers: (layers: L.Layer[]) => void;
+  onAddStore?: (store: Omit<Store, 'id'>) => void;
+  showToast?: (msg: string) => void;
+}
 
 // The route currently drawn on the map (one at a time)
 let activeRoutingControl: any = null;
@@ -61,20 +75,6 @@ function calculateRouteToStore(userLat: number, userLng: number, storeLat: numbe
   } catch (error) {
     console.error("Failed to initialize Leaflet Routing control", error);
   }
-}
-
-interface MapComponentProps {
-  stores: Store[];
-  selectedId: number | null;
-  onSelectStore: (id: number) => void;
-  onMapClick?: () => void;
-  isNightMode: boolean;
-  setIsNightMode: (night: boolean) => void;
-  focusedCity?: string | null;
-  kmlLayers: L.Layer[];
-  setKmlLayers: (layers: L.Layer[]) => void;
-  onAddStore?: (store: Omit<Store, 'id'>) => void;
-  showToast?: (msg: string) => void;
 }
 
 // Icons are cached so re-renders hand Leaflet the same icon object instead of rebuilding every pin
@@ -271,6 +271,41 @@ function MapUpdater({
   return null;
 }
 
+function ZoomButtons() {
+  const map = useMap();
+  return (
+    <>
+      <button 
+        className="bg-[#1e1e1e]/90 backdrop-blur-md border border-[#383838] hover:bg-[#252525] w-[40px] h-[40px] flex items-center justify-center text-[#EFEFEF] rounded-t-lg cursor-pointer text-xl font-bold"
+        onClick={(e) => { e.stopPropagation(); map.zoomIn(); }} 
+        title="Zoom In"
+      >
+        +
+      </button>
+      <button 
+        className="bg-[#1e1e1e]/90 backdrop-blur-md border border-[#383838] border-t-0 hover:bg-[#252525] w-[40px] h-[40px] flex items-center justify-center text-[#EFEFEF] rounded-b-lg cursor-pointer text-xl font-bold"
+        onClick={(e) => { e.stopPropagation(); map.zoomOut(); }}
+        title="Zoom Out"
+      >
+        -
+      </button>
+    </>
+  );
+}
+
+function RawLayer({ layer }: { layer: L.Layer; key?: string }) {
+  const map = useMap();
+  useEffect(() => {
+    if (layer) {
+      layer.addTo(map);
+      return () => {
+        layer.remove();
+      };
+    }
+  }, [map, layer]);
+  return null;
+}
+
 export default function MapComponent({
   stores,
   selectedId,
@@ -285,9 +320,18 @@ export default function MapComponent({
   showToast
 }: MapComponentProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const tempMarkerRef = useRef<L.Marker | null>(null);
 
   const [routingLoaded, setRoutingLoaded] = useState(false);
+  // Coordinate search and manual store adding
+  const [tempPin, setTempPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchError, setSearchError] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newStoreName, setNewStoreName] = useState("");
+  const [newStoreCity, setNewStoreCity] = useState("");
 
+  // Load Leaflet Routing Machine from the CDN once
   useEffect(() => {
     if ((L as any).Routing && (L as any).Routing.control) {
       setRoutingLoaded(true);
@@ -315,16 +359,6 @@ export default function MapComponent({
       }
     };
   }, []);
-
-  // States for coordinate search and manual store adding
-  const [tempPin, setTempPin] = useState<{ lat: number; lng: number } | null>(null);
-  const [searchInput, setSearchInput] = useState("");
-  const [searchError, setSearchError] = useState("");
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newStoreName, setNewStoreName] = useState("");
-  const [newStoreCity, setNewStoreCity] = useState("");
-
-  const tempMarkerRef = useRef<L.Marker | null>(null);
 
   // Automatically open the popup when a coordinate search places the temporary marker
   useEffect(() => {
@@ -742,39 +776,3 @@ export default function MapComponent({
     </div>
   );
 }
-
-function ZoomButtons() {
-  const map = useMap();
-  return (
-    <>
-      <button 
-        className="bg-[#1e1e1e]/90 backdrop-blur-md border border-[#383838] hover:bg-[#252525] w-[40px] h-[40px] flex items-center justify-center text-[#EFEFEF] rounded-t-lg cursor-pointer text-xl font-bold"
-        onClick={(e) => { e.stopPropagation(); map.zoomIn(); }} 
-        title="Zoom In"
-      >
-        +
-      </button>
-      <button 
-        className="bg-[#1e1e1e]/90 backdrop-blur-md border border-[#383838] border-t-0 hover:bg-[#252525] w-[40px] h-[40px] flex items-center justify-center text-[#EFEFEF] rounded-b-lg cursor-pointer text-xl font-bold"
-        onClick={(e) => { e.stopPropagation(); map.zoomOut(); }}
-        title="Zoom Out"
-      >
-        -
-      </button>
-    </>
-  );
-}
-
-function RawLayer({ layer }: { layer: L.Layer; key?: string }) {
-  const map = useMap();
-  useEffect(() => {
-    if (layer) {
-      layer.addTo(map);
-      return () => {
-        layer.remove();
-      };
-    }
-  }, [map, layer]);
-  return null;
-}
-

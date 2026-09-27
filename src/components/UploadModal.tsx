@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect, ChangeEvent, DragEvent } from "react";
-import { X, Upload, FileText, Link, Check, AlertCircle } from "lucide-react";
-import { parseCSVData, parseJSONData } from "../lib/importer";
+import { ChangeEvent, DragEvent, useEffect, useRef, useState } from "react";
+import { AlertCircle, Check, FileText, Link, Upload, X } from "lucide-react";
 import { Store } from "../types";
+import { parseCSVData, parseJSONData } from "../lib/importer";
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -12,6 +12,12 @@ interface UploadModalProps {
   loadingMsg?: string;
   error?: string | null;
 }
+
+// Choose the parser from the content itself: JSON starts with [ or {, anything else is CSV/TSV
+const parseContent = (text: string): Store[] =>
+  /^\s*[[{]/.test(text) ? parseJSONData(text) : parseCSVData(text);
+
+const errorText = (err: unknown, fallback: string) => (err instanceof Error && err.message ? err.message : fallback);
 
 export default function UploadModal({
   isOpen,
@@ -36,11 +42,27 @@ export default function UploadModal({
 
   if (!isOpen) return null;
 
-  // Choose the parser from the content itself: JSON starts with [ or {, anything else is CSV/TSV
-  const parseContent = (text: string): Store[] =>
-    /^\s*[[{]/.test(text) ? parseJSONData(text) : parseCSVData(text);
+  const readFile = (file: File) => {
+    setLocalError(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = parseContent(content);
 
-  const errorText = (err: unknown, fallback: string) => (err instanceof Error && err.message ? err.message : fallback);
+        if (parsed.length === 0) {
+          setLocalError("No valid dark store records found in the uploaded file.");
+          return;
+        }
+
+        onStoresImported(parsed, file.name);
+        onClose();
+      } catch (err) {
+        setLocalError(errorText(err, "Failed to parse file. Please check file format."));
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -65,28 +87,6 @@ export default function UploadModal({
     if (!file) return;
     setActiveTab("file");
     readFile(file);
-  };
-
-  const readFile = (file: File) => {
-    setLocalError(null);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const content = event.target?.result as string;
-        const parsed = parseContent(content);
-
-        if (parsed.length === 0) {
-          setLocalError("No valid dark store records found in the uploaded file.");
-          return;
-        }
-
-        onStoresImported(parsed, file.name);
-        onClose();
-      } catch (err) {
-        setLocalError(errorText(err, "Failed to parse file. Please check file format."));
-      }
-    };
-    reader.readAsText(file);
   };
 
   const handlePasteSubmit = () => {

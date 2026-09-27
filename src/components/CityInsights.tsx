@@ -1,6 +1,6 @@
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CitySummary } from "../types";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { fmtN, CURRENCY } from "../constants";
+import { CURRENCY, fmtN } from "../constants";
 
 interface CityInsightsProps {
   citySummaries: CitySummary[];
@@ -15,24 +15,24 @@ interface CustomTooltipProps {
   label?: string;
 }
 
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-[#1a1a1a] border border-[#333] p-3 rounded-lg shadow-2xl">
+        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{label}</p>
+        <p className="text-[13px] font-bold text-white">
+          {payload[0].name === "Stores" ? `${payload[0].value} Stores` : `${CURRENCY} ${fmtN(payload[0].value)}`}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function CityInsights({ citySummaries }: CityInsightsProps) {
   // Sort by count for one view, by rent for another
   const topByCount = [...citySummaries].sort((a, b) => b.count - a.count).slice(0, 8);
   const topByRent = [...citySummaries].sort((a, b) => b.annualRent - a.annualRent).slice(0, 8);
-
-  const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-[#1a1a1a] border border-[#333] p-3 rounded-lg shadow-2xl">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{label}</p>
-          <p className="text-[13px] font-bold text-white">
-            {payload[0].name === "Stores" ? `${payload[0].value} Stores` : `${CURRENCY} ${fmtN(payload[0].value)}`}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="space-y-8 duration-500">

@@ -1,7 +1,7 @@
-import { Store, CitySummary } from "../types";
-import { isLive, hasCoords, fmtR, fmtN, dataIssues, CURRENCY } from "../constants";
-import { Search, ChevronLeft, FileUp, FileDown } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { ChevronLeft, FileDown, FileUp, Search } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { CitySummary, Store } from "../types";
+import { CURRENCY, dataIssues, fmtN, fmtR, hasCoords, isLive } from "../constants";
 import CityInsights from "./CityInsights";
 
 interface SidebarProps {
@@ -27,6 +27,39 @@ interface SidebarProps {
   allCities: string[];
 }
 
+function downloadStoresCSV(stores: Store[]) {
+  // Same columns as the Google Sheet, so an exported file can be imported again without losing fields
+  const headers = ["Store Name", "City", "DS Code", "Contract Duration", "Paid / Not Paid", "Live / Not Live", "Contract Start Date", "Area (sqm.)", "Rent/sqm. (SAR)", "Annual Rent W/O VAT", "Lat", "Lng"];
+  const rows = stores.map(s => [
+    s.name,
+    s.city,
+    s.dsCode,
+    s.whCode,
+    s.paid,
+    s.live,
+    s.startDate,
+    s.size,
+    s.rentSARsqm,
+    s.rentSARAnnual,
+    s.lat,
+    s.lng,
+  ]);
+  // Quote cells containing commas, quotes or line breaks
+  const cell = (v: string | number | null | undefined) => {
+    const text = v === null || v === undefined ? "" : String(v);
+    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  // The BOM makes Excel read the file as UTF-8, so Arabic names survive
+  const content = "\uFEFF" + [headers, ...rows].map(r => r.map(cell).join(",")).join("\r\n");
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `dark_stores_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export default function Sidebar({
   isOpen,
   onClose,
@@ -49,39 +82,6 @@ export default function Sidebar({
   setCityFilter,
   allCities
 }: SidebarProps) {
-  const downloadCSV = () => {
-    // Same columns as the Google Sheet, so an exported file can be imported again without losing fields
-    const headers = ["Store Name", "City", "DS Code", "Contract Duration", "Paid / Not Paid", "Live / Not Live", "Contract Start Date", "Area (sqm.)", "Rent/sqm. (SAR)", "Annual Rent W/O VAT", "Lat", "Lng"];
-    const rows = stores.map(s => [
-      s.name,
-      s.city,
-      s.dsCode,
-      s.whCode,
-      s.paid,
-      s.live,
-      s.startDate,
-      s.size,
-      s.rentSARsqm,
-      s.rentSARAnnual,
-      s.lat,
-      s.lng,
-    ]);
-    // Quote cells containing commas, quotes or line breaks
-    const cell = (v: string | number | null | undefined) => {
-      const text = v === null || v === undefined ? "" : String(v);
-      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-    };
-    // The BOM makes Excel read the file as UTF-8, so Arabic names survive
-    const content = "\uFEFF" + [headers, ...rows].map(r => r.map(cell).join(",")).join("\r\n");
-    const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `dark_stores_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
-
   return (
     <AnimatePresence mode="wait">
       {isOpen && (
@@ -97,7 +97,7 @@ export default function Sidebar({
               <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Navigation</div>
               <div className="flex gap-2">
                 <button 
-                  onClick={downloadCSV}
+                  onClick={() => downloadStoresCSV(stores)}
                   className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#fbbf24] bg-white/5 rounded-full transition-colors"
                   title="Export to CSV"
                 >

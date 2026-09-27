@@ -1,23 +1,24 @@
 export interface Store {
+  // Identity
   id: number;
-  dsCode: string;
-  whCode: string;
   name: string;
-  country: string;
+  dsCode: string;
+  whCode: string; // Holds the contract duration
   city: string;
-  // Rent (SAR) and area are null when the source data leaves them blank
-  size: number | null;
-  lat: number | null;
-  lng: number | null;
+  country: string;
+  // Contract
   startDate: string;
   endDate: string;
+  live?: string;
+  paid?: string;
+  // Area and rent (SAR); null when the source data leaves them blank
+  size: number | null;
   rentSARAnnual: number | null;
   rentSARMonthly: number | null;
   rentSARsqm: number | null;
-  // status fields (optional/fallback)
-  live?: string; 
-  paid?: string;
-  // Why the store has no pin on the map (missing or implausible coordinates)
+  // Location; locationIssue says why the store has no pin (missing or implausible coordinates)
+  lat: number | null;
+  lng: number | null;
   locationIssue?: string;
 }
 

@@ -1,22 +1,24 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { RefreshCw, Settings, Filter, FileEdit, ChevronDown, Store as StoreIcon, Upload } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
-import { Store, CitySummary } from "./types";
-import { fetchSheetData } from "./lib/sheets";
+import { ChevronDown, FileEdit, Filter, RefreshCw, Settings, Store as StoreIcon, Upload } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { CitySummary, Store } from "./types";
+import { hasCoords, isLive, isPaid } from "./constants";
 import { SAMPLE_STORES } from "./data/sampleStores";
-import { isLive, isPaid, hasCoords } from "./constants";
-import MapComponent from "./components/Map";
-import UploadModal from "./components/UploadModal";
-import Sidebar from "./components/Sidebar";
-import KPIBar from "./components/KPIBar";
+import { fetchSheetData } from "./lib/sheets";
 import DetailPanel from "./components/DetailPanel";
+import KPIBar from "./components/KPIBar";
+import MapComponent from "./components/Map";
+import Sidebar from "./components/Sidebar";
+import UploadModal from "./components/UploadModal";
 
 // The sheet tab that holds the store list
 const SHEET_TAB = "All Countries";
 
 // Manually added stores get ids from here up, so they never collide with imported stores
 const MANUAL_ID_BASE = 1_000_000;
+
+const syncTime = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
 /**
  * Gives each store the same id on every load (keyed by DS code, else name + city), so a
@@ -41,7 +43,20 @@ function assignStableIds(list: Store[], idsByKey: Map<string, number>): Store[] 
   });
 }
 
+/** The search box and Live / Paid filters (the city filter is applied separately). */
+function matchesFilters(s: Store, query: string, live: string, paid: string): boolean {
+  const q = query.toLowerCase();
+  const matchesQuery = !query ||
+    s.name.toLowerCase().includes(q) ||
+    (s.city && s.city.toLowerCase().includes(q)) ||
+    (s.dsCode && s.dsCode.toLowerCase().includes(q));
+  const matchesLive = live === "all" || (live === "live" && isLive(s)) || (live === "notlive" && !isLive(s));
+  const matchesPaid = paid === "all" || (paid === "paid" && isPaid(s)) || (paid === "notpaid" && !isPaid(s));
+  return Boolean(matchesQuery && matchesLive && matchesPaid);
+}
+
 export default function App() {
+  // Data source
   const storeIdsRef = useRef(new Map<string, number>());
   // Bumped by every load or import; a sheet request that finishes after a newer one started is ignored
   const loadSeqRef = useRef(0);
@@ -49,8 +64,8 @@ export default function App() {
   // Stores from the sample data, sheet or imported file; manual stores are kept separately so reloads don't wipe them
   const [baseStores, setBaseStores] = useState<Store[]>(() => assignStableIds(SAMPLE_STORES, storeIdsRef.current));
   const [manualStores, setManualStores] = useState<Store[]>([]);
-  const stores = useMemo(() => [...baseStores, ...manualStores], [baseStores, manualStores]);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  // Loading and sync status
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -62,16 +77,19 @@ export default function App() {
   const [liveFilter, setLiveFilter] = useState<"all" | "live" | "notlive">("all");
   const [paidFilter, setPaidFilter] = useState<"all" | "paid" | "notpaid">("all");
   const [cityFilter, setCityFilter] = useState("");
+
+  // Sidebar, map and selection
   const [currentTab, setCurrentTab] = useState<"stores" | "cities" | "insights">("stores");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  
-  // Map/Selection State
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isNightMode, setIsNightMode] = useState(true);
   const [focusedCity, setFocusedCity] = useState<string | null>(null);
   const [kmlLayers, setKmlLayers] = useState<L.Layer[]>([]);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // Overlays
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -100,7 +118,7 @@ export default function App() {
       }
 
       setBaseStores(assignStableIds(data, storeIdsRef.current));
-      setLastSync(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      setLastSync(syncTime());
       setError(null);
       setSyncError(null);
       setIsUploadModalOpen(false);
@@ -140,24 +158,11 @@ export default function App() {
       }
     }, 5 * 60 * 1000);
     return () => clearInterval(timer);
-  }, [sheetId, SHEET_TAB, loadDataFromSheet]);
+  }, [sheetId, loadDataFromSheet]);
 
-  const handleAddStore = useCallback((newStore: Omit<Store, 'id'>) => {
-    setManualStores((prev) => [...prev, { ...newStore, id: MANUAL_ID_BASE + prev.length + 1 }]);
-  }, []);
-
-  const handleStoresImported = (importedStores: Store[], sourceName: string) => {
-    // The file replaces the sheet as the data source, so stop syncing the sheet;
-    // otherwise the next auto-refresh would overwrite the imported stores
-    const wasSyncing = !!sheetId;
-    loadSeqRef.current++;
-    setIsLoading(false);
-    setSheetId("");
-    sessionStorage.removeItem("ds_sheet_id");
-    setSyncError(null);
-    setBaseStores(assignStableIds(importedStores, storeIdsRef.current));
-    setLastSync(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
-    showToast(`Successfully imported ${importedStores.length} stores from ${sourceName}${wasSyncing ? ". Google Sheet sync is off" : ""}`);
+  const openUploadModal = () => {
+    setError(null);
+    setIsUploadModalOpen(true);
   };
 
   const handleGoogleSheetImport = async (url: string) => {
@@ -175,39 +180,53 @@ export default function App() {
     }
   };
 
-  const openUploadModal = () => {
-    setError(null);
-    setIsUploadModalOpen(true);
+  const handleStoresImported = (importedStores: Store[], sourceName: string) => {
+    // The file replaces the sheet as the data source, so stop syncing the sheet;
+    // otherwise the next auto-refresh would overwrite the imported stores
+    const wasSyncing = !!sheetId;
+    loadSeqRef.current++;
+    setIsLoading(false);
+    setSheetId("");
+    sessionStorage.removeItem("ds_sheet_id");
+    setSyncError(null);
+    setBaseStores(assignStableIds(importedStores, storeIdsRef.current));
+    setLastSync(syncTime());
+    showToast(`Successfully imported ${importedStores.length} stores from ${sourceName}${wasSyncing ? ". Google Sheet sync is off" : ""}`);
   };
 
-  const getGlobalFilter = useCallback((s: Store, query: string, live: string, paid: string) => {
-    const mq = !query || 
-      s.name.toLowerCase().includes(query.toLowerCase()) || 
-      (s.city && s.city.toLowerCase().includes(query.toLowerCase())) || 
-      (s.dsCode && s.dsCode.toLowerCase().includes(query.toLowerCase()));
-    const ms = live === "all" || (live === "live" && isLive(s)) || (live === "notlive" && !isLive(s));
-    const mp = paid === "all" || (paid === "paid" && isPaid(s)) || (paid === "notpaid" && !isPaid(s));
-    return mq && ms && mp;
+  const handleResetSample = () => {
+    loadSeqRef.current++;
+    setIsLoading(false);
+    setBaseStores(assignStableIds(SAMPLE_STORES, storeIdsRef.current));
+    setManualStores([]);
+    setSheetId("");
+    setSyncError(null);
+    sessionStorage.removeItem("ds_sheet_id");
+    showToast("Reset to sample dark stores");
+    setShowSettingsMenu(false);
+  };
+
+  const handleAddStore = useCallback((newStore: Omit<Store, 'id'>) => {
+    setManualStores((prev) => [...prev, { ...newStore, id: MANUAL_ID_BASE + prev.length + 1 }]);
   }, []);
+
+  const stores = useMemo(() => [...baseStores, ...manualStores], [baseStores, manualStores]);
 
   const filteredStores = useMemo(() => {
     return stores.filter((s) => {
-      const globalMatch = getGlobalFilter(s, searchQuery, liveFilter, paidFilter);
-      const mc = !cityFilter || s.city === cityFilter;
-      return globalMatch && mc;
+      const matchesCity = !cityFilter || s.city === cityFilter;
+      return matchesFilters(s, searchQuery, liveFilter, paidFilter) && matchesCity;
     }).sort((a, b) => {
       const ra = a.rentSARAnnual;
       const rb = b.rentSARAnnual;
       return (rb || 0) - (ra || 0);
     });
-  }, [stores, searchQuery, liveFilter, paidFilter, cityFilter, getGlobalFilter]);
+  }, [stores, searchQuery, liveFilter, paidFilter, cityFilter]);
 
   const citySummaries = useMemo(() => {
     const map = new Map<string, CitySummary>();
-    
-    const baseStores = stores.filter(s => getGlobalFilter(s, searchQuery, liveFilter, paidFilter));
 
-    baseStores.forEach((s) => {
+    stores.filter(s => matchesFilters(s, searchQuery, liveFilter, paidFilter)).forEach((s) => {
       const city = s.city || "Unknown";
       if (!map.has(city)) {
         map.set(city, { city, count: 0, live: 0, paid: 0, annualRent: 0, area: 0 });
@@ -216,13 +235,11 @@ export default function App() {
       c.count++;
       if (isLive(s)) c.live++;
       if (isPaid(s)) c.paid++;
-      
-      const rentVal = s.rentSARAnnual;
-      c.annualRent += (rentVal || 0);
+      c.annualRent += (s.rentSARAnnual || 0);
       c.area += (s.size || 0);
     });
     return Array.from(map.values()).sort((a, b) => b.annualRent - a.annualRent);
-  }, [stores, searchQuery, liveFilter, paidFilter, getGlobalFilter]);
+  }, [stores, searchQuery, liveFilter, paidFilter]);
 
   const selectedStore = useMemo(() => 
     stores.find(s => s.id === selectedId) || null
@@ -328,17 +345,7 @@ export default function App() {
                       </button>
                       
                       <button
-                        onClick={() => {
-                          loadSeqRef.current++;
-                          setIsLoading(false);
-                          setBaseStores(assignStableIds(SAMPLE_STORES, storeIdsRef.current));
-                          setManualStores([]);
-                          setSheetId("");
-                          setSyncError(null);
-                          sessionStorage.removeItem("ds_sheet_id");
-                          showToast("Reset to sample dark stores");
-                          setShowSettingsMenu(false);
-                        }}
+                        onClick={handleResetSample}
                         className="flex items-center gap-3 w-full px-3 py-2.5 text-[11px] font-black uppercase text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all text-left"
                       >
                         <RefreshCw size={14} />

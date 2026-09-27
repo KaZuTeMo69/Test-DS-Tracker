@@ -1,10 +1,13 @@
-import { useMemo, memo } from "react";
+import { memo, useMemo } from "react";
 import { Store } from "../types";
-import { isLive, isPaid, fmtN, CURRENCY } from "../constants";
+import { CURRENCY, fmtN, isLive, isPaid } from "../constants";
 
 interface KPIBarProps {
   stores: Store[];
 }
+
+// Totals leave out stores with no value, so say how many were left out
+const missing = (n: number, what: string) => (n > 0 ? `${n} without ${what}` : undefined);
 
 const KPIBar = memo(function KPIBar({ stores }: KPIBarProps) {
   const stats = useMemo(() => {
@@ -42,9 +45,6 @@ const KPIBar = memo(function KPIBar({ stores }: KPIBarProps) {
       avgRent: pricedArea > 0 ? pricedRent / pricedArea : 0
     };
   }, [stores]);
-
-  // Totals leave out stores with no value, so say how many were left out
-  const missing = (n: number, what: string) => (n > 0 ? `${n} without ${what}` : undefined);
 
   const kpis: Array<{ label: string; value: string | number; unit?: string; note?: string; color: string; valueColor?: string; valueClass?: string }> = [
     { label: "Total Stores", value: stores.length, color: "#FECC00", valueColor: "#ffffff" },

@@ -1,18 +1,18 @@
 import { memo } from "react";
+import { AlertCircle, X } from "lucide-react";
 import { Store } from "../types";
-import { isLive, isPaid, hasCoords, dataIssues, CURRENCY } from "../constants";
-import { X, AlertCircle } from "lucide-react";
+import { CURRENCY, dataIssues, hasCoords, isLive, isPaid } from "../constants";
 
 interface DetailPanelProps {
   store: Store | null;
   onClose: () => void;
 }
 
+// Exact figures here; the rounded 274K style is for totals
+const sar = (n: number | null) => (n === null ? "—" : `${CURRENCY} ${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
+
 const DetailPanel = memo(function DetailPanel({ store, onClose }: DetailPanelProps) {
   if (!store) return null;
-
-  // Exact figures here; the rounded 274K style is for totals
-  const sar = (n: number | null) => (n === null ? "—" : `${CURRENCY} ${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
 
   const issues = dataIssues(store);
   
