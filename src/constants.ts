@@ -1,5 +1,8 @@
 import { Store } from "./types";
 
+// All rent figures are in Saudi riyals
+export const CURRENCY = "SAR";
+
 export const PIN_SEL = "#38BDF8";
 
 // Status is read from the first word of the cell ("Paid Jun 2024" → paid, "Not Live" → not live).
@@ -38,12 +41,6 @@ export function fmtN(n: number): string {
     }
   }
   return String(n);
-}
-
-export function getRent(s: Store, currency: "USD" | "AED" | "SAR"): number | null {
-  if (currency === "AED") return s.rentAEDAnnual;
-  if (currency === "SAR") return s.rentSARAnnual;
-  return s.rentUSDAnnual;
 }
 
 export function fmtR(n: number | null): string {

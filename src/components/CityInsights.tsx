@@ -1,10 +1,9 @@
 import { CitySummary } from "../types";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { fmtN } from "../constants";
+import { fmtN, CURRENCY } from "../constants";
 
 interface CityInsightsProps {
   citySummaries: CitySummary[];
-  currency: "USD" | "AED" | "SAR";
 }
 
 interface CustomTooltipProps {
@@ -16,7 +15,7 @@ interface CustomTooltipProps {
   label?: string;
 }
 
-export default function CityInsights({ citySummaries, currency }: CityInsightsProps) {
+export default function CityInsights({ citySummaries }: CityInsightsProps) {
   // Sort by count for one view, by rent for another
   const topByCount = [...citySummaries].sort((a, b) => b.count - a.count).slice(0, 8);
   const topByRent = [...citySummaries].sort((a, b) => b.annualRent - a.annualRent).slice(0, 8);
@@ -27,7 +26,7 @@ export default function CityInsights({ citySummaries, currency }: CityInsightsPr
         <div className="bg-[#1a1a1a] border border-[#333] p-3 rounded-lg shadow-2xl">
           <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{label}</p>
           <p className="text-[13px] font-bold text-white">
-            {payload[0].name === "Stores" ? `${payload[0].value} Stores` : `${currency} ${fmtN(payload[0].value)}`}
+            {payload[0].name === "Stores" ? `${payload[0].value} Stores` : `${CURRENCY} ${fmtN(payload[0].value)}`}
           </p>
         </div>
       );
@@ -97,7 +96,7 @@ export default function CityInsights({ citySummaries, currency }: CityInsightsPr
         <div className="bg-[#111] border border-[#222] p-4 rounded-xl">
           <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Avg Rent/Store</div>
           <div className="text-sm font-bold text-white font-mono">
-            {currency} {citySummaries.length > 0 
+            {CURRENCY} {citySummaries.length > 0 
               ? fmtN(citySummaries.reduce((a, b) => a + b.annualRent, 0) / citySummaries.reduce((a, b) => a + b.count, 0)) 
               : "0"}
           </div>

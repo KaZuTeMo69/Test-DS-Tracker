@@ -1,9 +1,6 @@
 import { Store } from "../types";
 import { checkLocation } from "./location";
 
-const SAR_TO_USD = 0.266667;
-const SAR_TO_AED = 0.979333;
-
 /**
  * Reads a number from a cell such as "273,500", "SAR 1.5M", "273K" or "450 m2".
  * Returns null for blank or non-numeric cells so missing data stays visible as missing.
@@ -123,11 +120,10 @@ interface StoreFields {
   lng: number | null;
 }
 
-/** Fills in the derived currency fields and validates coordinates. Nothing missing is made up. */
+/** Fills in monthly and per-m² rent and validates coordinates. Nothing missing is made up. */
 function buildStore(id: number, f: StoreFields): Store {
   const annual = f.rentSARAnnual;
   const rentSARsqm = f.rentSARsqm ?? (annual !== null && f.size ? annual / f.size : null);
-  const scale = (n: number | null, k: number) => (n === null ? null : n * k);
   const location = checkLocation(f.city, f.country, f.lat, f.lng);
 
   return {
@@ -138,17 +134,12 @@ function buildStore(id: number, f: StoreFields): Store {
     country: f.country,
     city: f.city,
     rentSARAnnual: annual,
-    rentSARMonthly: scale(annual, 1 / 12),
+    rentSARMonthly: annual === null ? null : annual / 12,
     rentSARsqm,
     size: f.size,
     lat: location.lat,
     lng: location.lng,
     locationIssue: location.issue,
-    rentUSDAnnual: scale(annual, SAR_TO_USD),
-    rentUSDMonthly: scale(annual, SAR_TO_USD / 12),
-    rentAEDAnnual: scale(annual, SAR_TO_AED),
-    rentAEDMonthly: scale(annual, SAR_TO_AED / 12),
-    rentAEDsqm: scale(rentSARsqm, SAR_TO_AED),
     startDate: f.startDate,
     endDate: f.endDate,
     live: f.live,

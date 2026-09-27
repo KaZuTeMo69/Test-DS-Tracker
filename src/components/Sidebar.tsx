@@ -1,5 +1,5 @@
 import { Store, CitySummary } from "../types";
-import { isLive, hasCoords, fmtR, fmtN, getRent, dataIssues } from "../constants";
+import { isLive, hasCoords, fmtR, fmtN, dataIssues, CURRENCY } from "../constants";
 import { Search, ChevronLeft, FileUp, FileDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import CityInsights from "./CityInsights";
@@ -25,7 +25,6 @@ interface SidebarProps {
   cityFilter: string;
   setCityFilter: (c: string) => void;
   allCities: string[];
-  currency: "USD" | "AED" | "SAR";
 }
 
 export default function Sidebar({
@@ -48,8 +47,7 @@ export default function Sidebar({
   setPaidFilter,
   cityFilter,
   setCityFilter,
-  allCities,
-  currency
+  allCities
 }: SidebarProps) {
   const downloadCSV = () => {
     // Same columns as the Google Sheet, so an exported file can be imported again without losing fields
@@ -235,7 +233,7 @@ export default function Sidebar({
                 </div>
                 <div className="store-card-footer-metrics mt-3 flex gap-4 text-[11px] font-mono text-gray-400">
                   <span>{s.size || "—"} m²</span>
-                  <span>{currency} {fmtR(getRent(s, currency))}/yr</span>
+                  <span>{CURRENCY} {fmtR(s.rentSARAnnual)}/yr</span>
                 </div>
               </div>
             ))
@@ -272,11 +270,11 @@ export default function Sidebar({
                   <div className="space-y-2">
                     <div className="flex justify-between items-baseline text-[11px]">
                       <span className="city-card-label text-[10px] text-gray-500 uppercase font-bold">Monthly Rent</span>
-                      <span className="city-card-value text-[#fbbf24] font-bold">{currency} {c.annualRent > 0 ? fmtN(c.annualRent / 12) : "—"}</span>
+                      <span className="city-card-value text-[#fbbf24] font-bold">{CURRENCY} {c.annualRent > 0 ? fmtN(c.annualRent / 12) : "—"}</span>
                     </div>
                     <div className="flex justify-between items-baseline text-[11px]">
                       <span className="city-card-label text-[10px] text-gray-500 uppercase font-bold">Annual Rent</span>
-                      <span className="city-card-value text-white font-bold">{currency} {c.annualRent > 0 ? fmtN(c.annualRent) : "—"}</span>
+                      <span className="city-card-value text-white font-bold">{CURRENCY} {c.annualRent > 0 ? fmtN(c.annualRent) : "—"}</span>
                     </div>
                     <div className="flex justify-between items-baseline text-[11px]">
                       <span className="city-card-label text-[10px] text-gray-500 uppercase font-bold">Live Status</span>
@@ -290,7 +288,7 @@ export default function Sidebar({
             )}
           </div>
         ) : (
-          <CityInsights citySummaries={citySummaries} currency={currency} />
+          <CityInsights citySummaries={citySummaries} />
         )}
       </div>
 

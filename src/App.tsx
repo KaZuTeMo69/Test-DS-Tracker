@@ -56,7 +56,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<string>("");
-  const currency = "SAR";
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -354,7 +353,7 @@ export default function App() {
         </div>
       </header>
 
-      <KPIBar stores={filteredStores} currency={currency} />
+      <KPIBar stores={filteredStores} />
 
       <main className="app-main flex flex-row flex-1 overflow-hidden min-h-0 relative bg-[#0a0a0a] rounded-xl border border-[#222] shadow-2xl">
         <Sidebar 
@@ -382,7 +381,6 @@ export default function App() {
           cityFilter={cityFilter}
           setCityFilter={setCityFilter}
           allCities={allCities}
-          currency={currency}
         />
 
         <div className="map-container flex-1 relative min-w-0" onClick={() => {
@@ -428,7 +426,6 @@ export default function App() {
           <DetailPanel 
             store={selectedStore}
             onClose={() => setSelectedId(null)}
-            currency={currency}
           />
 
           <div className="absolute bottom-4 left-4 bg-[#111111]/85 backdrop-blur border border-[#333] pl-[10px] pr-[10px] pt-[7px] pb-[7px] rounded-lg flex flex-row items-center gap-4 shadow-2xl z-[500]">

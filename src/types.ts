@@ -5,15 +5,10 @@ export interface Store {
   name: string;
   country: string;
   city: string;
-  // Rent and area are null when the source data leaves them blank
-  rentUSDAnnual: number | null;
-  rentUSDMonthly: number | null;
+  // Rent (SAR) and area are null when the source data leaves them blank
   size: number | null;
   lat: number | null;
   lng: number | null;
-  rentAEDAnnual: number | null;
-  rentAEDMonthly: number | null;
-  rentAEDsqm: number | null;
   startDate: string;
   endDate: string;
   rentSARAnnual: number | null;
@@ -31,6 +26,6 @@ export interface CitySummary {
   count: number;
   live: number;
   paid: number;
-  annualRent: number; // In selected currency
+  annualRent: number; // SAR
   area: number;
 }

@@ -1,13 +1,12 @@
 import { useMemo, memo } from "react";
 import { Store } from "../types";
-import { isLive, isPaid, fmtN, getRent } from "../constants";
+import { isLive, isPaid, fmtN, CURRENCY } from "../constants";
 
 interface KPIBarProps {
   stores: Store[];
-  currency: "USD" | "AED" | "SAR";
 }
 
-const KPIBar = memo(function KPIBar({ stores, currency }: KPIBarProps) {
+const KPIBar = memo(function KPIBar({ stores }: KPIBarProps) {
   const stats = useMemo(() => {
     let live = 0;
     let paid = 0;
@@ -22,7 +21,7 @@ const KPIBar = memo(function KPIBar({ stores, currency }: KPIBarProps) {
     stores.forEach(s => {
       if (isLive(s)) live++;
       if (isPaid(s)) paid++;
-      const rent = getRent(s, currency);
+      const rent = s.rentSARAnnual;
       if (rent === null) noRent++;
       totalRent += (rent || 0);
       if (!s.size) noArea++;
@@ -42,7 +41,7 @@ const KPIBar = memo(function KPIBar({ stores, currency }: KPIBarProps) {
       noArea,
       avgRent: pricedArea > 0 ? pricedRent / pricedArea : 0
     };
-  }, [stores, currency]);
+  }, [stores]);
 
   // Totals leave out stores with no value, so say how many were left out
   const missing = (n: number, what: string) => (n > 0 ? `${n} without ${what}` : undefined);
@@ -52,10 +51,10 @@ const KPIBar = memo(function KPIBar({ stores, currency }: KPIBarProps) {
     { label: "Live", value: stats.live, unit: stores.length ? `${Math.round(stats.live / stores.length * 100)}%` : "", color: "#22C55E", valueClass: "text-[#22C55E]" },
     { label: "Not Live", value: stores.length - stats.live, color: "#F43F5E", valueClass: "text-[#F43F5E]" },
     { label: "Unpaid Contracts", value: stores.length - stats.paid, color: "#FECC00", valueClass: "text-[#FECC00]" },
-    { label: "Annual Rent", value: stats.totalRent > 0 ? fmtN(stats.totalRent) : "—", unit: `${currency} / year`, note: missing(stats.noRent, "rent"), color: "#FB923C", valueColor: "#ffffff" },
-    { label: "Monthly Rent", value: stats.totalRent > 0 ? fmtN(stats.totalRent / 12) : "—", unit: `${currency} / month`, note: missing(stats.noRent, "rent"), color: "#38BDF8", valueClass: "text-[#38BDF8]" },
+    { label: "Annual Rent", value: stats.totalRent > 0 ? fmtN(stats.totalRent) : "—", unit: `${CURRENCY} / year`, note: missing(stats.noRent, "rent"), color: "#FB923C", valueColor: "#ffffff" },
+    { label: "Monthly Rent", value: stats.totalRent > 0 ? fmtN(stats.totalRent / 12) : "—", unit: `${CURRENCY} / month`, note: missing(stats.noRent, "rent"), color: "#38BDF8", valueClass: "text-[#38BDF8]" },
     { label: "Total Area", value: stats.totalArea > 0 ? fmtN(stats.totalArea) : "—", unit: "m²", note: missing(stats.noArea, "area"), color: "#666", valueColor: "#ffffff" },
-    { label: "Avg Rent / m²", value: stats.avgRent > 0 ? Math.round(stats.avgRent).toLocaleString() : "—", unit: `${currency} / m²`, color: "#FB923C", valueClass: "text-[#FECC00]" },
+    { label: "Avg Rent / m²", value: stats.avgRent > 0 ? Math.round(stats.avgRent).toLocaleString() : "—", unit: `${CURRENCY} / m²`, color: "#FB923C", valueClass: "text-[#FECC00]" },
   ];
 
   return (

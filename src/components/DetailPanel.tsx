@@ -1,25 +1,18 @@
 import { memo } from "react";
 import { Store } from "../types";
-import { isLive, isPaid, hasCoords, dataIssues } from "../constants";
+import { isLive, isPaid, hasCoords, dataIssues, CURRENCY } from "../constants";
 import { X, AlertCircle } from "lucide-react";
 
 interface DetailPanelProps {
   store: Store | null;
   onClose: () => void;
-  currency: "USD" | "AED" | "SAR";
 }
 
-const DetailPanel = memo(function DetailPanel({ store, onClose, currency }: DetailPanelProps) {
+const DetailPanel = memo(function DetailPanel({ store, onClose }: DetailPanelProps) {
   if (!store) return null;
 
-  const getAnnual = () => store.rentSARAnnual;
-
-  const getMonthly = () => store.rentSARMonthly;
-
-  const getSqm = () => store.rentSARsqm;
-
   // Exact figures here; the rounded 274K style is for totals
-  const sar = (n: number | null) => (n === null ? "—" : `SAR ${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
+  const sar = (n: number | null) => (n === null ? "—" : `${CURRENCY} ${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
 
   const issues = dataIssues(store);
   
@@ -29,9 +22,9 @@ const DetailPanel = memo(function DetailPanel({ store, onClose, currency }: Deta
     { label: "Contract Duration", value: store.whCode || "—" },
     { label: "Contract Start", value: store.startDate || "—" },
     { label: "Area", value: store.size ? `${store.size} m²` : "—" },
-    { label: "Rent / m²", value: sar(getSqm()) },
-    { label: "Annual Rent", value: sar(getAnnual()), highlight: true },
-    { label: "Monthly Rent", value: sar(getMonthly()), highlight: true },
+    { label: "Rent / m²", value: sar(store.rentSARsqm) },
+    { label: "Annual Rent", value: sar(store.rentSARAnnual), highlight: true },
+    { label: "Monthly Rent", value: sar(store.rentSARMonthly), highlight: true },
   ];
 
   return (
