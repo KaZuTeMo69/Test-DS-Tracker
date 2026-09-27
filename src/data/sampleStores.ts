@@ -17,7 +17,7 @@ export const SAMPLE_STORES: Store[] = [
     startDate: "01 Jan 2024",
     endDate: "31 Dec 2025",
     live: "Yes",
-    paid: "Yes"
+    paid: "Yes",
   },
   {
     id: 2,
@@ -35,7 +35,7 @@ export const SAMPLE_STORES: Store[] = [
     startDate: "15 Mar 2024",
     endDate: "14 Mar 2027",
     live: "Yes",
-    paid: "Yes"
+    paid: "Yes",
   },
   {
     id: 3,
@@ -53,7 +53,7 @@ export const SAMPLE_STORES: Store[] = [
     startDate: "01 Feb 2024",
     endDate: "31 Jan 2025",
     live: "Yes",
-    paid: "No"
+    paid: "No",
   },
   {
     id: 4,
@@ -71,7 +71,7 @@ export const SAMPLE_STORES: Store[] = [
     startDate: "10 May 2024",
     endDate: "09 May 2026",
     live: "No",
-    paid: "Yes"
+    paid: "Yes",
   },
   {
     id: 5,
@@ -84,12 +84,12 @@ export const SAMPLE_STORES: Store[] = [
     rentSARMonthly: 21666,
     rentSARsqm: 541,
     size: 480,
-    lat: 24.7610,
-    lng: 46.6580,
+    lat: 24.761,
+    lng: 46.658,
     startDate: "01 Jul 2024",
     endDate: "30 Jun 2027",
     live: "Yes",
-    paid: "Yes"
+    paid: "Yes",
   },
   {
     id: 6,
@@ -107,7 +107,7 @@ export const SAMPLE_STORES: Store[] = [
     startDate: "15 Aug 2024",
     endDate: "14 Aug 2026",
     live: "Yes",
-    paid: "Yes"
+    paid: "Yes",
   },
   {
     id: 7,
@@ -120,12 +120,12 @@ export const SAMPLE_STORES: Store[] = [
     rentSARMonthly: 26666,
     rentSARsqm: 640,
     size: 500,
-    lat: 21.5890,
+    lat: 21.589,
     lng: 39.1211,
     startDate: "01 Jan 2024",
     endDate: "31 Dec 2026",
     live: "Yes",
-    paid: "Yes"
+    paid: "Yes",
   },
   {
     id: 8,
@@ -143,7 +143,7 @@ export const SAMPLE_STORES: Store[] = [
     startDate: "01 Apr 2024",
     endDate: "31 Mar 2026",
     live: "Yes",
-    paid: "No"
+    paid: "No",
   },
   {
     id: 9,
@@ -156,12 +156,12 @@ export const SAMPLE_STORES: Store[] = [
     rentSARMonthly: 22500,
     rentSARsqm: 586,
     size: 460,
-    lat: 21.5540,
-    lng: 39.1620,
+    lat: 21.554,
+    lng: 39.162,
     startDate: "01 Jun 2024",
     endDate: "31 May 2025",
     live: "Yes",
-    paid: "Yes"
+    paid: "Yes",
   },
   {
     id: 10,
@@ -174,12 +174,12 @@ export const SAMPLE_STORES: Store[] = [
     rentSARMonthly: 17500,
     rentSARsqm: 538,
     size: 390,
-    lat: 21.5200,
-    lng: 39.1680,
+    lat: 21.52,
+    lng: 39.168,
     startDate: "10 Oct 2024",
     endDate: "09 Oct 2026",
     live: "No",
-    paid: "No"
+    paid: "No",
   },
   {
     id: 11,
@@ -192,12 +192,12 @@ export const SAMPLE_STORES: Store[] = [
     rentSARMonthly: 17500,
     rentSARsqm: 381,
     size: 550,
-    lat: 26.4520,
-    lng: 50.1120,
+    lat: 26.452,
+    lng: 50.112,
     startDate: "01 Mar 2024",
     endDate: "28 Feb 2026",
     live: "Yes",
-    paid: "Yes"
+    paid: "Yes",
   },
   {
     id: 12,
@@ -215,7 +215,7 @@ export const SAMPLE_STORES: Store[] = [
     startDate: "15 May 2024",
     endDate: "14 May 2027",
     live: "Yes",
-    paid: "Yes"
+    paid: "Yes",
   },
   {
     id: 13,
@@ -233,7 +233,7 @@ export const SAMPLE_STORES: Store[] = [
     startDate: "01 Sep 2024",
     endDate: "31 Aug 2025",
     live: "No",
-    paid: "Yes"
+    paid: "Yes",
   },
   {
     id: 14,
@@ -246,12 +246,12 @@ export const SAMPLE_STORES: Store[] = [
     rentSARMonthly: 23333,
     rentSARsqm: 549,
     size: 510,
-    lat: 21.3620,
-    lng: 39.8110,
+    lat: 21.362,
+    lng: 39.811,
     startDate: "01 Feb 2024",
     endDate: "31 Jan 2026",
     live: "Yes",
-    paid: "Yes"
+    paid: "Yes",
   },
   {
     id: 15,
@@ -264,11 +264,11 @@ export const SAMPLE_STORES: Store[] = [
     rentSARMonthly: 19166,
     rentSARsqm: 489,
     size: 470,
-    lat: 24.4750,
-    lng: 39.5820,
+    lat: 24.475,
+    lng: 39.582,
     startDate: "15 Apr 2024",
     endDate: "14 Apr 2026",
     live: "Yes",
-    paid: "No"
-  }
+    paid: "No",
+  },
 ];

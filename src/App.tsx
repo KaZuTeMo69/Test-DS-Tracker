@@ -46,7 +46,8 @@ function assignStableIds(list: Store[], idsByKey: Map<string, number>): Store[] 
 /** The search box and Live / Paid filters (the city filter is applied separately). */
 function matchesFilters(s: Store, query: string, live: string, paid: string): boolean {
   const q = query.toLowerCase();
-  const matchesQuery = !query ||
+  const matchesQuery =
+    !query ||
     s.name.toLowerCase().includes(q) ||
     (s.city && s.city.toLowerCase().includes(q)) ||
     (s.dsCode && s.dsCode.toLowerCase().includes(q));
@@ -96,52 +97,55 @@ export default function App() {
     setTimeout(() => setToastMsg(null), 2800);
   }, []);
 
-  const loadDataFromSheet = useCallback(async (id: string, tab?: string, isRefresh = false): Promise<boolean> => {
-    if (!id) return false;
-    const seq = ++loadSeqRef.current;
+  const loadDataFromSheet = useCallback(
+    async (id: string, tab?: string, isRefresh = false): Promise<boolean> => {
+      if (!id) return false;
+      const seq = ++loadSeqRef.current;
 
-    try {
-      if (!isRefresh) {
-        setIsLoading(true);
-        setLoadingMsg("Connecting to Google Sheets...");
+      try {
+        if (!isRefresh) {
+          setIsLoading(true);
+          setLoadingMsg("Connecting to Google Sheets...");
+        }
+
+        const data = await fetchSheetData(id, tab);
+        if (seq !== loadSeqRef.current) return false;
+
+        if (data.length === 0) {
+          throw new Error("No store data found in this sheet. Please ensure it follows the required column schema.");
+        }
+
+        if (!isRefresh) {
+          setLoadingMsg("Parsing store data...");
+        }
+
+        setBaseStores(assignStableIds(data, storeIdsRef.current));
+        setLastSync(syncTime());
+        setError(null);
+        setSyncError(null);
+        setIsUploadModalOpen(false);
+
+        showToast(isRefresh ? "Dashboard refreshed" : `Loaded ${data.length} stores from Google Sheet`);
+        return true;
+      } catch (err: unknown) {
+        if (seq !== loadSeqRef.current) return false;
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (isRefresh) {
+          // Keep showing the last good data, but say that it's stale
+          setSyncError(errMsg || "Sheet sync failed");
+          showToast(`Sheet sync failed: ${errMsg}`);
+        } else {
+          setError(errMsg || "Failed to load data. Please check Sheet URL and permissions.");
+        }
+        return false;
+      } finally {
+        if (seq === loadSeqRef.current) {
+          setIsLoading(false);
+        }
       }
-
-      const data = await fetchSheetData(id, tab);
-      if (seq !== loadSeqRef.current) return false;
-
-      if (data.length === 0) {
-        throw new Error("No store data found in this sheet. Please ensure it follows the required column schema.");
-      }
-
-      if (!isRefresh) {
-        setLoadingMsg("Parsing store data...");
-      }
-
-      setBaseStores(assignStableIds(data, storeIdsRef.current));
-      setLastSync(syncTime());
-      setError(null);
-      setSyncError(null);
-      setIsUploadModalOpen(false);
-
-      showToast(isRefresh ? "Dashboard refreshed" : `Loaded ${data.length} stores from Google Sheet`);
-      return true;
-    } catch (err: unknown) {
-      if (seq !== loadSeqRef.current) return false;
-      const errMsg = err instanceof Error ? err.message : String(err);
-      if (isRefresh) {
-        // Keep showing the last good data, but say that it's stale
-        setSyncError(errMsg || "Sheet sync failed");
-        showToast(`Sheet sync failed: ${errMsg}`);
-      } else {
-        setError(errMsg || "Failed to load data. Please check Sheet URL and permissions.");
-      }
-      return false;
-    } finally {
-      if (seq === loadSeqRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [showToast]);
+    },
+    [showToast],
+  );
 
   // Reload the sheet remembered from earlier in this browser session
   useEffect(() => {
@@ -152,11 +156,14 @@ export default function App() {
 
   // Auto-refresh every 5 minutes if sheetId is loaded
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (sheetId) {
-        loadDataFromSheet(sheetId, SHEET_TAB, true);
-      }
-    }, 5 * 60 * 1000);
+    const timer = setInterval(
+      () => {
+        if (sheetId) {
+          loadDataFromSheet(sheetId, SHEET_TAB, true);
+        }
+      },
+      5 * 60 * 1000,
+    );
     return () => clearInterval(timer);
   }, [sheetId, loadDataFromSheet]);
 
@@ -191,7 +198,9 @@ export default function App() {
     setSyncError(null);
     setBaseStores(assignStableIds(importedStores, storeIdsRef.current));
     setLastSync(syncTime());
-    showToast(`Successfully imported ${importedStores.length} stores from ${sourceName}${wasSyncing ? ". Google Sheet sync is off" : ""}`);
+    showToast(
+      `Successfully imported ${importedStores.length} stores from ${sourceName}${wasSyncing ? ". Google Sheet sync is off" : ""}`,
+    );
   };
 
   const handleResetSample = () => {
@@ -206,54 +215,54 @@ export default function App() {
     setShowSettingsMenu(false);
   };
 
-  const handleAddStore = useCallback((newStore: Omit<Store, 'id'>) => {
+  const handleAddStore = useCallback((newStore: Omit<Store, "id">) => {
     setManualStores((prev) => [...prev, { ...newStore, id: MANUAL_ID_BASE + prev.length + 1 }]);
   }, []);
 
   const stores = useMemo(() => [...baseStores, ...manualStores], [baseStores, manualStores]);
 
   const filteredStores = useMemo(() => {
-    return stores.filter((s) => {
-      const matchesCity = !cityFilter || s.city === cityFilter;
-      return matchesFilters(s, searchQuery, liveFilter, paidFilter) && matchesCity;
-    }).sort((a, b) => {
-      const ra = a.rentSARAnnual;
-      const rb = b.rentSARAnnual;
-      return (rb || 0) - (ra || 0);
-    });
+    return stores
+      .filter((s) => {
+        const matchesCity = !cityFilter || s.city === cityFilter;
+        return matchesFilters(s, searchQuery, liveFilter, paidFilter) && matchesCity;
+      })
+      .sort((a, b) => {
+        const ra = a.rentSARAnnual;
+        const rb = b.rentSARAnnual;
+        return (rb || 0) - (ra || 0);
+      });
   }, [stores, searchQuery, liveFilter, paidFilter, cityFilter]);
 
   const citySummaries = useMemo(() => {
     const map = new Map<string, CitySummary>();
 
-    stores.filter(s => matchesFilters(s, searchQuery, liveFilter, paidFilter)).forEach((s) => {
-      const city = s.city || "Unknown";
-      if (!map.has(city)) {
-        map.set(city, { city, count: 0, live: 0, paid: 0, annualRent: 0, area: 0 });
-      }
-      const c = map.get(city)!;
-      c.count++;
-      if (isLive(s)) c.live++;
-      if (isPaid(s)) c.paid++;
-      c.annualRent += (s.rentSARAnnual || 0);
-      c.area += (s.size || 0);
-    });
+    stores
+      .filter((s) => matchesFilters(s, searchQuery, liveFilter, paidFilter))
+      .forEach((s) => {
+        const city = s.city || "Unknown";
+        if (!map.has(city)) {
+          map.set(city, { city, count: 0, live: 0, paid: 0, annualRent: 0, area: 0 });
+        }
+        const c = map.get(city)!;
+        c.count++;
+        if (isLive(s)) c.live++;
+        if (isPaid(s)) c.paid++;
+        c.annualRent += s.rentSARAnnual || 0;
+        c.area += s.size || 0;
+      });
     return Array.from(map.values()).sort((a, b) => b.annualRent - a.annualRent);
   }, [stores, searchQuery, liveFilter, paidFilter]);
 
-  const selectedStore = useMemo(() => 
-    stores.find(s => s.id === selectedId) || null
-  , [stores, selectedId]);
+  const selectedStore = useMemo(() => stores.find((s) => s.id === selectedId) || null, [stores, selectedId]);
 
-  const notOnMap = useMemo(() => filteredStores.filter(s => !hasCoords(s)).length, [filteredStores]);
+  const notOnMap = useMemo(() => filteredStores.filter((s) => !hasCoords(s)).length, [filteredStores]);
 
-  const allCities = useMemo(() => 
-    Array.from(new Set(stores.map(s => s.city).filter(Boolean))).sort()
-  , [stores]);
+  const allCities = useMemo(() => Array.from(new Set(stores.map((s) => s.city).filter(Boolean))).sort(), [stores]);
 
   return (
     <div className="app-container flex flex-col h-screen overflow-hidden bg-[#141414] text-[#EFEFEF] p-[10px] gap-[7px]">
-      <UploadModal 
+      <UploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         onStoresImported={handleStoresImported}
@@ -275,21 +284,21 @@ export default function App() {
         </div>
 
         <div className="flex-1"></div>
-        
+
         <div className="px-3.5 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full text-[10px] text-green-400 font-bold tracking-widest whitespace-nowrap hidden lg:block">
           ✦ LIVE NETWORK STATUS
         </div>
-        
+
         {syncError ? (
           <span className="text-[11px] text-red-400 font-mono hidden md:inline" title={syncError}>
             Sync failed{lastSync ? ` · data from ${lastSync}` : ""}
           </span>
-        ) : lastSync && (
-          <span className="text-[11px] text-gray-500 font-mono hidden md:inline">Synced: {lastSync}</span>
+        ) : (
+          lastSync && <span className="text-[11px] text-gray-500 font-mono hidden md:inline">Synced: {lastSync}</span>
         )}
-        
+
         <div className="flex items-center gap-2.5 relative">
-          <button 
+          <button
             onClick={openUploadModal}
             className="px-3.5 py-2 bg-[#fbbf24] hover:bg-[#ffe169] text-black border-none rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 uppercase tracking-wider"
             title="Upload CSV/JSON file or sync Google Sheet"
@@ -299,7 +308,7 @@ export default function App() {
           </button>
 
           {sheetId && (
-            <button 
+            <button
               onClick={() => loadDataFromSheet(sheetId, SHEET_TAB, true)}
               className="px-3 py-2 bg-[#1a1a1a] border border-[#333] hover:border-[#fbbf24] rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 text-[#EFEFEF] cursor-pointer shadow-sm active:scale-95"
               title="Sync from Google Sheet"
@@ -310,22 +319,22 @@ export default function App() {
           )}
 
           <div className="relative">
-            <button 
+            <button
               onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-              className={`flex items-center gap-1.5 h-9 px-2.5 bg-[#1a1a1a] border ${showSettingsMenu ? 'border-[#fbbf24]' : 'border-[#333]'} hover:border-[#fbbf24] rounded-lg text-sm transition-all cursor-pointer text-[#9a9a9a] active:scale-95`}
+              className={`flex items-center gap-1.5 h-9 px-2.5 bg-[#1a1a1a] border ${showSettingsMenu ? "border-[#fbbf24]" : "border-[#333]"} hover:border-[#fbbf24] rounded-lg text-sm transition-all cursor-pointer text-[#9a9a9a] active:scale-95`}
               title="Settings"
             >
               <Settings size={16} className={showSettingsMenu ? "text-[#fbbf24]" : ""} />
-              <ChevronDown size={14} className={`transition-transform duration-200 ${showSettingsMenu ? "rotate-180" : ""}`} />
+              <ChevronDown
+                size={14}
+                className={`transition-transform duration-200 ${showSettingsMenu ? "rotate-180" : ""}`}
+              />
             </button>
 
             <AnimatePresence>
               {showSettingsMenu && (
                 <>
-                  <div 
-                    className="fixed inset-0 z-[100]" 
-                    onClick={() => setShowSettingsMenu(false)}
-                  />
+                  <div className="fixed inset-0 z-[100]" onClick={() => setShowSettingsMenu(false)} />
                   <motion.div
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -343,7 +352,7 @@ export default function App() {
                         <FileEdit size={14} />
                         <span>Import / Upload</span>
                       </button>
-                      
+
                       <button
                         onClick={handleResetSample}
                         className="flex items-center gap-3 w-full px-3 py-2.5 text-[11px] font-black uppercase text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all text-left"
@@ -363,7 +372,7 @@ export default function App() {
       <KPIBar stores={filteredStores} />
 
       <main className="app-main flex flex-row flex-1 overflow-hidden min-h-0 relative bg-[#0a0a0a] rounded-xl border border-[#222] shadow-2xl">
-        <Sidebar 
+        <Sidebar
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           stores={filteredStores}
@@ -390,12 +399,15 @@ export default function App() {
           allCities={allCities}
         />
 
-        <div className="map-container flex-1 relative min-w-0" onClick={() => {
-          if (selectedId !== null) setSelectedId(null);
-        }}>
+        <div
+          className="map-container flex-1 relative min-w-0"
+          onClick={() => {
+            if (selectedId !== null) setSelectedId(null);
+          }}
+        >
           <AnimatePresence>
             {!isSidebarOpen && (
-              <motion.button 
+              <motion.button
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -412,7 +424,7 @@ export default function App() {
           </AnimatePresence>
 
           <div className="w-full h-full rounded-xl overflow-hidden">
-            <MapComponent 
+            <MapComponent
               stores={filteredStores}
               selectedId={selectedId}
               onSelectStore={setSelectedId}
@@ -429,11 +441,8 @@ export default function App() {
               showToast={showToast}
             />
           </div>
-          
-          <DetailPanel 
-            store={selectedStore}
-            onClose={() => setSelectedId(null)}
-          />
+
+          <DetailPanel store={selectedStore} onClose={() => setSelectedId(null)} />
 
           <div className="absolute bottom-4 left-4 bg-[#111111]/85 backdrop-blur border border-[#333] pl-[10px] pr-[10px] pt-[7px] pb-[7px] rounded-lg flex flex-row items-center gap-4 shadow-2xl z-[500]">
             <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-tight">
@@ -453,7 +462,10 @@ export default function App() {
               <span>Selected</span>
             </div>
             {notOnMap > 0 && (
-              <div className="flex items-center gap-2 text-[10px] text-[#FB923C] font-bold uppercase tracking-tight" title="Stores with missing or implausible coordinates. See the NO LOCATION tag in the list.">
+              <div
+                className="flex items-center gap-2 text-[10px] text-[#FB923C] font-bold uppercase tracking-tight"
+                title="Stores with missing or implausible coordinates. See the NO LOCATION tag in the list."
+              >
                 <span>{notOnMap} not on map</span>
               </div>
             )}

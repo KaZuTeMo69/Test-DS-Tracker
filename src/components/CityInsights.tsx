@@ -45,15 +45,15 @@ export default function CityInsights({ citySummaries }: CityInsightsProps) {
             <BarChart data={topByCount} layout="vertical" margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#222" horizontal={true} vertical={false} />
               <XAxis type="number" hide />
-              <YAxis 
-                dataKey="city" 
-                type="category" 
-                width={70} 
-                tick={{ fill: '#666', fontSize: 10, fontWeight: 700 }} 
-                axisLine={false} 
-                tickLine={false} 
+              <YAxis
+                dataKey="city"
+                type="category"
+                width={70}
+                tick={{ fill: "#666", fontSize: 10, fontWeight: 700 }}
+                axisLine={false}
+                tickLine={false}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.05)" }} />
               <Bar dataKey="count" name="Stores" radius={[0, 4, 4, 0]} barSize={12}>
                 {topByCount.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={index === 0 ? "#fbbf24" : "#444"} />
@@ -66,22 +66,24 @@ export default function CityInsights({ citySummaries }: CityInsightsProps) {
 
       <section>
         <div className="flex items-center justify-between mb-4 px-1">
-          <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Rent Contribution (Annual)</h3>
+          <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">
+            Rent Contribution (Annual)
+          </h3>
         </div>
         <div className="h-[200px] w-full bg-black/20 rounded-xl p-4 border border-white/5">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={topByRent} layout="vertical" margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#222" horizontal={true} vertical={false} />
               <XAxis type="number" hide />
-              <YAxis 
-                dataKey="city" 
-                type="category" 
-                width={70} 
-                tick={{ fill: '#666', fontSize: 10, fontWeight: 700 }} 
-                axisLine={false} 
-                tickLine={false} 
+              <YAxis
+                dataKey="city"
+                type="category"
+                width={70}
+                tick={{ fill: "#666", fontSize: 10, fontWeight: 700 }}
+                axisLine={false}
+                tickLine={false}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.05)" }} />
               <Bar dataKey="annualRent" name="Rent" radius={[0, 4, 4, 0]} barSize={12}>
                 {topByRent.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={index < 3 ? "#fbbf24" : "#666"} opacity={0.8 - index * 0.1} />
@@ -96,17 +98,24 @@ export default function CityInsights({ citySummaries }: CityInsightsProps) {
         <div className="bg-[#111] border border-[#222] p-4 rounded-xl">
           <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Avg Rent/Store</div>
           <div className="text-sm font-bold text-white font-mono">
-            {CURRENCY} {citySummaries.length > 0 
-              ? fmtN(citySummaries.reduce((a, b) => a + b.annualRent, 0) / citySummaries.reduce((a, b) => a + b.count, 0)) 
+            {CURRENCY}{" "}
+            {citySummaries.length > 0
+              ? fmtN(
+                  citySummaries.reduce((a, b) => a + b.annualRent, 0) / citySummaries.reduce((a, b) => a + b.count, 0),
+                )
               : "0"}
           </div>
         </div>
         <div className="bg-[#111] border border-[#222] p-4 rounded-xl">
           <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Expansion Health</div>
           <div className="text-sm font-bold text-green-500 font-mono">
-            {citySummaries.length > 0 
-              ? Math.round((citySummaries.reduce((a, b) => a + b.live, 0) / citySummaries.reduce((a, b) => a + b.count, 0)) * 100) 
-              : "0"}% Live
+            {citySummaries.length > 0
+              ? Math.round(
+                  (citySummaries.reduce((a, b) => a + b.live, 0) / citySummaries.reduce((a, b) => a + b.count, 0)) *
+                    100,
+                )
+              : "0"}
+            % Live
           </div>
         </div>
       </div>

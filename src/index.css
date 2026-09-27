@@ -1,13 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
 :root {
   /* ==========================================================================
      DESIGN TOKENS - LAYER 1: BRAND & ACCENT COLORS (HEX)
      ========================================================================== */
-  --token-color-accent-yellow: #F3E008;
+  --token-color-accent-yellow: #f3e008;
   --token-color-accent-yellow-10: rgba(254, 204, 0, 0.12);
-  --token-color-accent-yellow-20: rgba(254, 204, 0, 0.20);
+  --token-color-accent-yellow-20: rgba(254, 204, 0, 0.2);
   --token-color-noon-yellow: var(--token-color-accent-yellow);
   --token-color-noon-yellow-10: var(--token-color-accent-yellow-10);
   --token-color-noon-yellow-20: var(--token-color-accent-yellow-20);
@@ -15,21 +15,21 @@
   /* ==========================================================================
      DESIGN TOKENS - LAYER 2: STATUS INDICATORS (NETWORK MONITORING)
      ========================================================================== */
-  --token-color-live: #22C55E;
+  --token-color-live: #22c55e;
   --token-color-live-10: rgba(34, 197, 94, 0.12);
-  --token-color-live-20: rgba(34, 197, 94, 0.20);
-  
-  --token-color-not-live: #F43F5E;
+  --token-color-live-20: rgba(34, 197, 94, 0.2);
+
+  --token-color-not-live: #f43f5e;
   --token-color-not-live-10: rgba(244, 63, 94, 0.12);
-  --token-color-not-live-20: rgba(244, 63, 94, 0.20);
-  
-  --token-color-unpaid: #FB923C;
+  --token-color-not-live-20: rgba(244, 63, 94, 0.2);
+
+  --token-color-unpaid: #fb923c;
   --token-color-unpaid-10: rgba(251, 146, 60, 0.12);
-  --token-color-unpaid-20: rgba(251, 146, 60, 0.20);
-  
-  --token-color-selected: #38BDF8;
+  --token-color-unpaid-20: rgba(251, 146, 60, 0.2);
+
+  --token-color-selected: #38bdf8;
   --token-color-selected-10: rgba(56, 189, 248, 0.12);
-  --token-color-selected-20: rgba(56, 189, 248, 0.20);
+  --token-color-selected-20: rgba(56, 189, 248, 0.2);
 
   /* ==========================================================================
      DESIGN TOKENS - LAYER 3: BACKGROUND PALETTE & CONTAINER FILL
@@ -49,15 +49,15 @@
   /* ==========================================================================
      DESIGN TOKENS - LAYER 5: TYPOGRAPHY (FONT FAMILIES, SCALES & COLORS)
      ========================================================================== */
-  --token-font-family-display: 'Oswald', sans-serif;
-  --token-font-family-sans: 'DM Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --token-font-family-mono: 'DM Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --token-font-family-display: "Oswald", sans-serif;
+  --token-font-family-sans: "DM Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --token-font-family-mono: "DM Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   /* Text Colors */
-  --token-color-text-primary: #EFEFEF;
+  --token-color-text-primary: #efefef;
   --token-color-text-secondary: #9a9a9a;
   --token-color-text-muted: #666666;
-  --token-color-text-highlight: #F3E008;
+  --token-color-text-highlight: #f3e008;
 
   /* Font Sizing Tokens */
   --token-font-size-[10px]: 10px;
@@ -76,7 +76,7 @@
   --token-size-sidebar-expanded-min-width: 350px;
   --token-size-sidebar-mobile-max-width: 360px;
   --token-size-header-height: 54px;
-  
+
   --token-border-radius-main: 10px;
   --token-border-radius-sub: 7px;
 
@@ -150,7 +150,9 @@
    GLOBAL STYLE RESET & UTILITIES
    ========================================================================== */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   margin: var(--token-spacing-none);
   padding: var(--token-spacing-none);
   box-sizing: border-box;
@@ -315,7 +317,7 @@ body {
 
 @media (min-width: 768px) {
   .kpi-card .kpi-number {
-    font-size: 2.0rem !important;
+    font-size: 2rem !important;
   }
 }
 
@@ -331,8 +333,9 @@ body {
   flex-direction: column;
 }
 
-.sidebar-container, .store-list-item {
-  font-size: 1.0rem !important;
+.sidebar-container,
+.store-list-item {
+  font-size: 1rem !important;
 }
 
 /* Custom Search Frame */
@@ -486,7 +489,7 @@ body {
   letter-spacing: 0.05em;
   border-radius: var(--token-border-radius-sub);
   cursor: pointer;
-  transition: all .15s ease-in-out;
+  transition: all 0.15s ease-in-out;
   font-family: var(--token-font-family-display) !important;
 }
 
@@ -683,7 +686,7 @@ body {
   background: var(--token-color-bg-surface-s1) !important;
   border: 2px solid var(--token-color-border-active) !important;
   border-radius: var(--token-border-radius-main) !important;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, .55) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55) !important;
   padding: 0 !important;
   color: var(--token-color-text-primary) !important;
 }
@@ -774,42 +777,59 @@ body {
    ========================================================================== */
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(22px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
 }
 
 .animate-shake {
-  animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both;
+  animation: shake 0.2s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
 /* ── COMPACT SIDEBAR TOP FILTER AREA (FLUID HEIGHT BASED ON CONTENT TO PREVENT COLLISION) ── */
 .sb-top {
-  height: auto !important;       /* Fluid height to perfectly fit compact filters without overflow */
-  padding: 8px 10px !important;  /* Tighten excessive spacing */
+  height: auto !important; /* Fluid height to perfectly fit compact filters without overflow */
+  padding: 8px 10px !important; /* Tighten excessive spacing */
   display: flex;
   flex-direction: column;
-  gap: 6px !important;           /* Reduce empty space between rows */
+  gap: 6px !important; /* Reduce empty space between rows */
   border-bottom: 1px solid var(--border-muted);
   background: var(--bg-surface-s1);
-  flex-shrink: 0;                /* Lock it from growing larger */
+  flex-shrink: 0; /* Lock it from growing larger */
 }
 
 /* ── CONDENSED TEXT AND LABELS ── */
-.sb-top label, 
+.sb-top label,
 div[class*="status-label"],
 div[class*="filter-by-city"] {
-  font-size: 10px !important;    /* Micro hierarchy uppercase tags */
+  font-size: 10px !important; /* Micro hierarchy uppercase tags */
   font-weight: 700;
   letter-spacing: 0.05em;
   margin-bottom: 2px !important;
@@ -823,8 +843,8 @@ div[class*="filter-by-city"] {
 }
 
 .vtab {
-  padding: 6px 0 !important;     /* Tighter vertical target padding */
-  font-size: 11px !important;    /* Slightly smaller text footprint to fit three tabs cleanly */
+  padding: 6px 0 !important; /* Tighter vertical target padding */
+  font-size: 11px !important; /* Slightly smaller text footprint to fit three tabs cleanly */
   font-weight: 600;
   border-radius: var(--border-radius-sub);
 }
@@ -838,8 +858,8 @@ div[class*="filter-by-city"] {
 
 .fb {
   flex: 1;
-  padding: 6px 0 !important;     /* Trim down from 10px to 6px height */
-  font-size: 11px !important;    /* Optimized small font size */
+  padding: 6px 0 !important; /* Trim down from 10px to 6px height */
+  font-size: 11px !important; /* Optimized small font size */
   font-weight: 700 !important;
   letter-spacing: 0.02em;
   border-radius: 5px !important; /* Slightly tighter corner curves */
@@ -847,9 +867,9 @@ div[class*="filter-by-city"] {
 
 /* ── CONDENSED DROPDOWN SELECTOR ── */
 .city-sel {
-  padding: 5px 8px !important;   /* Reduce internal select element thickness */
+  padding: 5px 8px !important; /* Reduce internal select element thickness */
   font-size: 12px !important;
-  height: 30px !important;       /* Explicit compact line execution height */
+  height: 30px !important; /* Explicit compact line execution height */
 }
 
 /* ── COMPACT DATA SEARCH BOX ── */
@@ -859,15 +879,15 @@ div[class*="filter-by-city"] {
   height: 30px !important;
 }
 .srch::before {
-  font-size: 14px !important;    /* Scale down search icon anchor scale */
+  font-size: 14px !important; /* Scale down search icon anchor scale */
   left: 8px !important;
 }
 
 /* ── EXPANDED DATA CONTAINER AREA (AUTO FIT AND SCROLL IN ALL VIEWPORTS) ── */
-.sb-list, 
+.sb-list,
 .city-list {
-  height: auto !important;       /* Dynamic height to let flex container handle the size */
-  min-height: 0 !important;      /* Required for inner flex scrolling without overflow */
+  height: auto !important; /* Dynamic height to let flex container handle the size */
+  min-height: 0 !important; /* Required for inner flex scrolling without overflow */
   flex: 1;
   overflow-y: auto;
   padding: 6px !important;
@@ -885,8 +905,8 @@ div[class*="filter-by-city"] {
   position: relative !important;
 }
 
-.sidebar, 
-.sidebar-container, 
+.sidebar,
+.sidebar-container,
 .dashboard-sidebar {
   background-color: rgba(30, 30, 30, 0.8) !important;
   background: rgba(30, 30, 30, 0.8) !important;
@@ -917,6 +937,3 @@ div[class*="filter-by-city"] {
   border-width: 1px !important;
   border-top-width: 2px !important;
 }
-
-
-

@@ -10,12 +10,45 @@ export const PIN_SEL = "#38BDF8";
 // Status is read from the first word of the cell ("Paid Jun 2024" → paid, "Not Live" → not live).
 // Anything blank or unrecognised counts as not live / unpaid so it stands out, and is listed in dataIssues.
 const LIVE_YES = ["yes", "y", "live", "true", "1", "active", "open", "operational", "launched"];
-const LIVE_NO = ["no", "n", "not", "false", "0", "closed", "pending", "under", "coming", "upcoming", "soon", "planned", "inactive", "paused", "hold", "suspended"];
+const LIVE_NO = [
+  "no",
+  "n",
+  "not",
+  "false",
+  "0",
+  "closed",
+  "pending",
+  "under",
+  "coming",
+  "upcoming",
+  "soon",
+  "planned",
+  "inactive",
+  "paused",
+  "hold",
+  "suspended",
+];
 const PAID_YES = ["yes", "y", "paid", "true", "1"];
-const PAID_NO = ["no", "n", "not", "unpaid", "false", "0", "pending", "overdue", "due", "partial", "partially", "outstanding"];
+const PAID_NO = [
+  "no",
+  "n",
+  "not",
+  "unpaid",
+  "false",
+  "0",
+  "pending",
+  "overdue",
+  "due",
+  "partial",
+  "partially",
+  "outstanding",
+];
 
 function readStatus(raw: string | undefined, yes: string[], no: string[]): boolean | null {
-  const first = String(raw ?? "").toLowerCase().split(/[^a-z0-9]+/).find(Boolean);
+  const first = String(raw ?? "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .find(Boolean);
   if (!first) return null;
   if (yes.includes(first)) return true;
   if (no.includes(first)) return false;
@@ -45,17 +78,29 @@ export function dataIssues(s: Store): string[] {
   if (!s.size) issues.push("Area is missing.");
   if (!s.startDate) issues.push("Contract start date is missing.");
   if (readStatus(s.live, LIVE_YES, LIVE_NO) === null) {
-    issues.push(s.live?.trim() ? `Live status "${s.live.trim()}" isn't recognised. Counted as Not Live.` : "Live status is blank. Counted as Not Live.");
+    issues.push(
+      s.live?.trim()
+        ? `Live status "${s.live.trim()}" isn't recognised. Counted as Not Live.`
+        : "Live status is blank. Counted as Not Live.",
+    );
   }
   if (readStatus(s.paid, PAID_YES, PAID_NO) === null) {
-    issues.push(s.paid?.trim() ? `Payment status "${s.paid.trim()}" isn't recognised. Counted as Unpaid.` : "Payment status is blank. Counted as Unpaid.");
+    issues.push(
+      s.paid?.trim()
+        ? `Payment status "${s.paid.trim()}" isn't recognised. Counted as Unpaid.`
+        : "Payment status is blank. Counted as Unpaid.",
+    );
   }
   return issues;
 }
 
 // ── Number formatting ──
 
-const UNITS: Array<[number, string]> = [[1e3, "K"], [1e6, "M"], [1e9, "B"]];
+const UNITS: Array<[number, string]> = [
+  [1e3, "K"],
+  [1e6, "M"],
+  [1e9, "B"],
+];
 
 export function fmtN(n: number): string {
   if (Math.round(Math.abs(n)) < 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 });

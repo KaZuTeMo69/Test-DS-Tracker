@@ -23,8 +23,10 @@ function parseNum(val: unknown, multipliers = true): number | null {
 function parseDelimited(text: string): string[][] {
   text = text.replace(/^﻿/, "");
   const firstLine = text.split(/\r?\n/, 1)[0];
-  const delimiter = [",", "\t", ";"].reduce((best, d) =>
-    firstLine.split(d).length > firstLine.split(best).length ? d : best, ",");
+  const delimiter = [",", "\t", ";"].reduce(
+    (best, d) => (firstLine.split(d).length > firstLine.split(best).length ? d : best),
+    ",",
+  );
 
   const rows: string[][] = [];
   let row: string[] = [];
@@ -58,10 +60,22 @@ function parseDelimited(text: string): string[][] {
   }
   row.push(cur.trim());
   rows.push(row);
-  return rows.filter(r => r.some(c => c !== ""));
+  return rows.filter((r) => r.some((c) => c !== ""));
 }
 
-type Field = "name" | "city" | "duration" | "dsCode" | "paid" | "live" | "startDate" | "rentSqm" | "size" | "rentAnnual" | "lat" | "lng";
+type Field =
+  | "name"
+  | "city"
+  | "duration"
+  | "dsCode"
+  | "paid"
+  | "live"
+  | "startDate"
+  | "rentSqm"
+  | "size"
+  | "rentAnnual"
+  | "lat"
+  | "lng";
 
 // Header phrases per field, matched as whole words. Fields are assigned in this order and a
 // column taken by one field isn't reused, so "Rent/sqm" is claimed before the plain "rent"
@@ -76,23 +90,32 @@ const COLUMN_PATTERNS: Array<{ field: Field; phrases: string[]; exclude?: string
   { field: "startDate", phrases: ["contract start date", "start date", "contract start", "start"] },
   { field: "rentSqm", phrases: ["rent sqm", "rent per sqm", "rent m2", "sqm rent"] },
   { field: "size", phrases: ["area", "size", "sqm", "m2"] },
-  { field: "rentAnnual", phrases: ["annual rent", "rent annual", "yearly rent", "rent"], exclude: ["month", "monthly"] },
+  {
+    field: "rentAnnual",
+    phrases: ["annual rent", "rent annual", "yearly rent", "rent"],
+    exclude: ["month", "monthly"],
+  },
   { field: "lat", phrases: ["lat", "latitude"] },
   { field: "lng", phrases: ["lng", "lon", "long", "longitude"] },
 ];
 
-const normalizeHeader = (h: string) => h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const normalizeHeader = (h: string) =>
+  h
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 
 function mapColumns(headers: string[]): Record<Field, number> {
-  const words = headers.map(h => ` ${normalizeHeader(h)} `);
+  const words = headers.map((h) => ` ${normalizeHeader(h)} `);
   const claimed = new Set<number>();
   const result = {} as Record<Field, number>;
 
   for (const { field, phrases, exclude = [] } of COLUMN_PATTERNS) {
     result[field] = -1;
     for (const phrase of phrases) {
-      const idx = words.findIndex((w, i) =>
-        !claimed.has(i) && w.includes(` ${phrase} `) && !exclude.some(x => w.includes(` ${x} `)));
+      const idx = words.findIndex(
+        (w, i) => !claimed.has(i) && w.includes(` ${phrase} `) && !exclude.some((x) => w.includes(` ${x} `)),
+      );
       if (idx !== -1) {
         result[field] = idx;
         claimed.add(idx);
@@ -151,7 +174,7 @@ function buildStore(id: number, f: StoreFields): Store {
 export function rowsToStores(headers: string[], rows: string[][]): Store[] {
   const col = mapColumns(headers);
   if (col.name === -1) {
-    const found = headers.filter(h => h.trim()).join(", ") || "none";
+    const found = headers.filter((h) => h.trim()).join(", ") || "none";
     throw new Error(`Couldn't find a "Store Name" column in the header row (columns found: ${found}).`);
   }
   const nameHeader = normalizeHeader(headers[col.name]);
@@ -163,22 +186,24 @@ export function rowsToStores(headers: string[], rows: string[][]): Store[] {
     // Skip blank rows and header rows repeated further down the data
     if (!name || normalizeHeader(name) === nameHeader) continue;
 
-    stores.push(buildStore(stores.length + 1, {
-      name,
-      city: get(col.city),
-      country: "KSA",
-      dsCode: get(col.dsCode),
-      whCode: get(col.duration),
-      paid: get(col.paid),
-      live: get(col.live),
-      startDate: get(col.startDate),
-      endDate: "",
-      size: parseNum(get(col.size), false),
-      rentSARsqm: parseNum(get(col.rentSqm)),
-      rentSARAnnual: parseNum(get(col.rentAnnual)),
-      lat: parseNum(get(col.lat), false),
-      lng: parseNum(get(col.lng), false),
-    }));
+    stores.push(
+      buildStore(stores.length + 1, {
+        name,
+        city: get(col.city),
+        country: "KSA",
+        dsCode: get(col.dsCode),
+        whCode: get(col.duration),
+        paid: get(col.paid),
+        live: get(col.live),
+        startDate: get(col.startDate),
+        endDate: "",
+        size: parseNum(get(col.size), false),
+        rentSARsqm: parseNum(get(col.rentSqm)),
+        rentSARAnnual: parseNum(get(col.rentAnnual)),
+        lat: parseNum(get(col.lat), false),
+        lng: parseNum(get(col.lng), false),
+      }),
+    );
   }
   return stores;
 }
@@ -196,33 +221,35 @@ export function parseJSONData(jsonText: string): Store[] {
   } catch (err) {
     throw new Error(`Invalid JSON: ${err instanceof Error ? err.message : String(err)}`);
   }
-  const list = Array.isArray(raw) ? raw : (raw?.stores || raw?.data || []);
+  const list = Array.isArray(raw) ? raw : raw?.stores || raw?.data || [];
   if (!Array.isArray(list)) return [];
 
   // First value that is actually present; unlike ||, keeps 0 and false
-  const pick = (...vals: unknown[]) => vals.find(v => v !== undefined && v !== null && String(v).trim() !== "");
+  const pick = (...vals: unknown[]) => vals.find((v) => v !== undefined && v !== null && String(v).trim() !== "");
   const text = (...vals: unknown[]) => String(pick(...vals) ?? "").trim();
 
   const stores: Store[] = [];
   list.forEach((item: any) => {
     const name = text(item?.name, item?.storeName);
     if (!name) return;
-    stores.push(buildStore(stores.length + 1, {
-      name,
-      city: text(item.city),
-      country: text(item.country) || "KSA",
-      dsCode: text(item.dsCode, item.code),
-      whCode: text(item.whCode, item.duration),
-      paid: text(item.paid),
-      live: text(item.live),
-      startDate: text(item.startDate),
-      endDate: text(item.endDate),
-      size: parseNum(pick(item.size, item.area), false),
-      rentSARsqm: parseNum(pick(item.rentSARsqm, item.rentSqm)),
-      rentSARAnnual: parseNum(pick(item.rentSARAnnual, item.annualRent, item.rent)),
-      lat: parseNum(pick(item.lat), false),
-      lng: parseNum(pick(item.lng), false),
-    }));
+    stores.push(
+      buildStore(stores.length + 1, {
+        name,
+        city: text(item.city),
+        country: text(item.country) || "KSA",
+        dsCode: text(item.dsCode, item.code),
+        whCode: text(item.whCode, item.duration),
+        paid: text(item.paid),
+        live: text(item.live),
+        startDate: text(item.startDate),
+        endDate: text(item.endDate),
+        size: parseNum(pick(item.size, item.area), false),
+        rentSARsqm: parseNum(pick(item.rentSARsqm, item.rentSqm)),
+        rentSARAnnual: parseNum(pick(item.rentSARAnnual, item.annualRent, item.rent)),
+        lat: parseNum(pick(item.lat), false),
+        lng: parseNum(pick(item.lng), false),
+      }),
+    );
   });
   return stores;
 }

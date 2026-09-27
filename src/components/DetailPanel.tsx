@@ -9,13 +9,14 @@ interface DetailPanelProps {
 }
 
 // Exact figures here; the rounded 274K style is for totals
-const sar = (n: number | null) => (n === null ? "—" : `${CURRENCY} ${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
+const sar = (n: number | null) =>
+  n === null ? "—" : `${CURRENCY} ${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
 const DetailPanel = memo(function DetailPanel({ store, onClose }: DetailPanelProps) {
   if (!store) return null;
 
   const issues = dataIssues(store);
-  
+
   const detailRows = [
     { label: "City", value: store.city || "—" },
     { label: "DS Code", value: store.dsCode || "—" },
@@ -28,16 +29,18 @@ const DetailPanel = memo(function DetailPanel({ store, onClose }: DetailPanelPro
   ];
 
   return (
-    <div 
+    <div
       onClick={(e) => e.stopPropagation()}
       className={`absolute top-[70px] right-[45px] ml-0 pl-[15px] pr-[15px] pt-[15px] pb-[12px] w-[300px] bg-[#111111]/95 backdrop-blur-md border border-[#333] rounded-xl shadow-2xl overflow-hidden flex flex-col z-[500] transition-transform duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] translate-x-0`}
     >
       <div className="p-4 border-b border-[#262626] flex justify-between items-start">
         <div className="flex-1 mr-2 min-w-0">
           <h3 className="detail-panel-title text-white leading-tight truncate">{store.name}</h3>
-          <p className="detail-panel-subtext text-gray-500 mt-1">{store.dsCode || store.whCode} · {store.city}</p>
+          <p className="detail-panel-subtext text-gray-500 mt-1">
+            {store.dsCode || store.whCode} · {store.city}
+          </p>
         </div>
-        <button 
+        <button
           onClick={onClose}
           className="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 text-gray-400 hover:text-white transition-colors cursor-pointer"
         >
@@ -47,10 +50,14 @@ const DetailPanel = memo(function DetailPanel({ store, onClose }: DetailPanelPro
 
       <div className="p-4 flex flex-col gap-3 overflow-y-auto flex-1">
         <div className="flex flex-wrap gap-2">
-          <span className={`detail-panel-tag-live px-2.5 py-0.5 rounded-md ${isLive(store) ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+          <span
+            className={`detail-panel-tag-live px-2.5 py-0.5 rounded-md ${isLive(store) ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}
+          >
             {isLive(store) ? "LIVE" : "NOT LIVE"}
           </span>
-          <span className={`detail-panel-tag-paid px-2.5 py-0.5 rounded-md ${isPaid(store) ? "bg-yellow-500/10 text-yellow-400" : "bg-orange-500/10 text-orange-400"}`}>
+          <span
+            className={`detail-panel-tag-paid px-2.5 py-0.5 rounded-md ${isPaid(store) ? "bg-yellow-500/10 text-yellow-400" : "bg-orange-500/10 text-orange-400"}`}
+          >
             {isPaid(store) ? "PAID CONTRACT" : "UNPAID"}
           </span>
         </div>
@@ -60,7 +67,9 @@ const DetailPanel = memo(function DetailPanel({ store, onClose }: DetailPanelPro
             <AlertCircle size={14} className="text-[#FB923C] flex-shrink-0 mt-0.5" />
             <div className="text-[10px] text-[#FB923C] leading-relaxed">
               <div className="font-bold uppercase tracking-wider mb-0.5">Check the source data</div>
-              {issues.map((issue, i) => <div key={i}>{issue}</div>)}
+              {issues.map((issue, i) => (
+                <div key={i}>{issue}</div>
+              ))}
             </div>
           </div>
         )}
@@ -79,17 +88,17 @@ const DetailPanel = memo(function DetailPanel({ store, onClose }: DetailPanelPro
 
       <div className="p-4 mt-auto">
         {hasCoords(store) ? (
-          <a 
-            href={`https://www.google.com/maps/search/?api=1&query=${store.lat},${store.lng}`} 
-            target="_blank" 
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${store.lat},${store.lng}`}
+            target="_blank"
             rel="noopener noreferrer"
             className="detail-panel-maps-btn block w-full py-2.5 bg-[#fbbf24] text-black font-extrabold text-center rounded-lg transition-transform active:scale-95 no-underline shadow-lg"
           >
             📍 Open in Google Maps
           </a>
         ) : (
-          <button 
-            disabled 
+          <button
+            disabled
             className="detail-panel-maps-btn block w-full py-2.5 bg-[#1a1a1a] text-gray-600 font-extrabold text-center rounded-lg cursor-not-allowed border border-[#333]"
           >
             No Maps link
