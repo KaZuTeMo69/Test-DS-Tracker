@@ -77,7 +77,14 @@ interface MapComponentProps {
   showToast?: (msg: string) => void;
 }
 
+// Icons are cached so re-renders hand Leaflet the same icon object instead of rebuilding every pin
+const iconCache = new Map<string, L.DivIcon>();
+
 function makeIcon(color: string, selected = false) {
+  const cacheKey = `${color}|${selected}`;
+  const cached = iconCache.get(cacheKey);
+  if (cached) return cached;
+
   const sz = selected ? 38 : 30;
   const h = Math.round(sz * 1.35);
   const innerR = selected ? 6 : 4.5;
@@ -98,13 +105,15 @@ function makeIcon(color: string, selected = false) {
     </svg>
   `;
   
-  return L.divIcon({
+  const icon = L.divIcon({
     html: svg,
     className: "",
     iconSize: [sz, h],
     iconAnchor: [sz / 2, h],
     popupAnchor: [0, -h],
   });
+  iconCache.set(cacheKey, icon);
+  return icon;
 }
 
 function parseDMSToDecimal(input: string): { lat: number; lng: number } | null {
@@ -639,7 +648,7 @@ export default function MapComponent({
         )}
 
         <MarkerClusterGroup
-          key={`${isNightMode ? "night" : "day"}-${stores.length}-${selectedId || "none"}`}
+          key={`${isNightMode ? "night" : "day"}-${stores.length}`}
           chunkedLoading
           spiderfyOnMaxZoom={true}
           showCoverageOnHover={false}
@@ -657,7 +666,7 @@ export default function MapComponent({
             const isSelected = selectedId === s.id;
             return (
               <Marker
-                key={`marker-${s.id}-${isSelected}`}
+                key={`marker-${s.id}`}
                 position={[s.lat, s.lng]}
                 icon={makeIcon(isSelected ? PIN_SEL : pinColor(s), isSelected)}
                 eventHandlers={{

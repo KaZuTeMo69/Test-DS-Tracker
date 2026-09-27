@@ -15,6 +15,9 @@ const KPIBar = memo(function KPIBar({ stores, currency }: KPIBarProps) {
     let totalArea = 0;
     let noRent = 0;
     let noArea = 0;
+    // Rent per m² only uses stores that have both rent and area
+    let pricedRent = 0;
+    let pricedArea = 0;
 
     stores.forEach(s => {
       if (isLive(s)) live++;
@@ -24,6 +27,10 @@ const KPIBar = memo(function KPIBar({ stores, currency }: KPIBarProps) {
       totalRent += (rent || 0);
       if (!s.size) noArea++;
       totalArea += (s.size || 0);
+      if (rent !== null && s.size) {
+        pricedRent += rent;
+        pricedArea += s.size;
+      }
     });
 
     return {
@@ -33,7 +40,7 @@ const KPIBar = memo(function KPIBar({ stores, currency }: KPIBarProps) {
       totalArea,
       noRent,
       noArea,
-      avgRent: totalArea > 0 ? totalRent / totalArea : 0
+      avgRent: pricedArea > 0 ? pricedRent / pricedArea : 0
     };
   }, [stores, currency]);
 

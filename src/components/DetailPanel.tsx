@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Store } from "../types";
-import { isLive, isPaid, hasCoords, fmtN, dataIssues } from "../constants";
+import { isLive, isPaid, hasCoords, dataIssues } from "../constants";
 import { X, AlertCircle } from "lucide-react";
 
 interface DetailPanelProps {
@@ -18,7 +18,8 @@ const DetailPanel = memo(function DetailPanel({ store, onClose, currency }: Deta
 
   const getSqm = () => store.rentSARsqm;
 
-  const sar = (n: number | null) => (n === null ? "—" : `SAR ${fmtN(n)}`);
+  // Exact figures here; the rounded 274K style is for totals
+  const sar = (n: number | null) => (n === null ? "—" : `SAR ${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
 
   const issues = dataIssues(store);
   

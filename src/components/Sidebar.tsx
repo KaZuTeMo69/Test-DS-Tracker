@@ -52,25 +52,36 @@ export default function Sidebar({
   currency
 }: SidebarProps) {
   const downloadCSV = () => {
-    const headers = ["DS Code", "WH Code", "Name", "Country", "City", "Lat", "Lng", "Rent (Annual)", "Currency"];
+    // Same columns as the Google Sheet, so an exported file can be imported again without losing fields
+    const headers = ["Store Name", "City", "DS Code", "Contract Duration", "Paid / Not Paid", "Live / Not Live", "Contract Start Date", "Area (sqm.)", "Rent/sqm. (SAR)", "Annual Rent W/O VAT", "Lat", "Lng"];
     const rows = stores.map(s => [
+      s.name,
+      s.city,
       s.dsCode,
       s.whCode,
-      s.name,
-      s.country,
-      s.city,
+      s.paid,
+      s.live,
+      s.startDate,
+      s.size,
+      s.rentSARsqm,
+      s.rentSARAnnual,
       s.lat,
       s.lng,
-      getRent(s, currency),
-      currency
     ]);
-    const content = [headers, ...rows].map(r => r.join(",")).join("\n");
-    const blob = new Blob([content], { type: "text/csv" });
+    // Quote cells containing commas, quotes or line breaks
+    const cell = (v: string | number | null | undefined) => {
+      const text = v === null || v === undefined ? "" : String(v);
+      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    // The BOM makes Excel read the file as UTF-8, so Arabic names survive
+    const content = "\uFEFF" + [headers, ...rows].map(r => r.map(cell).join(",")).join("\r\n");
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `dark_stores_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const handleImport = () => {

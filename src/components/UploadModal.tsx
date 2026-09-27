@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, ChangeEvent } from "react";
+import { useState, useRef, useEffect, ChangeEvent, DragEvent } from "react";
 import { X, Upload, FileText, Link, Check, AlertCircle } from "lucide-react";
 import { parseCSVData, parseJSONData } from "../lib/importer";
 import { Store } from "../types";
@@ -26,6 +26,7 @@ export default function UploadModal({
   const [sheetUrl, setSheetUrl] = useState("");
   const [pastedText, setPastedText] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Don't show an error left over from the last time the window was open
@@ -42,10 +43,32 @@ export default function UploadModal({
   const errorText = (err: unknown, fallback: string) => (err instanceof Error && err.message ? err.message : fallback);
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    setLocalError(null);
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (file) readFile(file);
+    e.target.value = "";
+  };
 
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    // Without preventDefault the browser opens the dropped file and leaves the dashboard
+    e.preventDefault();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setIsDragging(false);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    setActiveTab("file");
+    readFile(file);
+  };
+
+  const readFile = (file: File) => {
+    setLocalError(null);
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -64,7 +87,6 @@ export default function UploadModal({
       }
     };
     reader.readAsText(file);
-    e.target.value = "";
   };
 
   const handlePasteSubmit = () => {
@@ -96,6 +118,9 @@ export default function UploadModal({
     <div 
       className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9000] backdrop-blur-md p-4 sm:p-6"
       onClick={onClose}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <div 
         className="relative bg-[#111111] border border-[#262626] rounded-[24px] p-6 sm:p-8 w-full max-w-[580px] animate-in fade-in zoom-in-95 duration-200 shadow-[0_30px_80px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[92vh] scrollbar-thin"
@@ -149,7 +174,7 @@ export default function UploadModal({
           <div className="space-y-4">
             <div 
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-[#333] hover:border-[#fbbf24] bg-[#161616] hover:bg-[#1c1c1c] rounded-2xl p-8 text-center cursor-pointer transition-all group"
+              className={`border-2 border-dashed ${isDragging ? "border-[#fbbf24] bg-[#1c1c1c]" : "border-[#333] bg-[#161616]"} hover:border-[#fbbf24] hover:bg-[#1c1c1c] rounded-2xl p-8 text-center cursor-pointer transition-all group`}
             >
               <div className="w-12 h-12 rounded-full bg-white/5 group-hover:bg-[#fbbf24]/20 text-gray-400 group-hover:text-[#fbbf24] flex items-center justify-center mx-auto mb-3 transition-colors">
                 <Upload size={24} />

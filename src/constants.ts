@@ -30,11 +30,21 @@ export function pn(v: string | number | null | undefined): number | null {
   return isNaN(n) ? null : n;
 }
 
+const UNITS: Array<[number, string]> = [[1e3, "K"], [1e6, "M"], [1e9, "B"]];
+
 export function fmtN(n: number): string {
-  if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
-  if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
-  if (n >= 1e3) return (n / 1e3).toFixed(0) + "K";
-  return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  if (Math.round(Math.abs(n)) < 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  // The unit is chosen after rounding, so 999,999 shows as 1.00M rather than 1000K
+  for (let i = 0; i < UNITS.length; i++) {
+    const [size, suffix] = UNITS[i];
+    const v = n / size;
+    const digits = suffix === "M" ? 2 : Math.abs(v) < 100 ? 1 : 0;
+    const text = v.toFixed(digits);
+    if (Math.abs(parseFloat(text)) < 1000 || i === UNITS.length - 1) {
+      return (suffix === "M" ? text : text.replace(/\.0$/, "")) + suffix;
+    }
+  }
+  return String(n);
 }
 
 export function getRent(s: Store, currency: "USD" | "AED" | "SAR"): number | null {
@@ -46,7 +56,7 @@ export function getRent(s: Store, currency: "USD" | "AED" | "SAR"): number | nul
 export function fmtR(v: string | number | null | undefined): string {
   const n = pn(v);
   if (n === null) return String(v ?? "—");
-  return n >= 1000 ? (n / 1000).toFixed(0) + "K" : String(Math.round(n));
+  return fmtN(n);
 }
 
 /** Problems in a store's source data, shown so they can be fixed in the sheet or file. */
