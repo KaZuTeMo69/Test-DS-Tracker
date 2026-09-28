@@ -1,7 +1,10 @@
 import { memo, useMemo } from "react";
 import { Store } from "../types";
-import { CURRENCY, fmtN, isLive, isPaid } from "../constants";
-import { RENEWAL_LEAD_DAYS, RENEWAL_WARNING_DAYS, renewalInfo } from "../lib/contract";
+import { CURRENCY } from "../constants";
+import { RENEWAL_LEAD_DAYS, RENEWAL_WARNING_DAYS } from "../lib/contract";
+import { fmtN } from "../lib/format";
+import { storeRenewal } from "../lib/renewal";
+import { isLive, isPaid } from "../lib/status";
 
 interface KPIBarProps {
   stores: Store[];
@@ -39,7 +42,7 @@ const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclea
         pricedRent += rent;
         pricedArea += s.size;
       }
-      const { status } = renewalInfo(s);
+      const { status } = storeRenewal(s);
       if (status === "now" || status === "soon" || status === "expired") renewals[status]++;
     });
 
