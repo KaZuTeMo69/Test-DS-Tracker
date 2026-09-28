@@ -13,7 +13,16 @@ import {
   paidStatus,
   RENEWAL_STYLE,
 } from "../constants";
-import { daysBetween, formatDate, parseDate, pluralDays, RenewalInfo, renewalInfo, today } from "../lib/contract";
+import {
+  daysBetween,
+  formatDate,
+  formatDuration,
+  parseDate,
+  pluralDays,
+  RenewalInfo,
+  renewalInfo,
+  today,
+} from "../lib/contract";
 import { RentComparison, rentComparison } from "../lib/rentStats";
 
 interface DetailPanelProps {
@@ -72,9 +81,9 @@ const ordinal = (n: number) => {
 
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-// "3 Years" → "3-year", "6 Months" → "6-month"; anything else as written
+// "3" or "3 Years" → "3-year", "6 Months" → "6-month"; anything else as written
 function termPhrase(term: string): string {
-  const m = term.trim().match(/^(\d+(?:\.\d+)?)\s*(year|month)s?$/i);
+  const m = formatDuration(term).match(/^(\d+(?:\.\d+)?)\s*(year|month)s?$/i);
   return m ? `${m[1]}-${m[2].toLowerCase()}` : term.trim().toLowerCase();
 }
 
@@ -452,7 +461,7 @@ function ContractTab({ store, renewal }: { store: Store; renewal: RenewalInfo })
   return (
     <>
       <div className="grid grid-cols-2 gap-2">
-        <Tile label="Term" value={store.whCode || "—"} />
+        <Tile label="Term" value={formatDuration(store.whCode) || "—"} />
         <DaysLeftTile renewal={renewal} term="" />
       </div>
 
@@ -486,6 +495,7 @@ const TABS: Array<[Tab, string]> = [
   ["contract", "Contract"],
 ];
 
+// z-[600]: above the map legend (500), below the sidebar (2000) and toasts (999)
 function StoreCard({ store, stores, onClose }: { store: Store; stores: Store[]; onClose: () => void; key?: number }) {
   const [tab, setTab] = useState<Tab>("summary");
   const renewal = renewalInfo(store);
@@ -495,7 +505,7 @@ function StoreCard({ store, stores, onClose }: { store: Store; stores: Store[]; 
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className="absolute top-[12px] right-[52px] max-h-[calc(100%-32px)] w-[360px] max-w-[calc(100%-64px)] bg-[#111111]/95 backdrop-blur-md border border-[#333] rounded-xl shadow-2xl overflow-hidden flex flex-col z-[500]"
+      className="absolute top-[12px] right-[52px] max-h-[calc(100%-32px)] w-[360px] max-w-[calc(100%-64px)] bg-[#111111]/95 backdrop-blur-md border border-[#333] rounded-xl shadow-2xl overflow-hidden flex flex-col z-[600]"
     >
       <div className="store-card-header border-b border-[#262626]">
         <div className="flex justify-between items-start gap-2">
