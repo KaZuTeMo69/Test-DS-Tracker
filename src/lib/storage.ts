@@ -1,0 +1,83 @@
+import { Store } from "../types";
+
+// What the app remembers between visits. It stays in this browser only.
+const SHEET_ID_KEY = "dst.sheetId";
+const MANUAL_STORES_KEY = "dst.manualStores";
+
+export type ManualStore = Omit<Store, "id">;
+
+// localStorage can be missing or throw (private browsing, blocked site data); the app then works without it
+function read(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function write(key: string, value: string | null) {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {
+    // Not saved; everything still works until the page is closed
+  }
+}
+
+// ── Google Sheet ──
+
+export function loadSheetId(): string {
+  const id = read(SHEET_ID_KEY);
+  return id && /^[a-zA-Z0-9\-_]+$/.test(id) ? id : "";
+}
+
+export const saveSheetId = (id: string) => write(SHEET_ID_KEY, id || null);
+
+// ── Manual stores ──
+
+const text = (v: unknown) => (typeof v === "string" ? v : "");
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+
+/** A saved manual store, or null if the entry is damaged (no name or no valid coordinates). */
+function toManualStore(raw: unknown): ManualStore | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const name = text(r.name).trim();
+  const lat = num(r.lat);
+  const lng = num(r.lng);
+  if (!name || lat === null || lng === null || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return {
+    name,
+    dsCode: text(r.dsCode),
+    city: text(r.city),
+    country: text(r.country) || "KSA",
+    contractDuration: text(r.contractDuration),
+    startDate: text(r.startDate),
+    endDate: text(r.endDate),
+    live: text(r.live),
+    paid: text(r.paid),
+    size: num(r.size),
+    rentSARAnnual: num(r.rentSARAnnual),
+    rentSARMonthly: num(r.rentSARMonthly),
+    rentSARsqm: num(r.rentSARsqm),
+    lat,
+    lng,
+  };
+}
+
+/** Manual stores saved on an earlier visit; damaged entries are skipped, and unreadable data counts as none. */
+export function loadManualStores(): ManualStore[] {
+  const saved = read(MANUAL_STORES_KEY);
+  if (!saved) return [];
+  try {
+    const list: unknown = JSON.parse(saved);
+    return Array.isArray(list) ? list.map(toManualStore).filter((s): s is ManualStore => s !== null) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveManualStores(stores: Store[]) {
+  // Ids are handed out again on every load, so they aren't saved
+  write(MANUAL_STORES_KEY, stores.length ? JSON.stringify(stores.map(({ id: _id, ...store }) => store)) : null);
+}

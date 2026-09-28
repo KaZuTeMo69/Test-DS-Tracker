@@ -71,6 +71,9 @@ export const isLive = (s: Store) => readStatus(s.live, LIVE_YES, LIVE_NO) === tr
 
 export const isPaid = (s: Store) => readStatus(s.paid, PAID_YES, PAID_NO) === true;
 
+// Live or Payment status blank or not recognised, so the store is counted as Not Live / Unpaid on a guess
+export const hasUnclearStatus = (s: Store) => liveStatus(s) === null || paidStatus(s) === null;
+
 // ── Store checks ──
 
 export const hasCoords = (s: Store) => s.lat !== null && s.lng !== null;
@@ -91,8 +94,8 @@ export function contractDateIssues(s: Store): string[] {
     if (!parseDate(s.endDate)) issues.push(`Contract end date "${s.endDate}" isn't a recognised date.`);
   } else if (startOk) {
     issues.push(
-      s.whCode.trim() && !parseDurationMonths(s.whCode)
-        ? `Contract duration "${s.whCode.trim()}" isn't recognised, so the end date can't be worked out.`
+      s.contractDuration.trim() && !parseDurationMonths(s.contractDuration)
+        ? `Contract duration "${s.contractDuration.trim()}" isn't recognised, so the end date can't be worked out.`
         : "Contract duration is missing, so the end date can't be worked out.",
     );
   }

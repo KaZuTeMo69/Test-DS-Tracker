@@ -637,6 +637,71 @@ body {
   margin: var(--token-spacing-hairline) !important;
 }
 
+/* Route directions: moved under the map buttons (see lib/routing.ts). Folded, they're a button like the
+   others; opened, the panel spreads to the left. The plugin's own folded styles only apply in Leaflet's
+   control corners, so they're repeated here */
+.route-directions.leaflet-routing-container {
+  margin: 0 !important;
+  width: 320px;
+  max-width: calc(100vw - 80px);
+  height: auto;
+}
+
+.route-directions.leaflet-routing-container-hide {
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  background: rgba(17, 17, 17, 0.9);
+  border: 1px solid #333 !important;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.route-directions.leaflet-routing-container-hide .leaflet-routing-alt {
+  display: none;
+}
+
+.route-directions.leaflet-routing-container-hide .leaflet-routing-collapse-btn {
+  left: 6px;
+  top: 7px;
+  filter: invert(1);
+}
+
+/* Opened: dark like the store card (the plugin's panel is white, which left the app's light text unreadable) */
+.route-directions.leaflet-routing-container {
+  background: rgba(17, 17, 17, 0.95);
+  border: 1px solid #333 !important;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: var(--token-color-text-primary);
+}
+
+.route-directions h2 {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.route-directions h3,
+.route-directions .leaflet-routing-instruction-distance {
+  color: var(--token-color-text-secondary);
+}
+
+.route-directions .leaflet-routing-alt {
+  border-bottom: none;
+}
+
+.route-directions .leaflet-routing-alt tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.route-directions .leaflet-routing-icon {
+  filter: invert(1);
+}
+
+.route-directions .leaflet-routing-collapse-btn {
+  color: var(--token-color-text-secondary);
+}
+
 /* Dark map: invert the light OpenStreetMap tiles */
 .night-map-tiles {
   filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%) !important;

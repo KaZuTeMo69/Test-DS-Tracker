@@ -5,12 +5,16 @@ import { RENEWAL_LEAD_DAYS, RENEWAL_WARNING_DAYS, renewalInfo } from "../lib/con
 
 interface KPIBarProps {
   stores: Store[];
+  // Stores (out of all stores, not just the filtered ones) with a blank or unrecognised Live / Payment status
+  unclear: { total: number; live: number; paid: number };
+  unclearOnly: boolean;
+  onShowUnclear: () => void;
 }
 
 // Totals leave out stores with no value, so say how many were left out
 const missing = (n: number, what: string) => (n > 0 ? `${n} without ${what}` : undefined);
 
-const KPIBar = memo(function KPIBar({ stores }: KPIBarProps) {
+const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclear }: KPIBarProps) {
   const stats = useMemo(() => {
     let live = 0;
     let paid = 0;
@@ -120,6 +124,33 @@ const KPIBar = memo(function KPIBar({ stores }: KPIBarProps) {
 
   return (
     <div className="kpis-container flex gap-3 p-1.5 bg-[#0a0a0a] border border-[#222] rounded-xl shrink-0 overflow-x-auto">
+      {unclear.total > 0 && (
+        <button
+          onClick={onShowUnclear}
+          className={`kpi-card shrink-0 bg-[#111] border border-[#222] border-t-2 p-[10px_16px] sm:p-[13px_20px] rounded-xl shadow-sm transform transition-transform hover:scale-[1.02] text-center w-auto min-w-max cursor-pointer ${unclearOnly ? "ring-1 ring-[#FB923C]/60" : ""}`}
+          style={{ borderTopColor: "#FB923C" }}
+          title={[
+            unclear.live && `${unclear.live} with a blank or unrecognised Live status (counted as Not Live)`,
+            unclear.paid && `${unclear.paid} with a blank or unrecognised Payment status (counted as Unpaid)`,
+            "Click to list them",
+          ]
+            .filter(Boolean)
+            .join("\n")}
+        >
+          <p className="kpi-label text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1">
+            ⚠ Unclear Status
+          </p>
+          <div className="flex flex-col items-center justify-center">
+            <p className="kpi-value kpi-number text-2xl font-bold tracking-tight" style={{ color: "#FB923C" }}>
+              {unclear.total}
+            </p>
+            <p className="text-[10px] text-gray-500 uppercase mt-0.5">counted not live / unpaid</p>
+            <p className="text-[10px] text-[#FB923C] mt-0.5">
+              {unclearOnly ? "Showing these stores" : "View stores →"}
+            </p>
+          </div>
+        </button>
+      )}
       {kpis.map((kpi, i) => (
         <div
           key={i}

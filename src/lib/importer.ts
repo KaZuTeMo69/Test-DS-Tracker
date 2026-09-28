@@ -134,7 +134,7 @@ interface StoreFields {
   city: string;
   country: string;
   dsCode: string;
-  whCode: string;
+  contractDuration: string;
   paid: string;
   live: string;
   startDate: string;
@@ -158,14 +158,14 @@ function contractDates(startText: string, endText: string, duration: string) {
 /** Fills in monthly and per-m² rent, the contract end date, and validates coordinates. Nothing missing is made up. */
 function buildStore(id: number, f: StoreFields): Store {
   const annual = f.rentSARAnnual;
-  const dates = contractDates(f.startDate, f.endDate, f.whCode);
+  const dates = contractDates(f.startDate, f.endDate, f.contractDuration);
   const rentSARsqm = f.rentSARsqm ?? (annual !== null && f.size ? annual / f.size : null);
   const location = checkLocation(f.city, f.country, f.lat, f.lng);
 
   return {
     id,
     dsCode: f.dsCode,
-    whCode: f.whCode,
+    contractDuration: f.contractDuration,
     name: f.name,
     country: f.country,
     city: f.city,
@@ -205,7 +205,7 @@ export function rowsToStores(headers: string[], rows: string[][]): Store[] {
         city: get(col.city),
         country: "KSA",
         dsCode: get(col.dsCode),
-        whCode: get(col.duration),
+        contractDuration: get(col.duration),
         paid: get(col.paid),
         live: get(col.live),
         startDate: get(col.startDate),
@@ -251,7 +251,8 @@ export function parseJSONData(jsonText: string): Store[] {
         city: text(item.city),
         country: text(item.country) || "KSA",
         dsCode: text(item.dsCode, item.code),
-        whCode: text(item.whCode, item.duration),
+        // whCode is the field's old name, still accepted in older JSON files
+        contractDuration: text(item.contractDuration, item.whCode, item.duration),
         paid: text(item.paid),
         live: text(item.live),
         startDate: text(item.startDate),

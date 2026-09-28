@@ -1,4 +1,2 @@
-declare module "*.png" {
-  const value: string;
-  export default value;
-}
+// Types for importing assets (images, stylesheets) the way Vite handles them
+/// <reference types="vite/client" />
