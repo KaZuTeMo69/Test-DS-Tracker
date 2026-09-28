@@ -6,6 +6,14 @@ export const RENEWAL_LEAD_DAYS = 75;
 // "Renew soon" shows this many days before the renewal start date
 export const RENEWAL_WARNING_DAYS = 30;
 
+/** The two numbers above; both can be changed in Settings. */
+export interface RenewalDays {
+  leadDays: number;
+  warningDays: number;
+}
+
+const DEFAULT_DAYS: RenewalDays = { leadDays: RENEWAL_LEAD_DAYS, warningDays: RENEWAL_WARNING_DAYS };
+
 const DAY_MS = 86_400_000;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -93,15 +101,15 @@ export interface RenewalInfo {
  * ok: renewal starts later · soon: renewal starts within the warning window
  * now: renewal should have started · expired: the contract end date has passed
  */
-export function renewalInfo(s: Store, on: Date = today()): RenewalInfo {
+export function renewalInfo(s: Store, on: Date = today(), days: RenewalDays = DEFAULT_DAYS): RenewalInfo {
   const endDate = s.endDate ? parseDate(s.endDate) : null;
   if (!endDate) return { status: "unknown", endDate: null, renewalStart: null, daysToEnd: null, daysToRenewal: null };
 
-  const renewalStart = new Date(endDate.getTime() - RENEWAL_LEAD_DAYS * DAY_MS);
+  const renewalStart = new Date(endDate.getTime() - days.leadDays * DAY_MS);
   const daysToEnd = daysBetween(on, endDate);
   const daysToRenewal = daysBetween(on, renewalStart);
   const status: RenewalStatus =
-    daysToEnd < 0 ? "expired" : daysToRenewal <= 0 ? "now" : daysToRenewal <= RENEWAL_WARNING_DAYS ? "soon" : "ok";
+    daysToEnd < 0 ? "expired" : daysToRenewal <= 0 ? "now" : daysToRenewal <= days.warningDays ? "soon" : "ok";
   return { status, endDate, renewalStart, daysToEnd, daysToRenewal };
 }
 

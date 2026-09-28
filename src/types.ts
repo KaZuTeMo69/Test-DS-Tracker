@@ -36,7 +36,7 @@ export interface CitySummary {
   count: number;
   live: number;
   paid: number;
-  annualRent: number; // SAR
+  annualRent: number; // SAR, with VAT when Settings say so
   area: number;
 }
 

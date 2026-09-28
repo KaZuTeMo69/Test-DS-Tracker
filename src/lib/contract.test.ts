@@ -207,4 +207,17 @@ describe("renewalInfo", () => {
     expect(info.status).toBe("expired");
     expect(info.daysToEnd).toBe(-1);
   });
+
+  it("uses the lead and warning days from Settings", () => {
+    const days = { leadDays: 90, warningDays: 14 };
+    const at = (n: number) => renewalInfo(store(formatDate(addDays(today, n))), today, days);
+    expect(at(200).daysToRenewal).toBe(110);
+    expect(at(90 + 15).status).toBe("ok");
+    expect(at(90 + 14).status).toBe("soon");
+    expect(at(90).status).toBe("now");
+    // A lead of 0 days: renewal starts on the end date
+    const none = renewalInfo(store(formatDate(addDays(today, 5))), today, { leadDays: 0, warningDays: 30 });
+    expect(none.status).toBe("soon");
+    expect(iso(none.renewalStart)).toBe(iso(addDays(today, 5)));
+  });
 });

@@ -1,7 +1,9 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CitySummary } from "../types";
 import { CURRENCY } from "../constants";
+import { useSettings } from "../hooks/useSettings";
 import { fmtN } from "../lib/format";
+import { vatLabel } from "../lib/settings";
 
 interface CityInsightsProps {
   citySummaries: CitySummary[];
@@ -31,6 +33,8 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 };
 
 export default function CityInsights({ citySummaries }: CityInsightsProps) {
+  // The city totals already include VAT when Settings say so; the headings say so too
+  const vat = vatLabel(useSettings());
   // Sort by count for one view, by rent for another
   const topByCount = [...citySummaries].sort((a, b) => b.count - a.count).slice(0, 8);
   const topByRent = [...citySummaries].sort((a, b) => b.annualRent - a.annualRent).slice(0, 8);
@@ -68,7 +72,7 @@ export default function CityInsights({ citySummaries }: CityInsightsProps) {
       <section>
         <div className="flex items-center justify-between mb-4 px-1">
           <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">
-            Rent Contribution (Annual)
+            Rent Contribution (Annual{vat && `, ${vat}`})
           </h3>
         </div>
         <div className="h-[200px] w-full bg-black/20 rounded-xl p-4 border border-white/5">
@@ -97,7 +101,7 @@ export default function CityInsights({ citySummaries }: CityInsightsProps) {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-[#111] border border-[#222] p-4 rounded-xl">
-          <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Avg Rent/Store</div>
+          <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Avg Rent/Store {vat}</div>
           <div className="text-sm font-bold text-white font-mono">
             {CURRENCY}{" "}
             {citySummaries.length > 0

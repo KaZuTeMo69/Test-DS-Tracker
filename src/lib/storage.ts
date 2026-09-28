@@ -1,8 +1,10 @@
 import { Store } from "../types";
+import { Settings, toSettings } from "./settings";
 
 // What the app remembers between visits. It stays in this browser only.
 const SHEET_ID_KEY = "dst.sheetId";
 const MANUAL_STORES_KEY = "dst.manualStores";
+const SETTINGS_KEY = "dst.settings";
 
 export type ManualStore = Omit<Store, "id">;
 
@@ -81,3 +83,16 @@ export function saveManualStores(stores: Store[]) {
   // Ids are handed out again on every load, so they aren't saved
   write(MANUAL_STORES_KEY, stores.length ? JSON.stringify(stores.map(({ id: _id, ...store }) => store)) : null);
 }
+
+// ── Settings ──
+
+export function loadSettings(): Settings {
+  const saved = read(SETTINGS_KEY);
+  try {
+    return toSettings(saved ? JSON.parse(saved) : null);
+  } catch {
+    return toSettings(null);
+  }
+}
+
+export const saveSettings = (settings: Settings) => write(SETTINGS_KEY, JSON.stringify(settings));

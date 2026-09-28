@@ -4,10 +4,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { CitySummary, SidebarTab, Store } from "../types";
 import { COVERAGE_TAG, CURRENCY, RENEWAL_STYLE } from "../constants";
 import { Filters } from "../hooks/useFilters";
+import { useSettings } from "../hooks/useSettings";
 import { dataIssues, hasCoords } from "../lib/checks";
 import { Coverage, coverageFlags } from "../lib/coverage";
 import { fmtN, fmtR } from "../lib/format";
 import { storeRenewal } from "../lib/renewal";
+import { shownRent, vatLabel } from "../lib/settings";
 import { isLive } from "../lib/status";
 
 // The charts library is large and only the Growth tab uses it, so it loads when that tab first opens
@@ -100,7 +102,8 @@ const StoreListItem = memo(function StoreListItem({
   onSelect: (id: number) => void;
   key?: number;
 }) {
-  const renewal = storeRenewal(s);
+  const settings = useSettings();
+  const renewal = storeRenewal(s, settings);
   const issues = dataIssues(s);
   return (
     <div
@@ -167,7 +170,7 @@ const StoreListItem = memo(function StoreListItem({
       <div className="store-card-footer-metrics mt-3 flex gap-4 text-[11px] font-mono text-gray-400">
         <span>{s.size || "—"} m²</span>
         <span>
-          {CURRENCY} {fmtR(s.rentSARAnnual)}/yr
+          {CURRENCY} {fmtR(shownRent(s.rentSARAnnual, settings))}/yr {vatLabel(settings)}
         </span>
       </div>
     </div>
@@ -262,6 +265,7 @@ export default function Sidebar({
     coverageOnly,
     setCoverageOnly,
   } = filters;
+  const settings = useSettings();
   const [shown, setShown] = useState(LIST_BATCH);
   const showMore = useCallback(() => setShown((n) => n + LIST_BATCH), []);
   return (
@@ -381,7 +385,9 @@ export default function Sidebar({
                     ]}
                     value={renewalFilter}
                     onChange={setRenewalFilter}
-                    titles={{ renew: "Renewal due now or starting within 30 days, soonest first" }}
+                    titles={{
+                      renew: `Renewal due now or starting within ${settings.warningDays} days, soonest first`,
+                    }}
                   />
                   <div className="flex items-center gap-2">
                     <label className="w-16 shrink-0 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
@@ -480,7 +486,7 @@ export default function Sidebar({
                       <div className="space-y-2">
                         <div className="flex justify-between items-baseline text-[11px]">
                           <span className="city-card-label text-[10px] text-gray-500 uppercase font-bold">
-                            Monthly Rent
+                            Monthly Rent {vatLabel(settings)}
                           </span>
                           <span className="city-card-value text-[#fbbf24] font-bold">
                             {CURRENCY} {c.annualRent > 0 ? fmtN(c.annualRent / 12) : "—"}
@@ -488,7 +494,7 @@ export default function Sidebar({
                         </div>
                         <div className="flex justify-between items-baseline text-[11px]">
                           <span className="city-card-label text-[10px] text-gray-500 uppercase font-bold">
-                            Annual Rent
+                            Annual Rent {vatLabel(settings)}
                           </span>
                           <span className="city-card-value text-white font-bold">
                             {CURRENCY} {c.annualRent > 0 ? fmtN(c.annualRent) : "—"}

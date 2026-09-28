@@ -5,8 +5,10 @@ import { COVERAGE_TAG, CURRENCY, RENEWAL_STYLE } from "../constants";
 import { contractDateIssues, dataIssues, hasCoords } from "../lib/checks";
 import { Coverage, coverageFlags, ZoneHit } from "../lib/coverage";
 import { daysBetween, formatDate, formatDuration, parseDate, pluralDays, RenewalInfo, today } from "../lib/contract";
+import { useSettings } from "../hooks/useSettings";
 import { fmtN } from "../lib/format";
 import { storeRenewal } from "../lib/renewal";
+import { rentFactor, shownRent, vatLabel } from "../lib/settings";
 import { RentComparison, rentComparison } from "../lib/rentStats";
 import { isLive, isPaid, liveStatus, paidStatus } from "../lib/status";
 
@@ -215,8 +217,11 @@ function SummaryTab({
   coverage: Coverage;
   onSelectZone: (layerId: string, zoneId: string) => void;
 }) {
+  const settings = useSettings();
   const { tone, text } = situation(store, renewal);
   const cityName = store.city || "city";
+  const annualRent = shownRent(store.rentSARAnnual, settings);
+  const storeRate = shownRent(rent.storeRate, settings);
 
   let rateNote: string | undefined;
   let rateNoteClass = "text-gray-400";
@@ -262,15 +267,15 @@ function SummaryTab({
 
       <div className="grid grid-cols-2 gap-2">
         <Tile
-          label="Annual rent"
-          value={store.rentSARAnnual === null ? "—" : fmtN(store.rentSARAnnual)}
-          unit={store.rentSARAnnual === null ? undefined : CURRENCY}
+          label={`Annual rent ${vatLabel(settings)}`}
+          value={annualRent === null ? "—" : fmtN(annualRent)}
+          unit={annualRent === null ? undefined : CURRENCY}
         />
         <Tile label="Area" value={store.size || "—"} unit={store.size ? "m²" : undefined} />
         <Tile
-          label="Rent / m²"
-          value={rent.storeRate === null ? "—" : Math.round(rent.storeRate).toLocaleString()}
-          unit={rent.storeRate === null ? undefined : CURRENCY}
+          label={`Rent / m² ${vatLabel(settings)}`}
+          value={storeRate === null ? "—" : Math.round(storeRate).toLocaleString()}
+          unit={storeRate === null ? undefined : CURRENCY}
           note={rateNote}
           noteClass={rateNoteClass}
         />
@@ -388,11 +393,16 @@ function rentSentences(store: Store, rent: RentComparison): string {
 }
 
 function RentTab({ store, rent }: { store: Store; rent: RentComparison }) {
+  const settings = useSettings();
+  const vat = vatLabel(settings);
+  const factor = rentFactor(settings.includeVat);
   const bars = [
     { label: "This store", value: rent.storeRate, mine: true },
     ...(rent.cityRateCount >= 2 ? [{ label: `${store.city} avg`, value: rent.cityRate, mine: false }] : []),
     { label: "All stores", value: rent.portfolioRate, mine: false },
-  ].filter((b): b is { label: string; value: number; mine: boolean } => b.value !== null);
+  ]
+    .filter((b): b is { label: string; value: number; mine: boolean } => b.value !== null)
+    .map((b) => ({ ...b, value: b.value * factor }));
   const max = Math.max(...bars.map((b) => b.value), 1);
   const paid = isPaid(store);
 
@@ -400,17 +410,21 @@ function RentTab({ store, rent }: { store: Store; rent: RentComparison }) {
     <>
       <div className="flex justify-between items-end gap-3 bg-white/[0.03] border border-white/10 rounded-lg store-card-box">
         <div className="min-w-0">
-          <div className="detail-panel-row-label text-[9px]">Annual rent</div>
-          <div className="detail-panel-figure text-[25px] leading-tight text-[#f3e008]">{sar(store.rentSARAnnual)}</div>
+          <div className="detail-panel-row-label text-[9px]">Annual rent {vat}</div>
+          <div className="detail-panel-figure text-[25px] leading-tight text-[#f3e008]">
+            {sar(shownRent(store.rentSARAnnual, settings))}
+          </div>
         </div>
         <div className="text-right shrink-0">
           <div className="detail-panel-row-label text-[9px]">Monthly</div>
-          <div className="detail-panel-figure text-[15px] store-card-gap-top">{sar(store.rentSARMonthly)}</div>
+          <div className="detail-panel-figure text-[15px] store-card-gap-top">
+            {sar(shownRent(store.rentSARMonthly, settings))}
+          </div>
         </div>
       </div>
 
       <div>
-        <Row label="Rent per m²" value={sar(store.rentSARsqm)} />
+        <Row label={`Rent per m² ${vat}`} value={sar(shownRent(store.rentSARsqm, settings))} />
         <Row label="Area" value={store.size ? `${store.size} m²` : "—"} />
         <Row
           label="Payment"
@@ -419,7 +433,7 @@ function RentTab({ store, rent }: { store: Store; rent: RentComparison }) {
         />
       </div>
 
-      <SectionLabel>Rent per m² compared</SectionLabel>
+      <SectionLabel>Rent per m² compared {vat}</SectionLabel>
       {rent.storeRate === null ? (
         <div className="text-[11.5px] text-gray-400">Rent per m² needs both the annual rent and the area.</div>
       ) : (
@@ -458,6 +472,7 @@ const STATUS_LABEL: Record<RenewalInfo["status"], string> = {
 };
 
 function Timeline({ start, renewal }: { start: Date; renewal: RenewalInfo }) {
+  const { leadDays } = useSettings();
   const end = renewal.endDate!;
   const termDays = daysBetween(start, end) + 1;
   const at = (d: Date) => Math.min(100, Math.max(0, (daysBetween(start, d) / termDays) * 100));
@@ -502,7 +517,7 @@ function Timeline({ start, renewal }: { start: Date; renewal: RenewalInfo }) {
           <i className="w-2.5 h-2.5 rounded-sm bg-[#6b6b6b]" /> Time passed
         </span>
         <span className="flex items-center gap-1.5">
-          <i className="w-2.5 h-2.5 rounded-sm bg-[#fbbf24]/70" /> Renewal window (last 75 days)
+          <i className="w-2.5 h-2.5 rounded-sm bg-[#fbbf24]/70" /> Renewal window (last {pluralDays(leadDays)})
         </span>
       </div>
     </div>
@@ -567,7 +582,8 @@ function StoreCard({
   const [tab, setTab] = useState<Tab>("summary");
   // Removing takes a second click, so a stray tap can't delete a store
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const renewal = storeRenewal(store);
+  const settings = useSettings();
+  const renewal = storeRenewal(store, settings);
   const rent = rentComparison(store, stores);
   const renewalTag = renewal.status === "soon" || renewal.status === "now" || renewal.status === "expired";
   const flags = coverageFlags(coverage, store);

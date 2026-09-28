@@ -9,6 +9,7 @@ import { kmlFileName, layerToKml } from "./lib/kmlExport";
 import { zoneBounds, zoneColor } from "./lib/layers";
 import { useFilters } from "./hooks/useFilters";
 import { useLayers } from "./hooks/useLayers";
+import { SettingsContext, useSettingsState } from "./hooks/useSettings";
 import { isManualStore, useStores } from "./hooks/useStores";
 import { useToast } from "./hooks/useToast";
 import CoverageSummary from "./components/CoverageSummary";
@@ -21,6 +22,7 @@ import { ZoomRequest } from "./components/map/MapController";
 import { MapMode } from "./components/map/ZoneEditor";
 import { ZoneRef } from "./components/map/ZoneLayers";
 import MapLegend from "./components/MapLegend";
+import SettingsModal from "./components/SettingsModal";
 import Sidebar from "./components/Sidebar";
 import Toast from "./components/Toast";
 import UploadModal from "./components/UploadModal";
@@ -36,12 +38,14 @@ export default function App() {
   const { message: toastMsg, showToast } = useToast();
   const data = useStores(showToast);
   const { stores } = data;
+  const { settings, updateSettings } = useSettingsState();
   const mapLayers = useLayers(showToast);
   // Which zones each store is in, across all stores (live or not) and the layers shown on the map
   const coverage = useMemo(() => analyseCoverage(stores, mapLayers.layers), [stores, mapLayers.layers]);
   const { filters, filteredStores, citySummaries, allCities, unclear, showUnclearOnly, showCoverageOnly } = useFilters(
     stores,
     coverage,
+    settings,
   );
 
   // Sidebar, map and selection
@@ -56,6 +60,8 @@ export default function App() {
   // Drawing a new zone or editing a zone's shape; the cards are hidden meanwhile so the map is clear
   const [mapMode, setMapMode] = useState<MapMode | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const closeSettings = useCallback(() => setIsSettingsOpen(false), []);
 
   const selectedStore = useMemo(() => stores.find((s) => s.id === selectedId) || null, [stores, selectedId]);
   // The zone's card closes if its layer is hidden or deleted
@@ -216,7 +222,7 @@ export default function App() {
       : "Loading stores from Google Sheet…"
     : "No results found";
 
-  return (
+  const page = (
     <div className="app-container flex flex-col h-screen overflow-hidden bg-[#141414] text-[#EFEFEF] p-[10px] gap-[7px]">
       <UploadModal
         isOpen={isUploadModalOpen}
@@ -237,7 +243,10 @@ export default function App() {
         onUpload={openUploadModal}
         onSync={data.syncSheet}
         onResetSample={handleResetSample}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
+
+      <SettingsModal isOpen={isSettingsOpen} settings={settings} onChange={updateSettings} onClose={closeSettings} />
 
       <KPIBar
         stores={filteredStores}
@@ -383,4 +392,7 @@ export default function App() {
       <Toast message={toastMsg} />
     </div>
   );
+
+  // The settings reach the list rows, store card, totals and charts through this, without being passed down
+  return <SettingsContext.Provider value={settings}>{page}</SettingsContext.Provider>;
 }

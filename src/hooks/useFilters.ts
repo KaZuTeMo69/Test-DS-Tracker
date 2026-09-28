@@ -1,7 +1,9 @@
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { CitySummary, CoverageFilter, LiveFilter, PaidFilter, RenewalFilter, Store } from "../types";
+import { RenewalDays } from "../lib/contract";
 import { Coverage, matchesCoverage } from "../lib/coverage";
 import { storeRenewal } from "../lib/renewal";
+import { rentFactor, Settings } from "../lib/settings";
 import { hasUnclearStatus, isLive, isPaid, liveStatus, paidStatus } from "../lib/status";
 
 /**
@@ -16,6 +18,7 @@ function matchesFilters(
   renewal: RenewalFilter,
   unclearOnly: boolean,
   coverageOnly: { filter: CoverageFilter; coverage: Coverage } | null,
+  days: RenewalDays,
 ): boolean {
   const q = query.toLowerCase();
   const matchesQuery =
@@ -25,7 +28,7 @@ function matchesFilters(
     (s.dsCode && s.dsCode.toLowerCase().includes(q));
   const matchesLive = live === "all" || (live === "live" && isLive(s)) || (live === "notlive" && !isLive(s));
   const matchesPaid = paid === "all" || (paid === "paid" && isPaid(s)) || (paid === "notpaid" && !isPaid(s));
-  const status = renewal === "all" ? null : storeRenewal(s).status;
+  const status = renewal === "all" ? null : storeRenewal(s, days).status;
   const matchesRenewal =
     renewal === "all" ||
     (renewal === "renew" && (status === "now" || status === "soon")) ||
@@ -54,7 +57,7 @@ export interface Filters {
 }
 
 /** Filter state, and the stores and city totals that pass the filters. */
-export function useFilters(stores: Store[], coverage: Coverage) {
+export function useFilters(stores: Store[], coverage: Coverage, settings: Settings) {
   const [searchQuery, setSearchQuery] = useState("");
   const [liveFilter, setLiveFilter] = useState<LiveFilter>("all");
   const [paidFilter, setPaidFilter] = useState<PaidFilter>("all");
@@ -65,6 +68,8 @@ export function useFilters(stores: Store[], coverage: Coverage) {
 
   // The search box updates as you type; the list follows a moment later, so typing stays smooth with many stores
   const query = useDeferredValue(searchQuery);
+  const { leadDays, warningDays, includeVat } = settings;
+  const days = useMemo(() => ({ leadDays, warningDays }), [leadDays, warningDays]);
   // The coverage results change whenever a layer does (even a zone's name), so the lists only depend on them
   // while the coverage filter is on
   const coverageOnly = useMemo(
@@ -77,25 +82,27 @@ export function useFilters(stores: Store[], coverage: Coverage) {
       .filter((s) => {
         const matchesCity = !cityFilter || s.city === cityFilter;
         return (
-          matchesFilters(s, query, liveFilter, paidFilter, renewalFilter, unclearOnly, coverageOnly) && matchesCity
+          matchesFilters(s, query, liveFilter, paidFilter, renewalFilter, unclearOnly, coverageOnly, days) &&
+          matchesCity
         );
       })
       .sort((a, b) => {
         // With a renewal filter on, the contract ending soonest comes first; otherwise highest rent first
         if (renewalFilter !== "all") {
-          return (storeRenewal(a).daysToEnd ?? Infinity) - (storeRenewal(b).daysToEnd ?? Infinity);
+          return (storeRenewal(a, days).daysToEnd ?? Infinity) - (storeRenewal(b, days).daysToEnd ?? Infinity);
         }
         const ra = a.rentSARAnnual;
         const rb = b.rentSARAnnual;
         return (rb || 0) - (ra || 0);
       });
-  }, [stores, query, liveFilter, paidFilter, renewalFilter, cityFilter, unclearOnly, coverageOnly]);
+  }, [stores, query, liveFilter, paidFilter, renewalFilter, cityFilter, unclearOnly, coverageOnly, days]);
 
   const citySummaries = useMemo(() => {
     const map = new Map<string, CitySummary>();
+    const factor = rentFactor(includeVat);
 
     stores
-      .filter((s) => matchesFilters(s, query, liveFilter, paidFilter, renewalFilter, unclearOnly, coverageOnly))
+      .filter((s) => matchesFilters(s, query, liveFilter, paidFilter, renewalFilter, unclearOnly, coverageOnly, days))
       .forEach((s) => {
         const city = s.city || "Unknown";
         if (!map.has(city)) {
@@ -105,11 +112,11 @@ export function useFilters(stores: Store[], coverage: Coverage) {
         c.count++;
         if (isLive(s)) c.live++;
         if (isPaid(s)) c.paid++;
-        c.annualRent += s.rentSARAnnual || 0;
+        c.annualRent += (s.rentSARAnnual || 0) * factor;
         c.area += s.size || 0;
       });
     return Array.from(map.values()).sort((a, b) => b.annualRent - a.annualRent);
-  }, [stores, query, liveFilter, paidFilter, renewalFilter, unclearOnly, coverageOnly]);
+  }, [stores, query, liveFilter, paidFilter, renewalFilter, unclearOnly, coverageOnly, days, includeVat]);
 
   const allCities = useMemo(() => Array.from(new Set(stores.map((s) => s.city).filter(Boolean))).sort(), [stores]);
 
