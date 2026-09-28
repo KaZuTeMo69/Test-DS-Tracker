@@ -60,13 +60,6 @@
   --token-color-text-highlight: #f3e008;
 
   /* Font Sizing Tokens */
-  --token-font-size-[10px]: 10px;
-  --token-font-size-[12px]: 12px;
-  --token-font-size-[14px]: 14px;
-  --token-font-size-[15px]: 15px;
-  --token-font-size-[16px]: 16px;
-  --token-font-size-[18px]: 18px;
-  --token-font-size-[22px]: 22px;
 
   /* ==========================================================================
      DESIGN TOKENS - LAYER 6: STRUCTURE, CONTAINER WIDTHS & CORNERS
@@ -230,7 +223,6 @@ body {
 .logo-text {
   font-family: var(--token-font-family-display);
   font-weight: 800;
-  font-size: var(--token-font-size-[16px]);
   color: var(--token-color-noon-yellow);
   letter-spacing: -0.3px;
 }
@@ -294,7 +286,6 @@ body {
 }
 
 .kpi-label {
-  font-size: var(--token-font-size-[14px]);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.09em;
@@ -304,7 +295,6 @@ body {
 
 .kpi-value {
   font-family: var(--token-font-family-display);
-  font-size: var(--token-font-size-[22px]);
   font-weight: 800;
   color: var(--token-color-text-primary);
   letter-spacing: -1px;
@@ -351,7 +341,6 @@ body {
   border-radius: var(--token-border-radius-sub) !important;
   color: var(--token-color-text-primary) !important;
   padding: var(--token-spacing-sm) var(--token-spacing-md) var(--token-spacing-sm) 28px !important;
-  font-size: var(--token-font-size-[11px]) !important;
   font-weight: 600 !important;
   outline: none !important;
   transition: all 0.15s ease-in-out !important;
@@ -399,7 +388,6 @@ body {
   border-radius: var(--token-border-radius-sub) !important;
   color: var(--token-color-text-primary) !important;
   padding: var(--token-spacing-sm) 28px var(--token-spacing-sm) 10px !important;
-  font-size: var(--token-font-size-[11px]) !important;
   font-weight: 700 !important;
   font-family: var(--token-font-family-sans) !important;
   text-transform: uppercase !important;
@@ -451,7 +439,6 @@ body {
 }
 
 .store-card-name {
-  font-size: var(--token-font-size-[14px]);
   font-weight: 600;
   color: var(--token-color-text-primary);
   line-height: 1.35;
@@ -459,14 +446,12 @@ body {
 
 .store-card-subtext {
   font-family: var(--token-font-family-mono);
-  font-size: var(--token-font-size-[12px]);
   color: var(--token-color-text-muted);
   margin-top: 2px;
 }
 
 .store-card-footer-metrics {
   font-family: var(--token-font-family-mono);
-  font-size: var(--token-font-size-[12px]);
   color: var(--token-color-text-secondary);
   display: flex;
   gap: var(--token-spacing-md);
@@ -483,7 +468,6 @@ body {
   border: 1px solid var(--token-color-border-muted);
   color: var(--token-color-text-secondary);
   padding: 6px var(--token-spacing-none) !important;
-  font-size: var(--token-font-size-[11px]) !important;
   font-weight: 700 !important;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -525,7 +509,6 @@ body {
   border: 1px solid transparent !important;
   color: var(--token-color-text-secondary) !important;
   padding: 6px var(--token-spacing-none) !important;
-  font-size: var(--token-font-size-[11px]) !important;
   font-weight: 700 !important;
   border-radius: var(--token-border-radius-sub) !important;
   cursor: pointer !important;
@@ -558,28 +541,24 @@ body {
 .city-card-title {
   font-family: var(--token-font-family-display) !important;
   font-weight: 800 !important;
-  font-size: var(--token-font-[15px]) !important;
   letter-spacing: -0.01em !important;
 }
 
 .city-card-count {
   font-family: var(--token-font-family-display) !important;
   font-weight: 800 !important;
-  font-size: var(--token-font-size-[10px]) !important;
   letter-spacing: 0.04em !important;
 }
 
 .city-card-label {
   font-family: var(--token-font-family-display) !important;
   font-weight: 700 !important;
-  font-size: var(--token-font-size-[9px]) !important;
   letter-spacing: 0.05em !important;
 }
 
 .city-card-value {
   font-family: var(--token-font-family-display) !important;
   font-weight: 800 !important;
-  font-size: var(--token-font-size-[12px]) !important;
   letter-spacing: 0.01em !important;
 }
 
@@ -590,7 +569,6 @@ body {
 .detail-panel-title {
   font-family: var(--token-font-family-display) !important;
   font-weight: 800 !important;
-  font-size: var(--token-font-size-[18px]) !important;
   color: #ffffff !important;
   letter-spacing: -0.01em !important;
 }
@@ -598,7 +576,6 @@ body {
 .detail-panel-subtext {
   font-family: var(--token-font-family-mono) !important;
   font-weight: 500 !important;
-  font-size: var(--token-font-size-[11px]) !important;
   letter-spacing: 0.05em !important;
   color: var(--token-color-text-secondary) !important;
   text-transform: uppercase !important;
@@ -607,7 +584,6 @@ body {
 .detail-panel-row-label {
   font-family: var(--token-font-family-display) !important;
   font-weight: 700 !important;
-  font-size: var(--token-font-size-[10px]) !important;
   letter-spacing: 0.08em !important;
   color: var(--token-color-text-secondary) !important;
   text-transform: uppercase !important;
@@ -616,7 +592,6 @@ body {
 .detail-panel-row-value {
   font-family: var(--token-font-family-display) !important;
   font-weight: 600 !important;
-  font-size: var(--token-font-size-[12px]) !important;
   color: #ffffff !important;
   letter-spacing: 0.01em !important;
 }
@@ -624,7 +599,6 @@ body {
 .detail-panel-row-value-highlight {
   font-family: var(--token-font-family-display) !important;
   font-weight: 600 !important;
-  font-size: var(--token-font-size-[12px]) !important;
   color: var(--token-color-noon-yellow) !important;
   letter-spacing: 0.02em !important;
 }
@@ -632,21 +606,18 @@ body {
 .detail-panel-tag-live {
   font-family: var(--token-font-family-display) !important;
   font-weight: 600 !important;
-  font-size: var(--token-font-size-[10px]) !important;
   letter-spacing: 0.06em !important;
 }
 
 .detail-panel-tag-paid {
   font-family: var(--token-font-family-display) !important;
   font-weight: 600 !important;
-  font-size: var(--token-font-size-[10px]) !important;
   letter-spacing: 0.06em !important;
 }
 
 .detail-panel-maps-btn {
   font-family: var(--token-font-family-display) !important;
   font-weight: 800 !important;
-  font-size: var(--token-font-size-[12px]) !important;
   letter-spacing: 0.04em !important;
   text-transform: uppercase !important;
 }
@@ -709,7 +680,6 @@ body {
 .map-popup-title {
   font-family: var(--token-font-family-display) !important;
   font-weight: 800 !important;
-  font-size: var(--token-font-size-[15px]) !important;
   color: #ffffff !important;
   letter-spacing: 0.05em !important;
   text-transform: capitalize !important;
@@ -718,7 +688,6 @@ body {
 .map-popup-subtext {
   font-family: var(--token-font-family-mono) !important;
   font-weight: 400 !important;
-  font-size: var(--token-font-size-[10px]) !important;
   letter-spacing: 0.1em !important;
   color: var(--token-color-text-secondary) !important;
   text-transform: uppercase !important;
@@ -727,7 +696,6 @@ body {
 .map-popup-tag-live {
   font-family: var(--token-font-family-display) !important;
   font-weight: 600 !important;
-  font-size: var(--token-font-size-[9px]) !important;
   letter-spacing: 0.1em !important;
   text-transform: uppercase !important;
   color: var(--token-color-live) !important;
@@ -736,7 +704,6 @@ body {
 .map-popup-tag-paid {
   font-family: var(--token-font-family-display) !important;
   font-weight: 600 !important;
-  font-size: var(--token-font-size-[9px]) !important;
   letter-spacing: 0.1em !important;
   text-transform: uppercase !important;
   color: var(--token-color-noon-yellow) !important;
@@ -745,7 +712,6 @@ body {
 .map-popup-btn {
   font-family: var(--token-font-family-display) !important;
   font-weight: 600 !important;
-  font-size: var(--token-font-size-[11px]) !important;
   letter-spacing: 0.1em !important;
   text-transform: uppercase !important;
 }
