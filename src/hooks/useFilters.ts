@@ -1,9 +1,13 @@
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
-import { CitySummary, LiveFilter, PaidFilter, RenewalFilter, Store } from "../types";
+import { CitySummary, CoverageFilter, LiveFilter, PaidFilter, RenewalFilter, Store } from "../types";
+import { Coverage, matchesCoverage } from "../lib/coverage";
 import { storeRenewal } from "../lib/renewal";
 import { hasUnclearStatus, isLive, isPaid, liveStatus, paidStatus } from "../lib/status";
 
-/** The search box, Live / Paid / Renewal filters and "unclear status only" (the city filter is applied separately). */
+/**
+ * The search box, Live / Paid / Renewal filters, "unclear status only" and "flagged by the coverage checks only"
+ * (the city filter is applied separately).
+ */
 function matchesFilters(
   s: Store,
   query: string,
@@ -11,6 +15,7 @@ function matchesFilters(
   paid: PaidFilter,
   renewal: RenewalFilter,
   unclearOnly: boolean,
+  coverageOnly: { filter: CoverageFilter; coverage: Coverage } | null,
 ): boolean {
   const q = query.toLowerCase();
   const matchesQuery =
@@ -26,7 +31,8 @@ function matchesFilters(
     (renewal === "renew" && (status === "now" || status === "soon")) ||
     (renewal === "expired" && status === "expired");
   const matchesUnclear = !unclearOnly || hasUnclearStatus(s);
-  return Boolean(matchesQuery && matchesLive && matchesPaid && matchesRenewal && matchesUnclear);
+  const matchesZones = !coverageOnly || matchesCoverage(coverageOnly.coverage, s, coverageOnly.filter);
+  return Boolean(matchesQuery && matchesLive && matchesPaid && matchesRenewal && matchesUnclear && matchesZones);
 }
 
 /** The sidebar filters, with setters, as one object for the components that show them. */
@@ -43,25 +49,36 @@ export interface Filters {
   setCityFilter: (c: string) => void;
   unclearOnly: boolean;
   setUnclearOnly: (on: boolean) => void;
+  coverageOnly: CoverageFilter | null;
+  setCoverageOnly: (filter: CoverageFilter | null) => void;
 }
 
 /** Filter state, and the stores and city totals that pass the filters. */
-export function useFilters(stores: Store[]) {
+export function useFilters(stores: Store[], coverage: Coverage) {
   const [searchQuery, setSearchQuery] = useState("");
   const [liveFilter, setLiveFilter] = useState<LiveFilter>("all");
   const [paidFilter, setPaidFilter] = useState<PaidFilter>("all");
   const [renewalFilter, setRenewalFilter] = useState<RenewalFilter>("all");
   const [cityFilter, setCityFilter] = useState("");
   const [unclearOnly, setUnclearOnly] = useState(false);
+  const [coverageFilter, setCoverageOnly] = useState<CoverageFilter | null>(null);
 
   // The search box updates as you type; the list follows a moment later, so typing stays smooth with many stores
   const query = useDeferredValue(searchQuery);
+  // The coverage results change whenever a layer does (even a zone's name), so the lists only depend on them
+  // while the coverage filter is on
+  const coverageOnly = useMemo(
+    () => (coverageFilter ? { filter: coverageFilter, coverage } : null),
+    [coverageFilter, coverage],
+  );
 
   const filteredStores = useMemo(() => {
     return stores
       .filter((s) => {
         const matchesCity = !cityFilter || s.city === cityFilter;
-        return matchesFilters(s, query, liveFilter, paidFilter, renewalFilter, unclearOnly) && matchesCity;
+        return (
+          matchesFilters(s, query, liveFilter, paidFilter, renewalFilter, unclearOnly, coverageOnly) && matchesCity
+        );
       })
       .sort((a, b) => {
         // With a renewal filter on, the contract ending soonest comes first; otherwise highest rent first
@@ -72,13 +89,13 @@ export function useFilters(stores: Store[]) {
         const rb = b.rentSARAnnual;
         return (rb || 0) - (ra || 0);
       });
-  }, [stores, query, liveFilter, paidFilter, renewalFilter, cityFilter, unclearOnly]);
+  }, [stores, query, liveFilter, paidFilter, renewalFilter, cityFilter, unclearOnly, coverageOnly]);
 
   const citySummaries = useMemo(() => {
     const map = new Map<string, CitySummary>();
 
     stores
-      .filter((s) => matchesFilters(s, query, liveFilter, paidFilter, renewalFilter, unclearOnly))
+      .filter((s) => matchesFilters(s, query, liveFilter, paidFilter, renewalFilter, unclearOnly, coverageOnly))
       .forEach((s) => {
         const city = s.city || "Unknown";
         if (!map.has(city)) {
@@ -92,7 +109,7 @@ export function useFilters(stores: Store[]) {
         c.area += s.size || 0;
       });
     return Array.from(map.values()).sort((a, b) => b.annualRent - a.annualRent);
-  }, [stores, query, liveFilter, paidFilter, renewalFilter, unclearOnly]);
+  }, [stores, query, liveFilter, paidFilter, renewalFilter, unclearOnly, coverageOnly]);
 
   const allCities = useMemo(() => Array.from(new Set(stores.map((s) => s.city).filter(Boolean))).sort(), [stores]);
 
@@ -111,16 +128,28 @@ export function useFilters(stores: Store[]) {
     return { total, live, paid };
   }, [stores]);
 
-  // Shows only the stores with an unclear status. The other filters are cleared so the list shows exactly
-  // the stores the warning counted
-  const showUnclearOnly = useCallback(() => {
+  // Shows only the stores with an unclear status, or only those the coverage checks flag. The other filters are
+  // cleared so the list shows exactly the stores the warning counted
+  const clearFilters = useCallback(() => {
     setSearchQuery("");
     setLiveFilter("all");
     setPaidFilter("all");
     setRenewalFilter("all");
     setCityFilter("");
-    setUnclearOnly(true);
+    setUnclearOnly(false);
+    setCoverageOnly(null);
   }, []);
+  const showUnclearOnly = useCallback(() => {
+    clearFilters();
+    setUnclearOnly(true);
+  }, [clearFilters]);
+  const showCoverageOnly = useCallback(
+    (filter: CoverageFilter) => {
+      clearFilters();
+      setCoverageOnly(filter);
+    },
+    [clearFilters],
+  );
 
   const filters: Filters = useMemo(
     () => ({
@@ -136,9 +165,11 @@ export function useFilters(stores: Store[]) {
       setCityFilter,
       unclearOnly,
       setUnclearOnly,
+      coverageOnly: coverageFilter,
+      setCoverageOnly,
     }),
-    [searchQuery, liveFilter, paidFilter, renewalFilter, cityFilter, unclearOnly],
+    [searchQuery, liveFilter, paidFilter, renewalFilter, cityFilter, unclearOnly, coverageFilter],
   );
 
-  return { filters, filteredStores, citySummaries, allCities, unclear, showUnclearOnly };
+  return { filters, filteredStores, citySummaries, allCities, unclear, showUnclearOnly, showCoverageOnly };
 }

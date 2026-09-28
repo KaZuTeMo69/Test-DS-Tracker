@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Filter } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { LayerKind, PolygonRings, SidebarTab, ZoneLayer } from "./types";
+import { CoverageFilter, LayerKind, PolygonRings, SidebarTab, ZoneLayer } from "./types";
 import { hasCoords } from "./lib/checks";
+import { analyseCoverage } from "./lib/coverage";
 import { download } from "./lib/download";
 import { kmlFileName, layerToKml } from "./lib/kmlExport";
 import { zoneBounds, zoneColor } from "./lib/layers";
@@ -10,6 +11,7 @@ import { useFilters } from "./hooks/useFilters";
 import { useLayers } from "./hooks/useLayers";
 import { isManualStore, useStores } from "./hooks/useStores";
 import { useToast } from "./hooks/useToast";
+import CoverageSummary from "./components/CoverageSummary";
 import DetailPanel from "./components/DetailPanel";
 import Header from "./components/Header";
 import KPIBar from "./components/KPIBar";
@@ -34,8 +36,13 @@ export default function App() {
   const { message: toastMsg, showToast } = useToast();
   const data = useStores(showToast);
   const { stores } = data;
-  const { filters, filteredStores, citySummaries, allCities, unclear, showUnclearOnly } = useFilters(stores);
   const mapLayers = useLayers(showToast);
+  // Which zones each store is in, across all stores (live or not) and the layers shown on the map
+  const coverage = useMemo(() => analyseCoverage(stores, mapLayers.layers), [stores, mapLayers.layers]);
+  const { filters, filteredStores, citySummaries, allCities, unclear, showUnclearOnly, showCoverageOnly } = useFilters(
+    stores,
+    coverage,
+  );
 
   // Sidebar, map and selection
   const [currentTab, setCurrentTab] = useState<SidebarTab>("stores");
@@ -71,6 +78,7 @@ export default function App() {
   const handleResetSample = () => {
     data.resetSample();
     filters.setUnclearOnly(false);
+    filters.setCoverageOnly(null);
   };
 
   const handleRemoveManualStore = (id: number) => {
@@ -80,6 +88,13 @@ export default function App() {
 
   const showUnclearStores = () => {
     showUnclearOnly();
+    setFocusedCity(null);
+    setCurrentTab("stores");
+    setIsSidebarOpen(true);
+  };
+
+  const showCoverageStores = (filter: CoverageFilter) => {
+    showCoverageOnly(filter);
     setFocusedCity(null);
     setCurrentTab("stores");
     setIsSidebarOpen(true);
@@ -121,6 +136,12 @@ export default function App() {
     if (!mapLayers.layers.find((l) => l.id === layerId)?.visible) mapLayers.updateLayer(layerId, { visible: true });
     if (window.innerWidth < NARROW_SCREEN) setIsSidebarOpen(false);
   };
+  // The same, as a callback that never changes, for the memoised store card
+  const selectZoneRef = useRef(selectZoneFromList);
+  useEffect(() => {
+    selectZoneRef.current = selectZoneFromList;
+  });
+  const openZone = useCallback((layerId: string, zoneId: string) => selectZoneRef.current(layerId, zoneId), []);
 
   const importLayers = async (files: File[]) => {
     const added = await mapLayers.importFiles(files);
@@ -245,6 +266,17 @@ export default function App() {
           filters={filters}
           allCities={allCities}
           emptyMessage={listEmptyMessage}
+          coverage={coverage}
+          insightsExtra={
+            <CoverageSummary
+              coverage={coverage}
+              storeCount={stores.length}
+              zoneCount={zoneCount}
+              onShowStores={showCoverageStores}
+              onSelectZone={selectZoneFromList}
+              onOpenLayers={openLayers}
+            />
+          }
           layersSummary={layersSummary}
           layersPanel={
             <LayersPanel
@@ -318,6 +350,8 @@ export default function App() {
           <DetailPanel
             store={mapMode ? null : selectedStore}
             stores={stores}
+            coverage={coverage}
+            onSelectZone={openZone}
             onClose={closeStore}
             onRemove={
               selectedStore && isManualStore(selectedStore)
@@ -331,6 +365,8 @@ export default function App() {
               key={zoneSelection.zone.id}
               layer={zoneSelection.layer}
               zone={zoneSelection.zone}
+              storesInside={coverage.storesIn.get(zoneSelection.zone.id) ?? []}
+              onSelectStore={selectStore}
               onChange={(patch, delay) =>
                 mapLayers.updateZone(zoneSelection.layer.id, zoneSelection.zone.id, patch, delay)
               }

@@ -1052,3 +1052,53 @@ body {
 .leaflet-container.zone-editing {
   cursor: crosshair;
 }
+
+/* Coverage: the zones in the store card, the stores in the zone card, and the Growth tab section */
+.store-card-zone {
+  padding: 5px 6px;
+  cursor: pointer;
+}
+
+.store-card-zone:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.zone-store {
+  padding: 5px 6px;
+}
+
+.coverage-summary {
+  margin-bottom: 28px;
+}
+
+.coverage-heading {
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.coverage-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.coverage-link-ok {
+  cursor: default;
+  font-weight: 700;
+  padding: 4px 2px;
+}
+
+.coverage-open-layers {
+  margin-top: 8px;
+}
+
+.coverage-note {
+  margin-top: 4px;
+}

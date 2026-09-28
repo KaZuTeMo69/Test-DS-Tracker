@@ -26,6 +26,8 @@ export interface Store {
 export type LiveFilter = "all" | "live" | "notlive";
 export type PaidFilter = "all" | "paid" | "notpaid";
 export type RenewalFilter = "all" | "renew" | "expired";
+// Only the stores the coverage checks flag: outside every coverage zone, or inside white space
+export type CoverageFilter = "outside" | "whitespace";
 
 export type SidebarTab = "stores" | "cities" | "insights" | "layers";
 

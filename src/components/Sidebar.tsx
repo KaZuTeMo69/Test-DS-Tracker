@@ -2,9 +2,10 @@ import { lazy, memo, ReactNode, Suspense, useCallback, useEffect, useRef, useSta
 import { ChevronLeft, FileDown, FileUp, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { CitySummary, SidebarTab, Store } from "../types";
-import { CURRENCY, RENEWAL_STYLE } from "../constants";
+import { COVERAGE_TAG, CURRENCY, RENEWAL_STYLE } from "../constants";
 import { Filters } from "../hooks/useFilters";
 import { dataIssues, hasCoords } from "../lib/checks";
+import { Coverage, coverageFlags } from "../lib/coverage";
 import { fmtN, fmtR } from "../lib/format";
 import { storeRenewal } from "../lib/renewal";
 import { isLive } from "../lib/status";
@@ -27,6 +28,8 @@ interface SidebarProps {
   filters: Filters;
   allCities: string[];
   emptyMessage: string; // shown when the list is empty
+  coverage: Coverage; // for the coverage tags in the list
+  insightsExtra: ReactNode; // shown above the charts in the Growth tab
   layersPanel: ReactNode; // the Layers tab
   layersSummary: string; // its footer
 }
@@ -86,10 +89,14 @@ const LIST_BATCH = 100;
 const StoreListItem = memo(function StoreListItem({
   store: s,
   selected,
+  outside,
+  inWhiteSpace,
   onSelect,
 }: {
   store: Store;
   selected: boolean;
+  outside: boolean; // not in any coverage zone
+  inWhiteSpace: boolean;
   onSelect: (id: number) => void;
   key?: number;
 }) {
@@ -129,6 +136,22 @@ const StoreListItem = memo(function StoreListItem({
               title={s.locationIssue || "No coordinates"}
             >
               NO LOCATION
+            </span>
+          )}
+          {outside && (
+            <span
+              className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${COVERAGE_TAG.outside.className}`}
+              title="Not in any coverage zone on the map"
+            >
+              {COVERAGE_TAG.outside.short}
+            </span>
+          )}
+          {inWhiteSpace && (
+            <span
+              className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${COVERAGE_TAG.whitespace.className}`}
+              title="Inside a white-space zone on the map"
+            >
+              {COVERAGE_TAG.whitespace.short}
             </span>
           )}
           {hasCoords(s) && issues.length > 0 && (
@@ -218,6 +241,8 @@ export default function Sidebar({
   filters,
   allCities,
   emptyMessage,
+  coverage,
+  insightsExtra,
   layersPanel,
   layersSummary,
 }: SidebarProps) {
@@ -234,6 +259,8 @@ export default function Sidebar({
     setCityFilter,
     unclearOnly,
     setUnclearOnly,
+    coverageOnly,
+    setCoverageOnly,
   } = filters;
   const [shown, setShown] = useState(LIST_BATCH);
   const showMore = useCallback(() => setShown((n) => n + LIST_BATCH), []);
@@ -312,6 +339,18 @@ export default function Sidebar({
                     <X size={13} />
                   </button>
                 )}
+                {coverageOnly && (
+                  <button
+                    onClick={() => setCoverageOnly(null)}
+                    className={`flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg border text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-colors ${COVERAGE_TAG[coverageOnly].className}`}
+                    title="Show all stores again"
+                  >
+                    <span>
+                      {coverageOnly === "outside" ? "Only stores outside coverage zones" : "Only stores in white space"}
+                    </span>
+                    <X size={13} />
+                  </button>
+                )}
                 <div className="space-y-2">
                   <FilterRow
                     label="Live"
@@ -385,9 +424,19 @@ export default function Sidebar({
             {currentTab === "stores" ? (
               stores.length > 0 ? (
                 <>
-                  {stores.slice(0, shown).map((s) => (
-                    <StoreListItem key={s.id} store={s} selected={selectedId === s.id} onSelect={onSelectStore} />
-                  ))}
+                  {stores.slice(0, shown).map((s) => {
+                    const flags = coverageFlags(coverage, s);
+                    return (
+                      <StoreListItem
+                        key={s.id}
+                        store={s}
+                        selected={selectedId === s.id}
+                        outside={flags.outside}
+                        inWhiteSpace={flags.inWhiteSpace}
+                        onSelect={onSelectStore}
+                      />
+                    );
+                  })}
                   {stores.length > shown && <LoadMore key={shown} onVisible={showMore} />}
                 </>
               ) : (
@@ -465,9 +514,12 @@ export default function Sidebar({
             ) : currentTab === "layers" ? (
               layersPanel
             ) : (
-              <Suspense fallback={<div className="text-center py-10 text-[11px] text-gray-500">Loading charts…</div>}>
-                <CityInsights citySummaries={citySummaries} />
-              </Suspense>
+              <>
+                {insightsExtra}
+                <Suspense fallback={<div className="text-center py-10 text-[11px] text-gray-500">Loading charts…</div>}>
+                  <CityInsights citySummaries={citySummaries} />
+                </Suspense>
+              </>
             )}
           </div>
 

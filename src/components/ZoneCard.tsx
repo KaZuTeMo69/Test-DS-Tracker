@@ -1,11 +1,14 @@
 import { PenLine, Trash2, X } from "lucide-react";
-import { Zone, ZoneLayer } from "../types";
+import { Store, Zone, ZoneLayer } from "../types";
 import { LAYER_KIND_LABEL, ZONE_COLORS, zoneAreaKm2, zoneColor } from "../lib/layers";
+import { isLive } from "../lib/status";
 import ConfirmButton from "./ConfirmButton";
 
 interface ZoneCardProps {
   layer: ZoneLayer;
   zone: Zone;
+  storesInside: Store[]; // stores with a location inside the zone, live or not
+  onSelectStore: (id: number) => void;
   // delay: typing saves after a short pause, other changes save at once
   onChange: (patch: Partial<Omit<Zone, "id">>, delay?: number) => void;
   onClose: () => void;
@@ -20,6 +23,22 @@ const KIND_CHIP: Record<ZoneLayer["kind"], string> = {
   whitespace: "bg-white/10 text-gray-200 border-white/25",
 };
 
+// Long lists stop here; a zone this busy is better explored on the map
+const STORE_LIST_LIMIT = 50;
+
+const storeWord = (n: number) => `${n} ${n === 1 ? "STORE" : "STORES"}`;
+
+// The chip that says how many stores are inside, and whether that needs a look
+function storesChip(kind: ZoneLayer["kind"], n: number): { text: string; className: string } | null {
+  if (kind === "whitespace")
+    return n
+      ? { text: `${storeWord(n)} INSIDE`, className: "bg-[#fbbf24]/10 text-[#fbbf24] border-[#fbbf24]/30" }
+      : null;
+  if (n === 0) return { text: "UNSERVED ZONE", className: "bg-red-500/10 text-red-400 border-red-500/30" };
+  if (n === 1) return { text: storeWord(1), className: "bg-green-500/10 text-green-400 border-green-500/30" };
+  return { text: `OVERLAP · ${storeWord(n)}`, className: "bg-[#fbbf24]/10 text-[#fbbf24] border-[#fbbf24]/30" };
+}
+
 const formatArea = (km2: number) => (km2 < 10 ? `${km2.toFixed(2)} km²` : `${Math.round(km2).toLocaleString()} km²`);
 
 function shapeText(zone: Zone): string {
@@ -32,12 +51,15 @@ function shapeText(zone: Zone): string {
 export default function ZoneCard({
   layer,
   zone,
+  storesInside,
+  onSelectStore,
   onChange,
   onClose,
   onEditShape,
   onDelete,
 }: ZoneCardProps & { key?: string }) {
   const color = zoneColor(zone, layer);
+  const chip = storesChip(layer.kind, storesInside.length);
 
   return (
     <div
@@ -70,6 +92,11 @@ export default function ZoneCard({
           <span className="text-[10px] font-bold store-card-chip rounded-full border border-white/15 text-gray-300">
             {formatArea(zoneAreaKm2(zone))}
           </span>
+          {chip && (
+            <span className={`text-[10px] font-bold store-card-chip rounded-full border ${chip.className}`}>
+              {chip.text}
+            </span>
+          )}
         </div>
       </div>
 
@@ -94,6 +121,53 @@ export default function ZoneCard({
             onChange={(e) => onChange({ description: e.target.value }, TYPING_DELAY)}
           />
         </label>
+
+        <div className="flex flex-col gap-1">
+          <span className="detail-panel-row-label text-[9.5px]">Stores inside ({storesInside.length})</span>
+          {storesInside.length === 0 ? (
+            <div className="text-[11.5px] text-gray-400">
+              {layer.kind === "coverage" ? "No store is inside this zone." : "No stores inside."}
+            </div>
+          ) : (
+            <>
+              {layer.kind === "whitespace" && (
+                <div className="text-[11.5px] text-[#fbbf24] leading-snug">
+                  {storesInside.length === 1 ? "This store is" : "These stores are"} inside an area marked as white
+                  space.
+                </div>
+              )}
+              {layer.kind === "coverage" && storesInside.length >= 2 && (
+                <div className="text-[11.5px] text-[#fbbf24] leading-snug">
+                  {storesInside.length} stores serve this zone.
+                </div>
+              )}
+              <div className="flex flex-col">
+                {storesInside.slice(0, STORE_LIST_LIMIT).map((store) => (
+                  <button
+                    key={store.id}
+                    onClick={() => onSelectStore(store.id)}
+                    className="layer-zone zone-store flex items-center gap-2 text-left rounded-md"
+                    title="Open this store"
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full shrink-0 ${isLive(store) ? "bg-green-500" : "bg-red-500"}`}
+                      title={isLive(store) ? "Live" : "Not live"}
+                    />
+                    <span className="text-[12px] font-bold truncate">{store.name}</span>
+                    <span className="text-[10.5px] text-gray-400 font-mono ml-auto shrink-0">
+                      {store.dsCode || "No DS code"}
+                    </span>
+                  </button>
+                ))}
+                {storesInside.length > STORE_LIST_LIMIT && (
+                  <div className="text-[11px] text-gray-400 zone-store">
+                    and {storesInside.length - STORE_LIST_LIMIT} more
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="flex flex-col gap-1.5">
           <span className="detail-panel-row-label text-[9.5px]">Colour</span>
