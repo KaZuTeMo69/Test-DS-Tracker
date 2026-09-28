@@ -1,34 +1,35 @@
 export interface Store {
+  // Identity
   id: number;
-  dsCode: string;
-  whCode: string;
   name: string;
-  country: string;
+  dsCode: string;
+  whCode: string; // Holds the contract duration
   city: string;
-  rentUSDAnnual: number;
-  rentUSDMonthly: number;
-  size: number;
-  lat: number | null;
-  lng: number | null;
-  rentAEDAnnual: number;
-  rentAEDMonthly: number;
-  rentAEDsqm: number;
+  country: string;
+  // Contract
   startDate: string;
   endDate: string;
-  rentSARAnnual: number;
-  rentSARMonthly: number;
-  rentSARsqm: number;
-  // status fields (optional/fallback)
-  live?: string; 
+  live?: string;
   paid?: string;
+  // Area and rent (SAR); null when the source data leaves them blank
+  size: number | null;
+  rentSARAnnual: number | null;
+  rentSARMonthly: number | null;
+  rentSARsqm: number | null;
+  // Location; locationIssue says why the store has no pin (missing or implausible coordinates)
+  lat: number | null;
+  lng: number | null;
+  locationIssue?: string;
 }
+
+// Renewal filter in the sidebar: "renew" = renewal due now or within the warning window
+export type RenewalFilter = "all" | "renew" | "expired";
 
 export interface CitySummary {
   city: string;
-  country: string;
   count: number;
   live: number;
   paid: number;
-  annualRent: number; // In selected currency
+  annualRent: number; // SAR
   area: number;
 }

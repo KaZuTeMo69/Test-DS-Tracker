@@ -1,8 +1,0 @@
-{
-  "name": "Dark Store Operations Tracker",
-  "description": "Operations Dashboard to track dark stores, contracts, and geographic distribution.",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}
