@@ -1,16 +1,15 @@
 import { useRef, useState } from "react";
 import { MapContainer, TileLayer } from "react-leaflet";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Store } from "../types";
+import { Store, ZoneLayer } from "../types";
 import { LatLng } from "../lib/coords";
 import AddStoreModal from "./map/AddStoreModal";
 import CoordinateSearch from "./map/CoordinateSearch";
 import MapControls, { ZoomButtons } from "./map/MapControls";
-import MapController from "./map/MapController";
-import RawLayer from "./map/RawLayer";
+import MapController, { ZoomRequest } from "./map/MapController";
 import SearchPin from "./map/SearchPin";
 import StoreMarkers from "./map/StoreMarkers";
+import ZoneLayers, { ZoneRef } from "./map/ZoneLayers";
 
 interface MapComponentProps {
   stores: Store[];
@@ -20,8 +19,12 @@ interface MapComponentProps {
   isNightMode: boolean;
   setIsNightMode: (night: boolean) => void;
   focusedCity?: string | null;
-  kmlLayers: L.Layer[];
-  setKmlLayers: (layers: L.Layer[]) => void;
+  layers: ZoneLayer[];
+  selectedZone: ZoneRef | null;
+  onSelectZone: (layerId: string, zoneId: string) => void;
+  onOpenLayers: () => void;
+  zoomRequest: ZoomRequest | null;
+  cardOpen: boolean; // a store or zone card is open (top right)
   onAddStore?: (store: Omit<Store, "id">) => void;
   showToast?: (msg: string) => void;
 }
@@ -34,8 +37,12 @@ export default function MapComponent({
   isNightMode,
   setIsNightMode,
   focusedCity,
-  kmlLayers,
-  setKmlLayers,
+  layers,
+  selectedZone,
+  onSelectZone,
+  onOpenLayers,
+  zoomRequest,
+  cardOpen,
   onAddStore,
   showToast,
 }: MapComponentProps) {
@@ -93,7 +100,7 @@ export default function MapComponent({
         onChange={setSearchInput}
         onFound={setTempPin}
         onClear={removePin}
-        stepAside={selectedId !== null}
+        stepAside={cardOpen}
       />
 
       {showAddModal && tempPin && (
@@ -115,6 +122,7 @@ export default function MapComponent({
           tempPin={tempPin}
           isNightMode={isNightMode}
           routePanelRef={routePanelRef}
+          zoomRequest={zoomRequest}
         />
 
         <TileLayer
@@ -122,9 +130,7 @@ export default function MapComponent({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {kmlLayers.map((layer, idx) => (
-          <RawLayer key={`kml-${idx}`} layer={layer} />
-        ))}
+        <ZoneLayers layers={layers} selected={selectedZone} onSelect={onSelectZone} />
 
         {tempPin && <SearchPin pin={tempPin} onAddStore={() => setShowAddModal(true)} onRemove={removePin} />}
 
@@ -133,9 +139,8 @@ export default function MapComponent({
         <MapControls
           isNightMode={isNightMode}
           setIsNightMode={setIsNightMode}
-          hasKml={kmlLayers.length > 0}
-          onKmlLoaded={setKmlLayers}
-          onClearKml={() => setKmlLayers([])}
+          hasLayers={layers.some((l) => l.visible)}
+          onOpenLayers={onOpenLayers}
           panelRef={routePanelRef}
         />
 

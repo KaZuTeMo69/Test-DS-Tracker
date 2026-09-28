@@ -1,53 +1,24 @@
-import { ChangeEvent, RefObject, useRef } from "react";
+import { RefObject } from "react";
 import { useMap } from "react-leaflet";
-import L from "leaflet";
-import { FileUp, Moon, Sun, X } from "lucide-react";
-import { parseKML } from "../../lib/kml";
+import { Layers, Moon, Sun } from "lucide-react";
 
 interface MapControlsProps {
   isNightMode: boolean;
   setIsNightMode: (night: boolean) => void;
-  hasKml: boolean;
-  onKmlLoaded: (layers: L.Layer[]) => void;
-  onClearKml: () => void;
+  hasLayers: boolean; // any map layer showing
+  onOpenLayers: () => void;
   // The route's directions panel is placed here, under the map buttons
   panelRef: RefObject<HTMLDivElement | null>;
 }
 
-/** The buttons down the right of the map: day/night tiles, load and clear a KML file, route directions. */
+/** The buttons down the right of the map: day/night tiles, map layers, route directions. */
 export default function MapControls({
   isNightMode,
   setIsNightMode,
-  hasKml,
-  onKmlLoaded,
-  onClearKml,
+  hasLayers,
+  onOpenLayers,
   panelRef,
 }: MapControlsProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleKmlUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      try {
-        const layers = parseKML(text);
-        if (layers.length === 0) {
-          alert("No usable polygons or lines found in KML");
-          return;
-        }
-        onKmlLoaded(layers);
-      } catch (err) {
-        console.error("KML Parse error", err);
-        alert("Failed to parse KML file");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = ""; // reset for next upload
-  };
-
   return (
     <>
       <div className="leaflet-top leaflet-right mt-4 mr-4 !z-[1000] pointer-events-none">
@@ -66,32 +37,18 @@ export default function MapControls({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              fileInputRef.current?.click();
+              onOpenLayers();
             }}
-            className={`flex items-center justify-center w-10 h-10 bg-[#111]/90 backdrop-blur-md border border-[#333] rounded-lg shadow-2xl transition-all cursor-pointer ${hasKml ? "border-[#4ade80] text-[#4ade80]" : "text-[#EFEFEF] hover:bg-[#222]"}`}
-            title="Load KML Area"
+            className={`flex items-center justify-center w-10 h-10 bg-[#111]/90 backdrop-blur-md border border-[#333] rounded-lg shadow-2xl transition-all cursor-pointer ${hasLayers ? "border-[#4ade80] text-[#4ade80]" : "text-[#EFEFEF] hover:bg-[#222]"}`}
+            title="Map layers (KML / KMZ)"
           >
-            <FileUp size={18} />
+            <Layers size={18} />
           </button>
-
-          {hasKml && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onClearKml();
-              }}
-              className="flex items-center justify-center w-10 h-10 bg-[#111]/90 backdrop-blur-md border border-[#333] rounded-lg shadow-2xl transition-all cursor-pointer text-[#f87171] hover:bg-[#222]"
-              title="Clear KML"
-            >
-              <X size={18} />
-            </button>
-          )}
 
           {/* Clicks in the directions panel mustn't reach the map area, which would deselect the store */}
           <div ref={panelRef} className="flex flex-col items-end" onClick={(e) => e.stopPropagation()} />
         </div>
       </div>
-      <input type="file" ref={fileInputRef} className="hidden" accept=".kml" onChange={handleKmlUpload} />
     </>
   );
 }

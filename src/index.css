@@ -773,3 +773,186 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--token-color-border-active);
 }
+
+/* ==========================================================================
+   MAP LAYERS: zones on the map, the zone card and the Layers tab
+   ========================================================================== */
+
+/* Clicking a shape gave it keyboard focus, and the browser drew its focus box around the shape's bounding
+   rectangle instead of highlighting the shape. Selection is shown by the shape's own outline instead */
+.leaflet-container path.leaflet-interactive:focus {
+  outline: none;
+}
+
+/* A zone's name on hover, dark like the rest of the app (Leaflet's own label is a faded white box) */
+.leaflet-tooltip.zone-tooltip {
+  background: rgba(17, 17, 17, 0.95);
+  color: var(--token-color-text-primary);
+  border: 1px solid #333;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  font-family: var(--token-font-family-sans);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+}
+
+.leaflet-tooltip.zone-tooltip::before {
+  display: none;
+}
+
+.zone-title-swatch {
+  margin-top: 5px;
+}
+
+.zone-input {
+  width: 100%;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: var(--token-color-text-primary);
+  font-size: 12.5px;
+  padding: 7px 9px;
+  outline: none;
+}
+
+.zone-input:focus {
+  border-color: var(--token-color-noon-yellow);
+}
+
+.zone-swatch {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+
+.zone-swatch.on {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+}
+
+.zone-swatch input[type="color"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.zone-swatch-custom {
+  display: grid;
+  place-items: center;
+  color: #111;
+  font-weight: 900;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.zone-layer-colour {
+  color: var(--token-color-text-secondary);
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.zone-layer-colour.on,
+.zone-layer-colour:hover {
+  color: var(--token-color-text-primary);
+}
+
+.layer-card {
+  padding: 10px 12px;
+}
+
+.layer-row {
+  margin-top: 8px;
+}
+
+.layer-name {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 3px 6px;
+  outline: none;
+}
+
+.layer-name:hover {
+  border-color: #333;
+}
+
+.layer-name:focus {
+  border-color: var(--token-color-noon-yellow);
+  background: #1a1a1a;
+}
+
+.layer-opacity {
+  accent-color: var(--token-color-noon-yellow);
+}
+
+.layer-zones {
+  margin-top: 8px;
+}
+
+.layer-zones summary {
+  padding: 2px 0;
+}
+
+.layer-zone-list {
+  margin-top: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.layer-zone {
+  padding: 5px 6px;
+  color: var(--token-color-text-primary);
+}
+
+.layer-zone:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.layer-zone.on {
+  background: var(--token-color-noon-yellow-10);
+  color: var(--token-color-noon-yellow);
+}
+
+.layer-delete {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--token-color-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.layer-delete:hover,
+.layer-delete.armed {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.layer-import {
+  padding: 10px 0;
+}
+
+.layer-clear {
+  padding: 9px 0;
+  color: #f87171;
+  border: 1px solid #333;
+  cursor: pointer;
+}
+
+.layer-clear.armed {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.4);
+}

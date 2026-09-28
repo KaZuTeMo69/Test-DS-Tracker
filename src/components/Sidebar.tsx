@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, memo, ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, FileDown, FileUp, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { CitySummary, SidebarTab, Store } from "../types";
@@ -27,6 +27,8 @@ interface SidebarProps {
   filters: Filters;
   allCities: string[];
   emptyMessage: string; // shown when the list is empty
+  layersPanel: ReactNode; // the Layers tab
+  layersSummary: string; // its footer
 }
 
 function downloadStoresCSV(stores: Store[]) {
@@ -216,6 +218,8 @@ export default function Sidebar({
   filters,
   allCities,
   emptyMessage,
+  layersPanel,
+  layersSummary,
 }: SidebarProps) {
   const {
     searchQuery,
@@ -287,6 +291,12 @@ export default function Sidebar({
                 onClick={() => setCurrentTab("insights")}
               >
                 📊 Growth
+              </button>
+              <button
+                className={`tab-btn ${currentTab === "layers" ? "on" : ""}`}
+                onClick={() => setCurrentTab("layers")}
+              >
+                🗺 Layers
               </button>
             </div>
 
@@ -452,6 +462,8 @@ export default function Sidebar({
                   </div>
                 )}
               </div>
+            ) : currentTab === "layers" ? (
+              layersPanel
             ) : (
               <Suspense fallback={<div className="text-center py-10 text-[11px] text-gray-500">Loading charts…</div>}>
                 <CityInsights citySummaries={citySummaries} />
@@ -463,7 +475,9 @@ export default function Sidebar({
             <span className="text-[10px] text-gray-600 font-bold tracking-tight uppercase">
               {currentTab === "stores"
                 ? `Showing ${stores.length} of ${totalStores} Stores`
-                : `${citySummaries.length} Cities Tracked`}
+                : currentTab === "layers"
+                  ? layersSummary
+                  : `${citySummaries.length} Cities Tracked`}
             </span>
           </div>
         </motion.div>

@@ -6,6 +6,17 @@ import { LatLng } from "../../lib/coords";
 import { clearRoute, showRoute } from "../../lib/routing";
 
 /**
+ * A request to show an area (a zone, or newly imported layers). A new id means a new request. The padding
+ * keeps the area clear of the sidebar (left) and the card (right), which sit on top of the map.
+ */
+export interface ZoomRequest {
+  id: number;
+  bounds: [[number, number], [number, number]];
+  padLeft: number;
+  padRight: number;
+}
+
+/**
  * Keeps the map in step with the app: night tiles, fitting the view to the pins, the city or the searched
  * point, zooming to the selected store, and the route from the searched point to the selected store.
  */
@@ -17,6 +28,7 @@ export default function MapController({
   tempPin,
   isNightMode,
   routePanelRef,
+  zoomRequest,
 }: {
   stores: Store[];
   selectedId: number | null;
@@ -25,6 +37,7 @@ export default function MapController({
   tempPin: LatLng | null;
   isNightMode: boolean;
   routePanelRef: RefObject<HTMLDivElement | null>;
+  zoomRequest: ZoomRequest | null;
 }) {
   const map = useMap();
 
@@ -114,6 +127,19 @@ export default function MapController({
   }, [map, tempPin, selectedLat, selectedLng, routePanelRef]);
 
   useEffect(() => () => clearRoute(map), [map]);
+
+  useEffect(() => {
+    if (!zoomRequest) return;
+    try {
+      map.fitBounds(zoomRequest.bounds, {
+        paddingTopLeft: [zoomRequest.padLeft, 60],
+        paddingBottomRight: [zoomRequest.padRight, 60],
+        maxZoom: 15,
+      });
+    } catch (e) {
+      console.warn("fitBounds failed", e);
+    }
+  }, [map, zoomRequest]);
 
   return null;
 }
