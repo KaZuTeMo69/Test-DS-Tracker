@@ -1,7 +1,8 @@
 import { memo } from "react";
-import { AlertCircle, X } from "lucide-react";
+import { AlertCircle, CalendarClock, X } from "lucide-react";
 import { Store } from "../types";
-import { CURRENCY, dataIssues, hasCoords, isLive, isPaid } from "../constants";
+import { CURRENCY, dataIssues, hasCoords, isLive, isPaid, RENEWAL_STYLE } from "../constants";
+import { formatDate, pluralDays, RenewalInfo, renewalInfo } from "../lib/contract";
 
 interface DetailPanelProps {
   store: Store | null;
@@ -12,16 +13,38 @@ interface DetailPanelProps {
 const sar = (n: number | null) =>
   n === null ? "—" : `${CURRENCY} ${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
+function daysLeftText({ daysToEnd }: RenewalInfo): string {
+  if (daysToEnd === null) return "—";
+  if (daysToEnd < 0) return `Ended ${pluralDays(-daysToEnd)} ago`;
+  return daysToEnd === 0 ? "Ends today" : pluralDays(daysToEnd);
+}
+
+function renewalText({ status, endDate, renewalStart, daysToEnd, daysToRenewal }: RenewalInfo): string {
+  if (!endDate || !renewalStart || daysToEnd === null || daysToRenewal === null) return "";
+  const end = formatDate(endDate);
+  const start = formatDate(renewalStart);
+  if (status === "expired") return `The contract ended on ${end}, ${pluralDays(-daysToEnd)} ago.`;
+  if (status === "now") {
+    return daysToRenewal === 0
+      ? `Renewal starts today. The contract ends on ${end}.`
+      : `Renewal should have started on ${start}, ${pluralDays(-daysToRenewal)} ago. The contract ends on ${end}.`;
+  }
+  return `${status === "soon" ? "Start renewal by" : "Start renewal on"} ${start}, in ${pluralDays(daysToRenewal)}.`;
+}
+
 const DetailPanel = memo(function DetailPanel({ store, onClose }: DetailPanelProps) {
   if (!store) return null;
 
   const issues = dataIssues(store);
+  const renewal = renewalInfo(store);
 
   const detailRows = [
     { label: "City", value: store.city || "—" },
     { label: "DS Code", value: store.dsCode || "—" },
     { label: "Contract Duration", value: store.whCode || "—" },
     { label: "Contract Start", value: store.startDate || "—" },
+    { label: "Contract End", value: store.endDate || "—" },
+    { label: "Days Left", value: daysLeftText(renewal) },
     { label: "Area", value: store.size ? `${store.size} m²` : "—" },
     { label: "Rent / m²", value: sar(store.rentSARsqm) },
     { label: "Annual Rent", value: sar(store.rentSARAnnual), highlight: true },
@@ -31,7 +54,7 @@ const DetailPanel = memo(function DetailPanel({ store, onClose }: DetailPanelPro
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className={`absolute top-[70px] right-[45px] ml-0 pl-[15px] pr-[15px] pt-[15px] pb-[12px] w-[300px] bg-[#111111]/95 backdrop-blur-md border border-[#333] rounded-xl shadow-2xl overflow-hidden flex flex-col z-[500] transition-transform duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] translate-x-0`}
+      className={`absolute top-[70px] right-[45px] max-h-[calc(100%-85px)] ml-0 pl-[15px] pr-[15px] pt-[15px] pb-[12px] w-[300px] bg-[#111111]/95 backdrop-blur-md border border-[#333] rounded-xl shadow-2xl overflow-hidden flex flex-col z-[500] transition-transform duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] translate-x-0`}
     >
       <div className="p-4 border-b border-[#262626] flex justify-between items-start">
         <div className="flex-1 mr-2 min-w-0">
@@ -61,6 +84,16 @@ const DetailPanel = memo(function DetailPanel({ store, onClose }: DetailPanelPro
             {isPaid(store) ? "PAID CONTRACT" : "UNPAID"}
           </span>
         </div>
+
+        {renewal.status !== "unknown" && (
+          <div className={`rounded-lg p-2.5 flex gap-2 items-start border ${RENEWAL_STYLE[renewal.status].className}`}>
+            <CalendarClock size={14} className="flex-shrink-0 mt-0.5" />
+            <div className="text-[10px] leading-relaxed">
+              <div className="font-bold uppercase tracking-wider mb-0.5">{RENEWAL_STYLE[renewal.status].title}</div>
+              <div>{renewalText(renewal)}</div>
+            </div>
+          </div>
+        )}
 
         {issues.length > 0 && (
           <div className="bg-[#FB923C]/10 border border-[#FB923C]/20 rounded-lg p-2.5 flex gap-2 items-start">

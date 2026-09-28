@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import { ChevronDown, FileEdit, Filter, RefreshCw, Settings, Store as StoreIcon, Upload } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { CitySummary, Store } from "./types";
+import { CitySummary, RenewalFilter, Store } from "./types";
 import { hasCoords, isLive, isPaid } from "./constants";
 import { SAMPLE_STORES } from "./data/sampleStores";
+import { renewalInfo } from "./lib/contract";
 import { fetchSheetData } from "./lib/sheets";
 import DetailPanel from "./components/DetailPanel";
 import KPIBar from "./components/KPIBar";
@@ -43,8 +44,8 @@ function assignStableIds(list: Store[], idsByKey: Map<string, number>): Store[] 
   });
 }
 
-/** The search box and Live / Paid filters (the city filter is applied separately). */
-function matchesFilters(s: Store, query: string, live: string, paid: string): boolean {
+/** The search box and Live / Paid / Renewal filters (the city filter is applied separately). */
+function matchesFilters(s: Store, query: string, live: string, paid: string, renewal: RenewalFilter): boolean {
   const q = query.toLowerCase();
   const matchesQuery =
     !query ||
@@ -53,7 +54,12 @@ function matchesFilters(s: Store, query: string, live: string, paid: string): bo
     (s.dsCode && s.dsCode.toLowerCase().includes(q));
   const matchesLive = live === "all" || (live === "live" && isLive(s)) || (live === "notlive" && !isLive(s));
   const matchesPaid = paid === "all" || (paid === "paid" && isPaid(s)) || (paid === "notpaid" && !isPaid(s));
-  return Boolean(matchesQuery && matchesLive && matchesPaid);
+  const status = renewal === "all" ? null : renewalInfo(s).status;
+  const matchesRenewal =
+    renewal === "all" ||
+    (renewal === "renew" && (status === "now" || status === "soon")) ||
+    (renewal === "expired" && status === "expired");
+  return Boolean(matchesQuery && matchesLive && matchesPaid && matchesRenewal);
 }
 
 export default function App() {
@@ -77,6 +83,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [liveFilter, setLiveFilter] = useState<"all" | "live" | "notlive">("all");
   const [paidFilter, setPaidFilter] = useState<"all" | "paid" | "notpaid">("all");
+  const [renewalFilter, setRenewalFilter] = useState<RenewalFilter>("all");
   const [cityFilter, setCityFilter] = useState("");
 
   // Sidebar, map and selection
@@ -225,20 +232,24 @@ export default function App() {
     return stores
       .filter((s) => {
         const matchesCity = !cityFilter || s.city === cityFilter;
-        return matchesFilters(s, searchQuery, liveFilter, paidFilter) && matchesCity;
+        return matchesFilters(s, searchQuery, liveFilter, paidFilter, renewalFilter) && matchesCity;
       })
       .sort((a, b) => {
+        // With a renewal filter on, the contract ending soonest comes first; otherwise highest rent first
+        if (renewalFilter !== "all") {
+          return (renewalInfo(a).daysToEnd ?? Infinity) - (renewalInfo(b).daysToEnd ?? Infinity);
+        }
         const ra = a.rentSARAnnual;
         const rb = b.rentSARAnnual;
         return (rb || 0) - (ra || 0);
       });
-  }, [stores, searchQuery, liveFilter, paidFilter, cityFilter]);
+  }, [stores, searchQuery, liveFilter, paidFilter, renewalFilter, cityFilter]);
 
   const citySummaries = useMemo(() => {
     const map = new Map<string, CitySummary>();
 
     stores
-      .filter((s) => matchesFilters(s, searchQuery, liveFilter, paidFilter))
+      .filter((s) => matchesFilters(s, searchQuery, liveFilter, paidFilter, renewalFilter))
       .forEach((s) => {
         const city = s.city || "Unknown";
         if (!map.has(city)) {
@@ -252,7 +263,7 @@ export default function App() {
         c.area += s.size || 0;
       });
     return Array.from(map.values()).sort((a, b) => b.annualRent - a.annualRent);
-  }, [stores, searchQuery, liveFilter, paidFilter]);
+  }, [stores, searchQuery, liveFilter, paidFilter, renewalFilter]);
 
   const selectedStore = useMemo(() => stores.find((s) => s.id === selectedId) || null, [stores, selectedId]);
 
@@ -394,6 +405,8 @@ export default function App() {
           setLiveFilter={setLiveFilter}
           paidFilter={paidFilter}
           setPaidFilter={setPaidFilter}
+          renewalFilter={renewalFilter}
+          setRenewalFilter={setRenewalFilter}
           cityFilter={cityFilter}
           setCityFilter={setCityFilter}
           allCities={allCities}

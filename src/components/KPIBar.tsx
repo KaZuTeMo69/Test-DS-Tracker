@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 import { Store } from "../types";
 import { CURRENCY, fmtN, isLive, isPaid } from "../constants";
+import { RENEWAL_LEAD_DAYS, RENEWAL_WARNING_DAYS, renewalInfo } from "../lib/contract";
 
 interface KPIBarProps {
   stores: Store[];
@@ -20,6 +21,7 @@ const KPIBar = memo(function KPIBar({ stores }: KPIBarProps) {
     // Rent per m² only uses stores that have both rent and area
     let pricedRent = 0;
     let pricedArea = 0;
+    const renewals = { now: 0, soon: 0, expired: 0 };
 
     stores.forEach((s) => {
       if (isLive(s)) live++;
@@ -33,6 +35,8 @@ const KPIBar = memo(function KPIBar({ stores }: KPIBarProps) {
         pricedRent += rent;
         pricedArea += s.size;
       }
+      const { status } = renewalInfo(s);
+      if (status === "now" || status === "soon" || status === "expired") renewals[status]++;
     });
 
     return {
@@ -42,6 +46,7 @@ const KPIBar = memo(function KPIBar({ stores }: KPIBarProps) {
       totalArea,
       noRent,
       noArea,
+      renewals,
       avgRent: pricedArea > 0 ? pricedRent / pricedArea : 0,
     };
   }, [stores]);
@@ -65,6 +70,21 @@ const KPIBar = memo(function KPIBar({ stores }: KPIBarProps) {
     },
     { label: "Not Live", value: stores.length - stats.live, color: "#F43F5E", valueClass: "text-[#F43F5E]" },
     { label: "Unpaid Contracts", value: stores.length - stats.paid, color: "#FECC00", valueClass: "text-[#FECC00]" },
+    {
+      // Stores whose renewal window (the last RENEWAL_LEAD_DAYS days of the contract) has started
+      label: "Renewals Due",
+      value: stats.renewals.now,
+      unit: `start now · ${RENEWAL_LEAD_DAYS}-day lead`,
+      note:
+        [
+          stats.renewals.soon && `${stats.renewals.soon} in next ${RENEWAL_WARNING_DAYS} days`,
+          stats.renewals.expired && `${stats.renewals.expired} expired`,
+        ]
+          .filter(Boolean)
+          .join(" · ") || undefined,
+      color: "#F43F5E",
+      valueClass: "text-[#F43F5E]",
+    },
     {
       label: "Annual Rent",
       value: stats.totalRent > 0 ? fmtN(stats.totalRent) : "—",

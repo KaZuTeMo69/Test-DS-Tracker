@@ -1,7 +1,8 @@
 import { ChevronLeft, FileDown, FileUp, Search } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { CitySummary, Store } from "../types";
-import { CURRENCY, dataIssues, fmtN, fmtR, hasCoords, isLive } from "../constants";
+import { CitySummary, RenewalFilter, Store } from "../types";
+import { CURRENCY, dataIssues, fmtN, fmtR, hasCoords, isLive, RENEWAL_STYLE } from "../constants";
+import { renewalInfo } from "../lib/contract";
 import CityInsights from "./CityInsights";
 
 interface SidebarProps {
@@ -22,6 +23,8 @@ interface SidebarProps {
   setLiveFilter: (f: "all" | "live" | "notlive") => void;
   paidFilter: "all" | "paid" | "notpaid";
   setPaidFilter: (f: "all" | "paid" | "notpaid") => void;
+  renewalFilter: RenewalFilter;
+  setRenewalFilter: (f: RenewalFilter) => void;
   cityFilter: string;
   setCityFilter: (c: string) => void;
   allCities: string[];
@@ -37,6 +40,7 @@ function downloadStoresCSV(stores: Store[]) {
     "Paid / Not Paid",
     "Live / Not Live",
     "Contract Start Date",
+    "Contract End Date",
     "Area (sqm.)",
     "Rent/sqm. (SAR)",
     "Annual Rent W/O VAT",
@@ -51,6 +55,7 @@ function downloadStoresCSV(stores: Store[]) {
     s.paid,
     s.live,
     s.startDate,
+    s.endDate,
     s.size,
     s.rentSARsqm,
     s.rentSARAnnual,
@@ -73,6 +78,39 @@ function downloadStoresCSV(stores: Store[]) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// A label with a row of three filter buttons, one of them active
+function FilterRow<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  titles,
+}: {
+  label: string;
+  options: [T, string][];
+  value: T;
+  onChange: (value: T) => void;
+  titles?: Partial<Record<T, string>>;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <label className="w-16 shrink-0 text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</label>
+      <div className="frow flex-1 grid grid-cols-3 gap-1 bg-black/20 p-0.5 rounded-lg">
+        {options.map(([option, text]) => (
+          <button
+            key={option}
+            onClick={() => onChange(option)}
+            className={`fb ${value === option ? "on" : ""}`}
+            title={titles?.[option]}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Sidebar({
   isOpen,
   onClose,
@@ -91,6 +129,8 @@ export default function Sidebar({
   setLiveFilter,
   paidFilter,
   setPaidFilter,
+  renewalFilter,
+  setRenewalFilter,
   cityFilter,
   setCityFilter,
   allCities,
@@ -155,45 +195,42 @@ export default function Sidebar({
             {currentTab === "stores" && (
               <div className="flex flex-col gap-2.5">
                 <div className="space-y-2">
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">
-                      Live Status
+                  <FilterRow
+                    label="Live"
+                    options={[
+                      ["all", "All"],
+                      ["live", "Live"],
+                      ["notlive", "Not Live"],
+                    ]}
+                    value={liveFilter}
+                    onChange={setLiveFilter}
+                  />
+                  <FilterRow
+                    label="Payment"
+                    options={[
+                      ["all", "All"],
+                      ["paid", "Paid"],
+                      ["notpaid", "Unpaid"],
+                    ]}
+                    value={paidFilter}
+                    onChange={setPaidFilter}
+                  />
+                  <FilterRow
+                    label="Renewal"
+                    options={[
+                      ["all", "All"],
+                      ["renew", "Renew"],
+                      ["expired", "Expired"],
+                    ]}
+                    value={renewalFilter}
+                    onChange={setRenewalFilter}
+                    titles={{ renew: "Renewal due now or starting within 30 days, soonest first" }}
+                  />
+                  <div className="flex items-center gap-2">
+                    <label className="w-16 shrink-0 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                      City
                     </label>
-                    <div className="frow grid grid-cols-3 gap-1 bg-black/20 p-0.5 rounded-lg">
-                      {(["all", "live", "notlive"] as const).map((f) => (
-                        <button
-                          key={f}
-                          onClick={() => setLiveFilter(f)}
-                          className={`fb ${liveFilter === f ? "on" : ""}`}
-                        >
-                          {f === "notlive" ? "Not Live" : f}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">
-                      Payment Status
-                    </label>
-                    <div className="frow grid grid-cols-3 gap-1 bg-black/20 p-0.5 rounded-lg">
-                      {(["all", "paid", "notpaid"] as const).map((f) => (
-                        <button
-                          key={f}
-                          onClick={() => setPaidFilter(f)}
-                          className={`fb ${paidFilter === f ? "on" : ""}`}
-                        >
-                          {f === "notpaid" ? "Unpaid" : f}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">
-                      Filter by City
-                    </label>
-                    <div className="sidebar-select-wrapper">
+                    <div className="sidebar-select-wrapper min-w-0">
                       <select
                         className="sidebar-select"
                         value={cityFilter}
@@ -250,6 +287,18 @@ export default function Sidebar({
                         >
                           {isLive(s) ? "LIVE" : "NOT LIVE"}
                         </span>
+                        {(() => {
+                          const renewal = renewalInfo(s);
+                          if (renewal.status === "unknown" || renewal.status === "ok") return null;
+                          return (
+                            <span
+                              className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${RENEWAL_STYLE[renewal.status].className}`}
+                              title={`Contract ends ${s.endDate}`}
+                            >
+                              {RENEWAL_STYLE[renewal.status].tag}
+                            </span>
+                          );
+                        })()}
                         {!hasCoords(s) && (
                           <span
                             className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]"

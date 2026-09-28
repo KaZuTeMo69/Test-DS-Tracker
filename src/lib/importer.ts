@@ -1,4 +1,5 @@
 import { Store } from "../types";
+import { contractEndDate, formatDate, parseDate, parseDurationMonths } from "./contract";
 import { checkLocation } from "./location";
 
 /**
@@ -71,6 +72,7 @@ type Field =
   | "paid"
   | "live"
   | "startDate"
+  | "endDate"
   | "rentSqm"
   | "size"
   | "rentAnnual"
@@ -88,6 +90,7 @@ const COLUMN_PATTERNS: Array<{ field: Field; phrases: string[]; exclude?: string
   { field: "paid", phrases: ["paid", "payment"] },
   { field: "live", phrases: ["live", "status"] },
   { field: "startDate", phrases: ["contract start date", "start date", "contract start", "start"] },
+  { field: "endDate", phrases: ["contract end date", "end date", "contract end", "expiry date", "expiry"] },
   { field: "rentSqm", phrases: ["rent sqm", "rent per sqm", "rent m2", "sqm rent"] },
   { field: "size", phrases: ["area", "size", "sqm", "m2"] },
   {
@@ -143,9 +146,19 @@ interface StoreFields {
   lng: number | null;
 }
 
-/** Fills in monthly and per-m² rent and validates coordinates. Nothing missing is made up. */
+/** Contract dates in one format; the end date comes from the data, or else start date + contract duration. */
+function contractDates(startText: string, endText: string, duration: string) {
+  const start = parseDate(startText);
+  const months = parseDurationMonths(duration);
+  const end = endText ? parseDate(endText) : start && months ? contractEndDate(start, months) : null;
+  // Text that isn't a readable date is kept as it is, so dataIssues can point at it
+  return { startDate: start ? formatDate(start) : startText, endDate: end ? formatDate(end) : endText };
+}
+
+/** Fills in monthly and per-m² rent, the contract end date, and validates coordinates. Nothing missing is made up. */
 function buildStore(id: number, f: StoreFields): Store {
   const annual = f.rentSARAnnual;
+  const dates = contractDates(f.startDate, f.endDate, f.whCode);
   const rentSARsqm = f.rentSARsqm ?? (annual !== null && f.size ? annual / f.size : null);
   const location = checkLocation(f.city, f.country, f.lat, f.lng);
 
@@ -163,8 +176,8 @@ function buildStore(id: number, f: StoreFields): Store {
     lat: location.lat,
     lng: location.lng,
     locationIssue: location.issue,
-    startDate: f.startDate,
-    endDate: f.endDate,
+    startDate: dates.startDate,
+    endDate: dates.endDate,
     live: f.live,
     paid: f.paid,
   };
@@ -196,7 +209,7 @@ export function rowsToStores(headers: string[], rows: string[][]): Store[] {
         paid: get(col.paid),
         live: get(col.live),
         startDate: get(col.startDate),
-        endDate: "",
+        endDate: get(col.endDate),
         size: parseNum(get(col.size), false),
         rentSARsqm: parseNum(get(col.rentSqm)),
         rentSARAnnual: parseNum(get(col.rentAnnual)),
@@ -242,7 +255,7 @@ export function parseJSONData(jsonText: string): Store[] {
         paid: text(item.paid),
         live: text(item.live),
         startDate: text(item.startDate),
-        endDate: text(item.endDate),
+        endDate: text(item.endDate, item.contractEndDate),
         size: parseNum(pick(item.size, item.area), false),
         rentSARsqm: parseNum(pick(item.rentSARsqm, item.rentSqm)),
         rentSARAnnual: parseNum(pick(item.rentSARAnnual, item.annualRent, item.rent)),
