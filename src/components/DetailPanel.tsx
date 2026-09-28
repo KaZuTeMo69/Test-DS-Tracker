@@ -1,8 +1,9 @@
 import { memo, ReactNode, useState } from "react";
 import { X } from "lucide-react";
 import { Store } from "../types";
-import { CURRENCY, RENEWAL_STYLE } from "../constants";
+import { COVERAGE_TAG, CURRENCY, RENEWAL_STYLE } from "../constants";
 import { contractDateIssues, dataIssues, hasCoords } from "../lib/checks";
+import { Coverage, coverageFlags, ZoneHit } from "../lib/coverage";
 import { daysBetween, formatDate, formatDuration, parseDate, pluralDays, RenewalInfo, today } from "../lib/contract";
 import { fmtN } from "../lib/format";
 import { storeRenewal } from "../lib/renewal";
@@ -12,6 +13,8 @@ import { isLive, isPaid, liveStatus, paidStatus } from "../lib/status";
 interface DetailPanelProps {
   store: Store | null;
   stores: Store[]; // all stores, for the rent comparisons
+  coverage: Coverage;
+  onSelectZone: (layerId: string, zoneId: string) => void;
   onClose: () => void;
   onRemove?: () => void; // only for manually added stores
 }
@@ -112,6 +115,18 @@ const SectionLabel = ({ children }: { children: ReactNode }) => (
   <div className="detail-panel-row-label text-[9.5px] text-gray-500 store-card-section">{children}</div>
 );
 
+// A check that didn't pass: a coloured mark and a line of text
+function Problem({ tone, children }: { tone: Tone; children: ReactNode }) {
+  return (
+    <div className="flex gap-2 items-start text-[11.5px] text-gray-200 leading-snug">
+      <span className={`w-4 h-4 shrink-0 rounded-full grid place-items-center text-[9px] font-black ${TONE[tone].dot}`}>
+        {TONE[tone].mark}
+      </span>
+      <span className="min-w-0">{children}</span>
+    </div>
+  );
+}
+
 function DaysLeftTile({ renewal, term }: { renewal: RenewalInfo; term: string }) {
   const { daysToEnd } = renewal;
   if (daysToEnd === null) return <Tile label="Days left" value="—" note="No contract end date" />;
@@ -187,7 +202,19 @@ function statusCheck(value: boolean | null, raw: string | undefined, yes: string
   };
 }
 
-function SummaryTab({ store, renewal, rent }: { store: Store; renewal: RenewalInfo; rent: RentComparison }) {
+function SummaryTab({
+  store,
+  renewal,
+  rent,
+  coverage,
+  onSelectZone,
+}: {
+  store: Store;
+  renewal: RenewalInfo;
+  rent: RentComparison;
+  coverage: Coverage;
+  onSelectZone: (layerId: string, zoneId: string) => void;
+}) {
   const { tone, text } = situation(store, renewal);
   const cityName = store.city || "city";
 
@@ -256,14 +283,9 @@ function SummaryTab({ store, renewal, rent }: { store: Store; renewal: RenewalIn
         {checks
           .filter((check) => check.tone !== "good")
           .map((check, i) => (
-            <div key={i} className="flex gap-2 items-start text-[11.5px] text-gray-200 leading-snug">
-              <span
-                className={`w-4 h-4 shrink-0 rounded-full grid place-items-center text-[9px] font-black ${TONE[check.tone].dot}`}
-              >
-                {TONE[check.tone].mark}
-              </span>
-              <span>{check.text}</span>
-            </div>
+            <Problem key={i} tone={check.tone}>
+              {check.text}
+            </Problem>
           ))}
         <div className="flex flex-wrap gap-1">
           {checks
@@ -278,6 +300,59 @@ function SummaryTab({ store, renewal, rent }: { store: Store; renewal: RenewalIn
             ))}
         </div>
       </div>
+
+      <CoverageSection store={store} coverage={coverage} onSelectZone={onSelectZone} />
+    </>
+  );
+}
+
+// The coverage and white-space zones the store is in; each opens that zone's card
+function ZoneLink({ hit, onSelect }: { hit: ZoneHit; onSelect: (layerId: string, zoneId: string) => void }) {
+  return (
+    <button
+      onClick={() => onSelect(hit.layerId, hit.zoneId)}
+      className="store-card-zone flex items-center gap-2 w-full text-left rounded-md"
+      title="Open this zone"
+    >
+      <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: hit.color }} />
+      <span className="text-[12px] font-bold text-white truncate">{hit.zoneName}</span>
+      <span className="text-[10.5px] text-gray-400 truncate ml-auto shrink-0 max-w-[45%]">{hit.layerName}</span>
+    </button>
+  );
+}
+
+function CoverageSection({
+  store,
+  coverage,
+  onSelectZone,
+}: {
+  store: Store;
+  coverage: Coverage;
+  onSelectZone: (layerId: string, zoneId: string) => void;
+}) {
+  if (!coverage.hasCoverage && !coverage.hasWhiteSpace) return null;
+  const zones = coverage.zonesOf.get(store.id) ?? [];
+  const whiteSpace = coverage.whiteSpaceOf.get(store.id) ?? [];
+  const { outside } = coverageFlags(coverage, store);
+  return (
+    <>
+      <SectionLabel>Coverage</SectionLabel>
+      {!hasCoords(store) ? (
+        <div className="text-[11.5px] text-gray-400">Not checked, as the store has no location.</div>
+      ) : (
+        <div className="flex flex-col gap-1">
+          {outside && <Problem tone="warn">Not in any coverage zone on the map</Problem>}
+          {whiteSpace.length > 0 && (
+            <Problem tone="warn">Inside white space, an area marked as having no coverage</Problem>
+          )}
+          {[...zones, ...whiteSpace].map((hit) => (
+            <ZoneLink key={hit.zoneId} hit={hit} onSelect={onSelectZone} />
+          ))}
+          {!outside && !zones.length && !whiteSpace.length && (
+            <div className="text-[11.5px] text-gray-400">Not in any white-space zone.</div>
+          )}
+        </div>
+      )}
     </>
   );
 }
@@ -481,13 +556,21 @@ const TABS: Array<[Tab, string]> = [
 ];
 
 // z-[600]: above the map legend (500), below the sidebar (2000) and toasts (999)
-function StoreCard({ store, stores, onClose, onRemove }: DetailPanelProps & { store: Store; key?: number }) {
+function StoreCard({
+  store,
+  stores,
+  coverage,
+  onSelectZone,
+  onClose,
+  onRemove,
+}: DetailPanelProps & { store: Store; key?: number }) {
   const [tab, setTab] = useState<Tab>("summary");
   // Removing takes a second click, so a stray tap can't delete a store
   const [confirmRemove, setConfirmRemove] = useState(false);
   const renewal = storeRenewal(store);
   const rent = rentComparison(store, stores);
   const renewalTag = renewal.status === "soon" || renewal.status === "now" || renewal.status === "expired";
+  const flags = coverageFlags(coverage, store);
 
   return (
     <div
@@ -528,6 +611,20 @@ function StoreCard({ store, stores, onClose, onRemove }: DetailPanelProps & { st
               {RENEWAL_STYLE[renewal.status as "soon" | "now" | "expired"].tag}
             </span>
           )}
+          {flags.outside && (
+            <span
+              className={`detail-panel-tag-live text-[10px] store-card-chip rounded-full border ${COVERAGE_TAG.outside.className}`}
+            >
+              {COVERAGE_TAG.outside.tag}
+            </span>
+          )}
+          {flags.inWhiteSpace && (
+            <span
+              className={`detail-panel-tag-live text-[10px] store-card-chip rounded-full border ${COVERAGE_TAG.whitespace.className}`}
+            >
+              {COVERAGE_TAG.whitespace.tag}
+            </span>
+          )}
         </div>
       </div>
 
@@ -540,7 +637,9 @@ function StoreCard({ store, stores, onClose, onRemove }: DetailPanelProps & { st
       </div>
 
       <div className="store-card-body flex flex-col gap-2.5 overflow-y-auto flex-1 min-h-0">
-        {tab === "summary" && <SummaryTab store={store} renewal={renewal} rent={rent} />}
+        {tab === "summary" && (
+          <SummaryTab store={store} renewal={renewal} rent={rent} coverage={coverage} onSelectZone={onSelectZone} />
+        )}
         {tab === "rent" && <RentTab store={store} rent={rent} />}
         {tab === "contract" && <ContractTab store={store} renewal={renewal} />}
       </div>
@@ -577,9 +676,9 @@ function StoreCard({ store, stores, onClose, onRemove }: DetailPanelProps & { st
 }
 
 // A fresh card per store, so it always opens on the Summary tab
-const DetailPanel = memo(function DetailPanel({ store, stores, onClose, onRemove }: DetailPanelProps) {
+const DetailPanel = memo(function DetailPanel({ store, ...props }: DetailPanelProps) {
   if (!store) return null;
-  return <StoreCard key={store.id} store={store} stores={stores} onClose={onClose} onRemove={onRemove} />;
+  return <StoreCard key={store.id} store={store} {...props} />;
 });
 
 export default DetailPanel;

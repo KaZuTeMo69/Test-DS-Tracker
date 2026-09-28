@@ -1,16 +1,17 @@
 import { useRef, useState } from "react";
 import { MapContainer, TileLayer } from "react-leaflet";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Store } from "../types";
+import { PolygonRings, Store, ZoneLayer } from "../types";
 import { LatLng } from "../lib/coords";
 import AddStoreModal from "./map/AddStoreModal";
 import CoordinateSearch from "./map/CoordinateSearch";
+import EditBanner from "./map/EditBanner";
 import MapControls, { ZoomButtons } from "./map/MapControls";
-import MapController from "./map/MapController";
-import RawLayer from "./map/RawLayer";
+import MapController, { ZoomRequest } from "./map/MapController";
 import SearchPin from "./map/SearchPin";
 import StoreMarkers from "./map/StoreMarkers";
+import ZoneEditor, { EditorControls, MapMode } from "./map/ZoneEditor";
+import ZoneLayers, { ZoneRef } from "./map/ZoneLayers";
 
 interface MapComponentProps {
   stores: Store[];
@@ -20,8 +21,17 @@ interface MapComponentProps {
   isNightMode: boolean;
   setIsNightMode: (night: boolean) => void;
   focusedCity?: string | null;
-  kmlLayers: L.Layer[];
-  setKmlLayers: (layers: L.Layer[]) => void;
+  layers: ZoneLayer[];
+  selectedZone: ZoneRef | null;
+  onSelectZone: (layerId: string, zoneId: string) => void;
+  onOpenLayers: () => void;
+  zoomRequest: ZoomRequest | null;
+  cardOpen: boolean; // a store or zone card is open (top right)
+  // Drawing or editing a zone
+  mapMode: MapMode | null;
+  onDrawn: (polygons: PolygonRings[]) => void;
+  onEdited: (polygons: PolygonRings[]) => void;
+  onCancelMode: () => void;
   onAddStore?: (store: Omit<Store, "id">) => void;
   showToast?: (msg: string) => void;
 }
@@ -34,13 +44,24 @@ export default function MapComponent({
   isNightMode,
   setIsNightMode,
   focusedCity,
-  kmlLayers,
-  setKmlLayers,
+  layers,
+  selectedZone,
+  onSelectZone,
+  onOpenLayers,
+  zoomRequest,
+  cardOpen,
+  mapMode,
+  onDrawn,
+  onEdited,
+  onCancelMode,
   onAddStore,
   showToast,
 }: MapComponentProps) {
   // The route's directions panel is placed here, under the map buttons
   const routePanelRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<EditorControls | null>(null);
+  const modeLayer = mapMode ? layers.find((l) => l.id === mapMode.layerId) : undefined;
+  const modeZone = mapMode?.kind === "edit" ? modeLayer?.zones.find((z) => z.id === mapMode.zoneId) : undefined;
 
   // Coordinate search and manual store adding
   const [tempPin, setTempPin] = useState<LatLng | null>(null);
@@ -88,13 +109,24 @@ export default function MapComponent({
 
   return (
     <div id="map" className="w-full h-full relative cursor-default">
-      <CoordinateSearch
-        value={searchInput}
-        onChange={setSearchInput}
-        onFound={setTempPin}
-        onClear={removePin}
-        stepAside={selectedId !== null}
-      />
+      {mapMode ? (
+        <EditBanner
+          mode={mapMode}
+          layerName={modeLayer?.name ?? ""}
+          zoneName={modeZone?.name ?? ""}
+          onFinish={() => editorRef.current?.finish()}
+          onUndo={() => editorRef.current?.undo?.()}
+          onCancel={onCancelMode}
+        />
+      ) : (
+        <CoordinateSearch
+          value={searchInput}
+          onChange={setSearchInput}
+          onFound={setTempPin}
+          onClear={removePin}
+          stepAside={cardOpen}
+        />
+      )}
 
       {showAddModal && tempPin && (
         <AddStoreModal pin={tempPin} onCancel={() => setShowAddModal(false)} onSave={saveManualStore} />
@@ -115,6 +147,7 @@ export default function MapComponent({
           tempPin={tempPin}
           isNightMode={isNightMode}
           routePanelRef={routePanelRef}
+          zoomRequest={zoomRequest}
         />
 
         <TileLayer
@@ -122,9 +155,20 @@ export default function MapComponent({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {kmlLayers.map((layer, idx) => (
-          <RawLayer key={`kml-${idx}`} layer={layer} />
-        ))}
+        <ZoneLayers
+          layers={layers}
+          selected={selectedZone}
+          onSelect={onSelectZone}
+          hiddenZoneId={mapMode?.kind === "edit" ? mapMode.zoneId : undefined}
+        />
+        <ZoneEditor
+          mode={mapMode}
+          controlsRef={editorRef}
+          onDrawn={onDrawn}
+          onEdited={onEdited}
+          onCancel={onCancelMode}
+          onProblem={(msg) => showToast?.(msg)}
+        />
 
         {tempPin && <SearchPin pin={tempPin} onAddStore={() => setShowAddModal(true)} onRemove={removePin} />}
 
@@ -133,9 +177,8 @@ export default function MapComponent({
         <MapControls
           isNightMode={isNightMode}
           setIsNightMode={setIsNightMode}
-          hasKml={kmlLayers.length > 0}
-          onKmlLoaded={setKmlLayers}
-          onClearKml={() => setKmlLayers([])}
+          hasLayers={layers.some((l) => l.visible)}
+          onOpenLayers={onOpenLayers}
           panelRef={routePanelRef}
         />
 

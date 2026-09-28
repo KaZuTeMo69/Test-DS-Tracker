@@ -26,8 +26,10 @@ export interface Store {
 export type LiveFilter = "all" | "live" | "notlive";
 export type PaidFilter = "all" | "paid" | "notpaid";
 export type RenewalFilter = "all" | "renew" | "expired";
+// Only the stores the coverage checks flag: outside every coverage zone, or inside white space
+export type CoverageFilter = "outside" | "whitespace";
 
-export type SidebarTab = "stores" | "cities" | "insights";
+export type SidebarTab = "stores" | "cities" | "insights" | "layers";
 
 export interface CitySummary {
   city: string;
@@ -36,4 +38,43 @@ export interface CitySummary {
   paid: number;
   annualRent: number; // SAR
   area: number;
+}
+
+// ── Map layers: coverage zones and white space, from KML files or drawn in the app ──
+
+/** A closed shape's [lat, lng] points, without repeating the first point at the end. */
+export type Ring = [number, number][];
+
+/** One polygon: its outer boundary, then any holes cut out of it. */
+export type PolygonRings = Ring[];
+
+export interface Zone {
+  id: string;
+  name: string;
+  description: string; // plain text
+  color: string | null; // "#rrggbb", or null to use the layer's colour
+  polygons: PolygonRings[]; // usually one; several when the file groups shapes under one name
+}
+
+/** A line from a KML file. Shown on the map, but not part of the coverage checks. */
+export interface MapLine {
+  id: string;
+  name: string;
+  points: [number, number][];
+}
+
+// Coverage layers count in the coverage checks; white-space layers mark areas without coverage
+export type LayerKind = "coverage" | "whitespace";
+
+export interface ZoneLayer {
+  id: string;
+  name: string;
+  kind: LayerKind;
+  visible: boolean;
+  color: string; // "#rrggbb", for zones without their own colour
+  opacity: number; // fill opacity, 0 to 1
+  source: string; // the file it was imported from, or "" when made in the app
+  zones: Zone[];
+  lines: MapLine[];
+  created: number; // time it was added, which keeps the list in order
 }
