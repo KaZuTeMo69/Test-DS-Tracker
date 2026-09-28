@@ -392,7 +392,11 @@ export default function App() {
           currentTab={currentTab}
           setCurrentTab={setCurrentTab}
           selectedId={selectedId}
-          onSelectStore={setSelectedId}
+          onSelectStore={(id) => {
+            setSelectedId(id);
+            // On narrow screens the sidebar covers the store card, so get it out of the way
+            if (window.innerWidth < 1024) setIsSidebarOpen(false);
+          }}
           onImportSheet={openUploadModal}
           onCityFocus={(city) => {
             setCityFilter(city);
@@ -455,7 +459,7 @@ export default function App() {
             />
           </div>
 
-          <DetailPanel store={selectedStore} onClose={() => setSelectedId(null)} />
+          <DetailPanel store={selectedStore} stores={stores} onClose={() => setSelectedId(null)} />
 
           <div className="absolute bottom-4 left-4 bg-[#111111]/85 backdrop-blur border border-[#333] pl-[10px] pr-[10px] pt-[7px] pb-[7px] rounded-lg flex flex-row items-center gap-4 shadow-2xl z-[500]">
             <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-tight">

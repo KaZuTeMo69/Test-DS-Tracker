@@ -502,11 +502,77 @@ body {
   letter-spacing: 0.01em !important;
 }
 
-.detail-panel-row-value-highlight {
-  font-family: var(--token-font-family-display) !important;
-  font-weight: 600 !important;
-  color: var(--token-color-noon-yellow) !important;
-  letter-spacing: 0.02em !important;
+/* Store card spacing. The base reset gives every element 1px of padding and margin, which
+   beats Tailwind's padding/margin utilities, so the card's spacing is set here. */
+.store-card-header {
+  padding: 6px 12px 10px;
+}
+
+.store-card-chips {
+  margin-top: 8px;
+}
+
+.store-card-chip {
+  padding: 2px 8px;
+}
+
+.store-card-tabs {
+  margin: 10px 12px 0;
+}
+
+.store-card-body {
+  padding: 10px 12px 6px;
+}
+
+.store-card-footer {
+  padding: 6px 12px 4px;
+}
+
+.store-card-button {
+  padding: 8px 0;
+}
+
+.store-card-box {
+  padding: 8px 10px;
+}
+
+.store-card-row {
+  padding: 6px 0;
+}
+
+.store-card-section {
+  margin-top: 4px;
+}
+
+.store-card-gap-top {
+  margin-top: 3px;
+}
+
+.store-card-unit {
+  margin-left: 4px;
+}
+
+.store-card-timeline {
+  margin: 30px 4px 0;
+}
+
+.store-card-label-left {
+  padding-right: 8px;
+}
+
+.store-card-label-right {
+  padding-left: 8px;
+}
+
+.store-card-legend {
+  margin-top: 8px;
+}
+
+/* Large numbers in the store card's tiles */
+.detail-panel-figure {
+  font-family: var(--token-font-family-display);
+  font-weight: 800;
+  color: #ffffff;
 }
 
 .detail-panel-tag-live,

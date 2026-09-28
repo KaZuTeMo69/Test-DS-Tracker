@@ -1,20 +1,16 @@
 import { Store } from "./types";
-import { parseDate, parseDurationMonths, RenewalStatus } from "./lib/contract";
+import { parseDate, parseDurationMonths } from "./lib/contract";
 
 // All rent figures are in Saudi riyals
 export const CURRENCY = "SAR";
 
 export const PIN_SEL = "#38BDF8";
 
-// Title, list tag and colours for each renewal status (stores with no end date get none)
-export const RENEWAL_STYLE: Record<
-  Exclude<RenewalStatus, "unknown">,
-  { title: string; tag: string; className: string }
-> = {
-  ok: { title: "Renewal", tag: "", className: "bg-white/5 border-white/10 text-gray-300" },
-  soon: { title: "Renew soon", tag: "RENEW SOON", className: "bg-[#fbbf24]/10 border-[#fbbf24]/30 text-[#fbbf24]" },
-  now: { title: "Renew now", tag: "RENEW NOW", className: "bg-red-500/10 border-red-500/30 text-red-400" },
-  expired: { title: "Contract expired", tag: "EXPIRED", className: "bg-red-500/20 border-red-500/50 text-red-300" },
+// List tag and colours for the renewal statuses that need attention
+export const RENEWAL_STYLE: Record<"soon" | "now" | "expired", { tag: string; className: string }> = {
+  soon: { tag: "RENEW SOON", className: "bg-[#fbbf24]/10 border-[#fbbf24]/30 text-[#fbbf24]" },
+  now: { tag: "RENEW NOW", className: "bg-red-500/10 border-red-500/30 text-red-400" },
+  expired: { tag: "EXPIRED", className: "bg-red-500/20 border-red-500/50 text-red-300" },
 };
 
 // ── Live / Paid status ──
@@ -67,6 +63,10 @@ function readStatus(raw: string | undefined, yes: string[], no: string[]): boole
   return null;
 }
 
+// true / false, or null when the status is blank or not recognised
+export const liveStatus = (s: Store) => readStatus(s.live, LIVE_YES, LIVE_NO);
+export const paidStatus = (s: Store) => readStatus(s.paid, PAID_YES, PAID_NO);
+
 export const isLive = (s: Store) => readStatus(s.live, LIVE_YES, LIVE_NO) === true;
 
 export const isPaid = (s: Store) => readStatus(s.paid, PAID_YES, PAID_NO) === true;
@@ -81,7 +81,7 @@ export function pinColor(s: Store): string {
 }
 
 /** Why the contract end date (and so the renewal countdown) is missing or unreadable. */
-function contractDateIssues(s: Store): string[] {
+export function contractDateIssues(s: Store): string[] {
   const issues: string[] = [];
   const startOk = !!s.startDate && !!parseDate(s.startDate);
   if (!s.startDate) issues.push("Contract start date is missing.");
@@ -100,22 +100,23 @@ function contractDateIssues(s: Store): string[] {
 }
 
 /** Problems in a store's source data, shown so they can be fixed in the sheet or file. */
-export function dataIssues(s: Store): string[] {
+export function dataIssues(s: Store, include: { location?: boolean; status?: boolean } = {}): string[] {
+  const { location = true, status = true } = include;
   const issues: string[] = [];
-  if (!hasCoords(s)) {
+  if (location && !hasCoords(s)) {
     issues.push(`${s.locationIssue || "No coordinates"}. Not shown on the map.`);
   }
   if (s.rentSARAnnual === null) issues.push("Annual rent is missing.");
   if (!s.size) issues.push("Area is missing.");
   issues.push(...contractDateIssues(s));
-  if (readStatus(s.live, LIVE_YES, LIVE_NO) === null) {
+  if (status && readStatus(s.live, LIVE_YES, LIVE_NO) === null) {
     issues.push(
       s.live?.trim()
         ? `Live status "${s.live.trim()}" isn't recognised. Counted as Not Live.`
         : "Live status is blank. Counted as Not Live.",
     );
   }
-  if (readStatus(s.paid, PAID_YES, PAID_NO) === null) {
+  if (status && readStatus(s.paid, PAID_YES, PAID_NO) === null) {
     issues.push(
       s.paid?.trim()
         ? `Payment status "${s.paid.trim()}" isn't recognised. Counted as Unpaid.`
