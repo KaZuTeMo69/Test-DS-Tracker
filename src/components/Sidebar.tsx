@@ -103,7 +103,7 @@ export default function Sidebar({
           animate={{ x: 0 }}
           exit={{ x: -350 }}
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="sidebar dashboard-sidebar sidebar-container relative h-full flex-shrink-0 bg-[#0d0d0d]/85 backdrop-blur-md border border-[#262626] rounded-xl flex flex-col overflow-hidden z-[2000] shadow-2xl"
+          className="sidebar relative h-full flex-shrink-0 bg-[#0d0d0d]/85 backdrop-blur-md border border-[#262626] rounded-xl flex flex-col overflow-hidden z-[2000] shadow-2xl"
         >
           <div className="sb-top p-3 border-b border-[#262626] flex flex-col gap-2.5 ml-0 pl-[15px] pr-[15px]">
             <div className="flex items-center justify-between pl-[15px] pr-0">
@@ -131,21 +131,21 @@ export default function Sidebar({
                 </button>
               </div>
             </div>
-            <div className="tab-container view-tabs">
+            <div className="tab-container">
               <button
-                className={`tab-btn vtab ${currentTab === "stores" ? "on" : ""}`}
+                className={`tab-btn ${currentTab === "stores" ? "on" : ""}`}
                 onClick={() => setCurrentTab("stores")}
               >
                 🏪 Stores
               </button>
               <button
-                className={`tab-btn vtab ${currentTab === "cities" ? "on" : ""}`}
+                className={`tab-btn ${currentTab === "cities" ? "on" : ""}`}
                 onClick={() => setCurrentTab("cities")}
               >
                 🏙 City
               </button>
               <button
-                className={`tab-btn vtab ${currentTab === "insights" ? "on" : ""}`}
+                className={`tab-btn ${currentTab === "insights" ? "on" : ""}`}
                 onClick={() => setCurrentTab("insights")}
               >
                 📊 Growth
@@ -195,7 +195,7 @@ export default function Sidebar({
                     </label>
                     <div className="sidebar-select-wrapper">
                       <select
-                        className="sidebar-select city-sel"
+                        className="sidebar-select"
                         value={cityFilter}
                         onChange={(e) => setCityFilter(e.target.value)}
                       >
@@ -210,7 +210,7 @@ export default function Sidebar({
                   </div>
                 </div>
 
-                <div className="sidebar-search-wrapper srch">
+                <div className="sidebar-search-wrapper">
                   <Search className="sidebar-search-icon" size={15} />
                   <input
                     type="text"

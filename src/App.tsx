@@ -278,7 +278,7 @@ export default function App() {
             <StoreIcon size={18} />
           </div>
           <div className="h-5 w-[1px] bg-white/10"></div>
-          <span className="logo-title logo-text text-sm font-bold tracking-wider hidden sm:inline uppercase font-['Oswald'] italic text-white">
+          <span className="logo-text text-sm font-bold tracking-wider hidden sm:inline uppercase font-['Oswald'] italic text-white">
             Dark Store <span className="text-[#fbbf24]">Tracker</span>
           </span>
         </div>
