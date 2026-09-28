@@ -60,6 +60,15 @@ describe("parseKML", () => {
     expect(zone.description).not.toContain("<");
   });
 
+  it("keeps a plain-text description as written, even with < or &", () => {
+    const [zone] = parseKML(
+      kml(
+        `<Placemark><description>Check with &lt;growth team&gt; &amp; ops</description>${polygon(SQUARE)}</Placemark>`,
+      ),
+    ).zones;
+    expect(zone.description).toBe("Check with <growth team> & ops");
+  });
+
   it("reads the colour from a style, including a My Maps style map", () => {
     const head = `
       <Style id="poly-0288D1-normal"><LineStyle><color>ffd18802</color><width>1.2</width></LineStyle><PolyStyle><color>4cd18802</color></PolyStyle></Style>

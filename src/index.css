@@ -956,3 +956,99 @@ body {
   background: rgba(248, 113, 113, 0.12);
   border-color: rgba(248, 113, 113, 0.4);
 }
+
+.layer-action {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--token-color-text-primary);
+  background: var(--token-color-bg-surface-s2);
+  border: 1px solid var(--token-color-border-muted);
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.layer-action:hover:not(:disabled) {
+  border-color: var(--token-color-noon-yellow);
+  color: var(--token-color-noon-yellow);
+}
+
+.layer-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.zone-card-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: 8px;
+  padding: 8px 0;
+  cursor: pointer;
+  border: 1px solid #333;
+  color: var(--token-color-text-primary);
+}
+
+.zone-card-btn.primary {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #000000;
+}
+
+.zone-card-btn.danger {
+  color: #f87171;
+}
+
+.zone-card-btn.danger.armed {
+  background: rgba(248, 113, 113, 0.15);
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+/* Drawing or editing a zone: the banner at the top of the map */
+.edit-banner {
+  padding: 10px 12px;
+}
+
+.edit-banner-buttons {
+  margin-top: 8px;
+}
+
+.edit-banner-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--token-color-text-primary);
+  background: var(--token-color-bg-surface-s2);
+  border: 1px solid var(--token-color-border-muted);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.edit-banner-btn.primary {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #000000;
+}
+
+/* While drawing or editing, clicks on store pins and other zones go through to the drawing tool
+   (Geoman's own corner handles have the marker-icon class and stay clickable) */
+.zone-editing .leaflet-overlay-pane path.leaflet-interactive,
+.zone-editing .leaflet-marker-icon:not(.marker-icon) {
+  pointer-events: none;
+}
+
+.zone-editing .leaflet-container,
+.leaflet-container.zone-editing {
+  cursor: crosshair;
+}

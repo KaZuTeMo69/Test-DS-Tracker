@@ -1,9 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 import { Filter } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { SidebarTab } from "./types";
+import { LayerKind, PolygonRings, SidebarTab, ZoneLayer } from "./types";
 import { hasCoords } from "./lib/checks";
-import { zoneBounds } from "./lib/layers";
+import { download } from "./lib/download";
+import { kmlFileName, layerToKml } from "./lib/kmlExport";
+import { zoneBounds, zoneColor } from "./lib/layers";
 import { useFilters } from "./hooks/useFilters";
 import { useLayers } from "./hooks/useLayers";
 import { isManualStore, useStores } from "./hooks/useStores";
@@ -14,6 +16,7 @@ import KPIBar from "./components/KPIBar";
 import LayersPanel from "./components/LayersPanel";
 import MapComponent from "./components/Map";
 import { ZoomRequest } from "./components/map/MapController";
+import { MapMode } from "./components/map/ZoneEditor";
 import { ZoneRef } from "./components/map/ZoneLayers";
 import MapLegend from "./components/MapLegend";
 import Sidebar from "./components/Sidebar";
@@ -43,6 +46,8 @@ export default function App() {
   // A selected map zone; a store and a zone are never selected at the same time, so one card shows
   const [selectedZone, setSelectedZone] = useState<ZoneRef | null>(null);
   const [zoomRequest, setZoomRequest] = useState<ZoomRequest | null>(null);
+  // Drawing a new zone or editing a zone's shape; the cards are hidden meanwhile so the map is clear
+  const [mapMode, setMapMode] = useState<MapMode | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const selectedStore = useMemo(() => stores.find((s) => s.id === selectedId) || null, [stores, selectedId]);
@@ -127,6 +132,60 @@ export default function App() {
     setIsSidebarOpen(true);
   };
 
+  const addLayer = (kind: LayerKind) => {
+    const layer = mapLayers.addLayer(kind);
+    showToast(`Added the layer "${layer.name}". Use Draw zone to draw on the map`);
+  };
+
+  const startDrawing = (layerId: string) => {
+    const layer = mapLayers.layers.find((l) => l.id === layerId);
+    if (!layer) return;
+    if (!layer.visible) mapLayers.updateLayer(layerId, { visible: true });
+    setSelectedId(null);
+    setSelectedZone(null);
+    setMapMode({ kind: "draw", layerId, color: layer.color });
+    if (window.innerWidth < NARROW_SCREEN) setIsSidebarOpen(false);
+  };
+
+  const finishDrawing = (polygons: PolygonRings[]) => {
+    if (mapMode?.kind !== "draw") return;
+    const zone = mapLayers.addZone(mapMode.layerId, polygons);
+    setMapMode(null);
+    // The new zone's card opens so it can be named
+    if (zone) setSelectedZone({ layerId: mapMode.layerId, zoneId: zone.id });
+  };
+
+  const startEditingShape = () => {
+    if (!zoneSelection) return;
+    const { layer, zone } = zoneSelection;
+    setMapMode({
+      kind: "edit",
+      layerId: layer.id,
+      zoneId: zone.id,
+      color: zoneColor(zone, layer),
+      polygons: zone.polygons,
+    });
+  };
+
+  const finishEditingShape = (polygons: PolygonRings[]) => {
+    if (mapMode?.kind !== "edit") return;
+    mapLayers.updateZone(mapMode.layerId, mapMode.zoneId, { polygons });
+    setMapMode(null);
+    showToast("Shape saved");
+  };
+
+  const deleteSelectedZone = () => {
+    if (!zoneSelection) return;
+    mapLayers.removeZone(zoneSelection.layer.id, zoneSelection.zone.id);
+    setSelectedZone(null);
+    showToast(`Deleted "${zoneSelection.zone.name || "Unnamed zone"}"`);
+  };
+
+  const exportLayer = (layer: ZoneLayer) => {
+    download(kmlFileName(layer), layerToKml(layer), "application/vnd.google-earth.kml+xml");
+    showToast(`Saved ${kmlFileName(layer)}. In My Maps, add a layer and choose Import to bring it in`);
+  };
+
   const zoneCount = mapLayers.layers.reduce((n, l) => n + l.zones.length, 0);
   const layersSummary = `${mapLayers.layers.length} ${mapLayers.layers.length === 1 ? "layer" : "layers"} · ${zoneCount} ${zoneCount === 1 ? "zone" : "zones"}`;
 
@@ -197,6 +256,9 @@ export default function App() {
               onRemoveLayer={mapLayers.removeLayer}
               onClearAll={mapLayers.clearAll}
               onSelectZone={selectZoneFromList}
+              onAddLayer={addLayer}
+              onDrawZone={startDrawing}
+              onExport={exportLayer}
             />
           }
         />
@@ -244,13 +306,17 @@ export default function App() {
               onOpenLayers={openLayers}
               zoomRequest={zoomRequest}
               cardOpen={selectedId !== null || zoneSelection !== null}
+              mapMode={mapMode}
+              onDrawn={finishDrawing}
+              onEdited={finishEditingShape}
+              onCancelMode={() => setMapMode(null)}
               onAddStore={data.addManualStore}
               showToast={showToast}
             />
           </div>
 
           <DetailPanel
-            store={selectedStore}
+            store={mapMode ? null : selectedStore}
             stores={stores}
             onClose={closeStore}
             onRemove={
@@ -260,7 +326,7 @@ export default function App() {
             }
           />
 
-          {zoneSelection && !selectedStore && (
+          {zoneSelection && !selectedStore && !mapMode && (
             <ZoneCard
               key={zoneSelection.zone.id}
               layer={zoneSelection.layer}
@@ -269,6 +335,8 @@ export default function App() {
                 mapLayers.updateZone(zoneSelection.layer.id, zoneSelection.zone.id, patch, delay)
               }
               onClose={() => setSelectedZone(null)}
+              onEditShape={startEditingShape}
+              onDelete={deleteSelectedZone}
             />
           )}
 

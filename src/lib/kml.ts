@@ -14,9 +14,13 @@ const all = (el: Element | Document, tag: string) => Array.from(el.getElementsBy
 const child = (el: Element, tag: string) => Array.from(el.children).find((c) => c.localName === tag);
 const childText = (el: Element, tag: string) => child(el, tag)?.textContent?.trim() ?? "";
 
+// Real HTML in a description: common tags, or entities such as &nbsp; (plain text can contain "<" or "&" too)
+const HTML =
+  /<\/?(br|p|div|span|b|i|u|em|strong|a|img|font|table|tbody|tr|td|th|ul|ol|li|h[1-6]|hr)\b[^>]*>|&(#\d+|[a-z]+);/i;
+
 /** KML descriptions are often HTML (My Maps and Google Earth add line breaks and links). Only the text is kept. */
 function plainText(html: string): string {
-  if (!/[<&]/.test(html)) return html.trim();
+  if (!HTML.test(html)) return html.trim();
   const withBreaks = html.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|li)>/gi, "\n");
   const doc = new DOMParser().parseFromString(withBreaks, "text/html");
   doc.querySelectorAll("script, style").forEach((el) => el.remove());

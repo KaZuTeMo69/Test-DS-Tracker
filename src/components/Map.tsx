@@ -1,14 +1,16 @@
 import { useRef, useState } from "react";
 import { MapContainer, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { Store, ZoneLayer } from "../types";
+import { PolygonRings, Store, ZoneLayer } from "../types";
 import { LatLng } from "../lib/coords";
 import AddStoreModal from "./map/AddStoreModal";
 import CoordinateSearch from "./map/CoordinateSearch";
+import EditBanner from "./map/EditBanner";
 import MapControls, { ZoomButtons } from "./map/MapControls";
 import MapController, { ZoomRequest } from "./map/MapController";
 import SearchPin from "./map/SearchPin";
 import StoreMarkers from "./map/StoreMarkers";
+import ZoneEditor, { EditorControls, MapMode } from "./map/ZoneEditor";
 import ZoneLayers, { ZoneRef } from "./map/ZoneLayers";
 
 interface MapComponentProps {
@@ -25,6 +27,11 @@ interface MapComponentProps {
   onOpenLayers: () => void;
   zoomRequest: ZoomRequest | null;
   cardOpen: boolean; // a store or zone card is open (top right)
+  // Drawing or editing a zone
+  mapMode: MapMode | null;
+  onDrawn: (polygons: PolygonRings[]) => void;
+  onEdited: (polygons: PolygonRings[]) => void;
+  onCancelMode: () => void;
   onAddStore?: (store: Omit<Store, "id">) => void;
   showToast?: (msg: string) => void;
 }
@@ -43,11 +50,18 @@ export default function MapComponent({
   onOpenLayers,
   zoomRequest,
   cardOpen,
+  mapMode,
+  onDrawn,
+  onEdited,
+  onCancelMode,
   onAddStore,
   showToast,
 }: MapComponentProps) {
   // The route's directions panel is placed here, under the map buttons
   const routePanelRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<EditorControls | null>(null);
+  const modeLayer = mapMode ? layers.find((l) => l.id === mapMode.layerId) : undefined;
+  const modeZone = mapMode?.kind === "edit" ? modeLayer?.zones.find((z) => z.id === mapMode.zoneId) : undefined;
 
   // Coordinate search and manual store adding
   const [tempPin, setTempPin] = useState<LatLng | null>(null);
@@ -95,13 +109,24 @@ export default function MapComponent({
 
   return (
     <div id="map" className="w-full h-full relative cursor-default">
-      <CoordinateSearch
-        value={searchInput}
-        onChange={setSearchInput}
-        onFound={setTempPin}
-        onClear={removePin}
-        stepAside={cardOpen}
-      />
+      {mapMode ? (
+        <EditBanner
+          mode={mapMode}
+          layerName={modeLayer?.name ?? ""}
+          zoneName={modeZone?.name ?? ""}
+          onFinish={() => editorRef.current?.finish()}
+          onUndo={() => editorRef.current?.undo?.()}
+          onCancel={onCancelMode}
+        />
+      ) : (
+        <CoordinateSearch
+          value={searchInput}
+          onChange={setSearchInput}
+          onFound={setTempPin}
+          onClear={removePin}
+          stepAside={cardOpen}
+        />
+      )}
 
       {showAddModal && tempPin && (
         <AddStoreModal pin={tempPin} onCancel={() => setShowAddModal(false)} onSave={saveManualStore} />
@@ -130,7 +155,20 @@ export default function MapComponent({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <ZoneLayers layers={layers} selected={selectedZone} onSelect={onSelectZone} />
+        <ZoneLayers
+          layers={layers}
+          selected={selectedZone}
+          onSelect={onSelectZone}
+          hiddenZoneId={mapMode?.kind === "edit" ? mapMode.zoneId : undefined}
+        />
+        <ZoneEditor
+          mode={mapMode}
+          controlsRef={editorRef}
+          onDrawn={onDrawn}
+          onEdited={onEdited}
+          onCancel={onCancelMode}
+          onProblem={(msg) => showToast?.(msg)}
+        />
 
         {tempPin && <SearchPin pin={tempPin} onAddStore={() => setShowAddModal(true)} onRemove={removePin} />}
 

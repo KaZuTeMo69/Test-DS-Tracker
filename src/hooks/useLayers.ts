@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Zone, ZoneLayer } from "../types";
+import { LayerKind, PolygonRings, Zone, ZoneLayer } from "../types";
 import { parseKmlBytes } from "../lib/kml";
 import { clearLayers, deleteLayer, loadLayers, saveLayer } from "../lib/layerStore";
-import { DEFAULT_OPACITY, looksLikeWhiteSpace, newId, nextLayerColor } from "../lib/layers";
+import { DEFAULT_OPACITY, LAYER_KIND_LABEL, looksLikeWhiteSpace, newId, nextLayerColor } from "../lib/layers";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -126,27 +126,65 @@ export function useLayers(notify: (msg: string) => void) {
     return added;
   };
 
-  const updateLayer = (id: string, patch: Partial<Omit<ZoneLayer, "id">>, delay = 0) => {
+  // Replaces one layer with a changed copy and saves it
+  const changeLayer = (id: string, change: (layer: ZoneLayer) => ZoneLayer, delay = 0) => {
     setLayers((current) =>
       current.map((layer) => {
         if (layer.id !== id) return layer;
-        const updated = { ...layer, ...patch };
+        const updated = change(layer);
         save(updated, delay);
         return updated;
       }),
     );
   };
 
-  const updateZone = (layerId: string, zoneId: string, patch: Partial<Omit<Zone, "id">>, delay = 0) => {
-    setLayers((current) =>
-      current.map((layer) => {
-        if (layer.id !== layerId) return layer;
-        const updated = { ...layer, zones: layer.zones.map((z) => (z.id === zoneId ? { ...z, ...patch } : z)) };
-        save(updated, delay);
-        return updated;
-      }),
+  const updateLayer = (id: string, patch: Partial<Omit<ZoneLayer, "id">>, delay = 0) =>
+    changeLayer(id, (layer) => ({ ...layer, ...patch }), delay);
+
+  const updateZone = (layerId: string, zoneId: string, patch: Partial<Omit<Zone, "id">>, delay = 0) =>
+    changeLayer(
+      layerId,
+      (layer) => ({ ...layer, zones: layer.zones.map((z) => (z.id === zoneId ? { ...z, ...patch } : z)) }),
+      delay,
     );
+
+  /** A new, empty layer to draw zones into. */
+  const addLayer = (kind: LayerKind): ZoneLayer => {
+    const layer: ZoneLayer = {
+      id: newId(),
+      name: kind === "whitespace" ? "White space" : "Coverage zones",
+      kind,
+      visible: true,
+      color: nextLayerColor(layers, kind),
+      opacity: DEFAULT_OPACITY,
+      source: "",
+      zones: [],
+      lines: [],
+      created: Date.now(),
+    };
+    setLayers((current) => [...current, layer]);
+    save(layer);
+    return layer;
   };
+
+  /** Adds a drawn zone to a layer, named like My Maps does ("White space 3"). Returns the new zone. */
+  const addZone = (layerId: string, polygons: PolygonRings[]): Zone | null => {
+    const layer = layers.find((l) => l.id === layerId);
+    if (!layer) return null;
+    const label = layer.kind === "whitespace" ? LAYER_KIND_LABEL.whitespace : "Zone";
+    const zone: Zone = {
+      id: newId(),
+      name: `${label} ${layer.zones.length + 1}`,
+      description: "",
+      color: null,
+      polygons,
+    };
+    changeLayer(layerId, (l) => ({ ...l, zones: [...l.zones, zone] }));
+    return zone;
+  };
+
+  const removeZone = (layerId: string, zoneId: string) =>
+    changeLayer(layerId, (layer) => ({ ...layer, zones: layer.zones.filter((z) => z.id !== zoneId) }));
 
   const removeLayer = (id: string) => {
     window.clearTimeout(saveTimers.current.get(id));
@@ -164,5 +202,16 @@ export function useLayers(notify: (msg: string) => void) {
     notify("All map layers removed");
   };
 
-  return { layers, canSave, importFiles, updateLayer, updateZone, removeLayer, clearAll };
+  return {
+    layers,
+    canSave,
+    importFiles,
+    addLayer,
+    updateLayer,
+    removeLayer,
+    clearAll,
+    addZone,
+    updateZone,
+    removeZone,
+  };
 }

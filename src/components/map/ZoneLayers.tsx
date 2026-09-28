@@ -70,10 +70,12 @@ export default function ZoneLayers({
   layers,
   selected,
   onSelect,
+  hiddenZoneId,
 }: {
   layers: ZoneLayer[];
   selected: ZoneRef | null;
   onSelect: (layerId: string, zoneId: string) => void;
+  hiddenZoneId?: string; // a zone whose shape is being edited is drawn by the editor instead
 }) {
   return (
     <>
@@ -89,15 +91,17 @@ export default function ZoneLayers({
                 pathOptions={{ color: layer.color, weight: 2, opacity: 0.8 }}
               />
             ))}
-            {layer.zones.map((zone) => (
-              <ZoneShape
-                key={zone.id}
-                layer={layer}
-                zone={zone}
-                selected={selected?.layerId === layer.id && selected.zoneId === zone.id}
-                onSelect={onSelect}
-              />
-            ))}
+            {layer.zones
+              .filter((zone) => zone.id !== hiddenZoneId)
+              .map((zone) => (
+                <ZoneShape
+                  key={zone.id}
+                  layer={layer}
+                  zone={zone}
+                  selected={selected?.layerId === layer.id && selected.zoneId === zone.id}
+                  onSelect={onSelect}
+                />
+              ))}
           </Fragment>
         ))}
     </>

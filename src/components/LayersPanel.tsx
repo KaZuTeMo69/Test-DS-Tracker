@@ -1,8 +1,9 @@
-import { ChangeEvent, ReactNode, useRef, useState } from "react";
-import { Eye, EyeOff, Trash2, Upload } from "lucide-react";
+import { ChangeEvent, useRef } from "react";
+import { Download, Eye, EyeOff, PenLine, Plus, Trash2, Upload } from "lucide-react";
 import { LayerKind, ZoneLayer } from "../types";
 import { LAYER_KIND_LABEL, zoneColor } from "../lib/layers";
 import { ZoneRef } from "./map/ZoneLayers";
+import ConfirmButton from "./ConfirmButton";
 
 interface LayersPanelProps {
   layers: ZoneLayer[];
@@ -14,33 +15,12 @@ interface LayersPanelProps {
   onRemoveLayer: (id: string) => void;
   onClearAll: () => void;
   onSelectZone: (layerId: string, zoneId: string) => void;
+  onAddLayer: (kind: LayerKind) => void;
+  onDrawZone: (layerId: string) => void;
+  onExport: (layer: ZoneLayer) => void;
 }
 
 const TYPING_DELAY = 400;
-
-// A button that asks for a second click before it acts, so a stray tap can't delete anything
-function ConfirmButton({
-  label,
-  confirmLabel,
-  onConfirm,
-  className,
-}: {
-  label: ReactNode;
-  confirmLabel: string;
-  onConfirm: () => void;
-  className: string;
-}) {
-  const [armed, setArmed] = useState(false);
-  return (
-    <button
-      onClick={() => (armed ? onConfirm() : setArmed(true))}
-      onBlur={() => setArmed(false)}
-      className={`${className} ${armed ? "armed" : ""}`}
-    >
-      {armed ? confirmLabel : label}
-    </button>
-  );
-}
 
 function LayerCard({
   layer,
@@ -48,7 +28,12 @@ function LayerCard({
   onUpdateLayer,
   onRemoveLayer,
   onSelectZone,
-}: Omit<LayersPanelProps, "layers" | "canSave" | "onImport" | "onClearAll"> & { layer: ZoneLayer; key?: string }) {
+  onDrawZone,
+  onExport,
+}: Omit<LayersPanelProps, "layers" | "canSave" | "onImport" | "onClearAll" | "onAddLayer"> & {
+  layer: ZoneLayer;
+  key?: string;
+}) {
   const update = (patch: Partial<Omit<ZoneLayer, "id">>, delay?: number) => onUpdateLayer(layer.id, patch, delay);
   const zoneWord = layer.zones.length === 1 ? "zone" : "zones";
 
@@ -135,11 +120,26 @@ function LayerCard({
         </div>
       </details>
 
+      <div className="flex items-center gap-1.5 layer-row">
+        <button onClick={() => onDrawZone(layer.id)} className="layer-action" title="Draw a new zone in this layer">
+          <PenLine size={13} /> Draw zone
+        </button>
+        <button
+          onClick={() => onExport(layer)}
+          disabled={!layer.zones.length && !layer.lines.length}
+          className="layer-action"
+          title="Download this layer as a KML file for Google My Maps or Google Earth"
+        >
+          <Download size={13} /> Export KML
+        </button>
+      </div>
+
       <div className="flex items-center justify-between gap-2 layer-row">
         <span className="text-[10px] text-gray-400 truncate" title={layer.source || undefined}>
           {layer.source ? `From ${layer.source}` : "Made in the app"}
         </span>
         <ConfirmButton
+          title="Delete this layer"
           label={<Trash2 size={13} />}
           confirmLabel="Delete layer?"
           onConfirm={() => onRemoveLayer(layer.id)}
@@ -151,7 +151,14 @@ function LayerCard({
 }
 
 /** The Layers tab: KML / KMZ layers (coverage zones and white space) and their settings. */
-export default function LayersPanel({ layers, canSave, onImport, onClearAll, ...cardProps }: LayersPanelProps) {
+export default function LayersPanel({
+  layers,
+  canSave,
+  onImport,
+  onClearAll,
+  onAddLayer,
+  ...cardProps
+}: LayersPanelProps) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const pick = (e: ChangeEvent<HTMLInputElement>) => {
@@ -168,6 +175,22 @@ export default function LayersPanel({ layers, canSave, onImport, onClearAll, ...
       >
         <Upload size={14} /> Import KML / KMZ
       </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => onAddLayer("whitespace")}
+          className="layer-action justify-center"
+          title="An empty layer for drawing white space"
+        >
+          <Plus size={13} /> White-space layer
+        </button>
+        <button
+          onClick={() => onAddLayer("coverage")}
+          className="layer-action justify-center"
+          title="An empty layer for drawing coverage zones"
+        >
+          <Plus size={13} /> Coverage layer
+        </button>
+      </div>
       <input
         ref={fileRef}
         type="file"
@@ -178,7 +201,8 @@ export default function LayersPanel({ layers, canSave, onImport, onClearAll, ...
       />
       <p className="text-[11px] text-gray-400 leading-snug">
         In Google My Maps, use the map&apos;s ⋮ menu → <b className="text-gray-200">Export to KML/KMZ</b>, for the whole
-        map or one layer. You can import several files at once.
+        map or one layer. You can import several files at once, or start an empty layer and draw on the map.{" "}
+        <b className="text-gray-200">Export KML</b> saves a layer as a file My Maps can import.
       </p>
       {!canSave && (
         <p className="text-[11px] text-[#FB923C] leading-snug">

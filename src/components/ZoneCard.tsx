@@ -1,6 +1,7 @@
-import { X } from "lucide-react";
+import { PenLine, Trash2, X } from "lucide-react";
 import { Zone, ZoneLayer } from "../types";
 import { LAYER_KIND_LABEL, ZONE_COLORS, zoneAreaKm2, zoneColor } from "../lib/layers";
+import ConfirmButton from "./ConfirmButton";
 
 interface ZoneCardProps {
   layer: ZoneLayer;
@@ -8,6 +9,8 @@ interface ZoneCardProps {
   // delay: typing saves after a short pause, other changes save at once
   onChange: (patch: Partial<Omit<Zone, "id">>, delay?: number) => void;
   onClose: () => void;
+  onEditShape: () => void;
+  onDelete: () => void;
 }
 
 const TYPING_DELAY = 400;
@@ -26,7 +29,14 @@ function shapeText(zone: Zone): string {
 }
 
 // z-[600]: the same place and layer as the store card; only one of the two is open at a time
-export default function ZoneCard({ layer, zone, onChange, onClose }: ZoneCardProps & { key?: string }) {
+export default function ZoneCard({
+  layer,
+  zone,
+  onChange,
+  onClose,
+  onEditShape,
+  onDelete,
+}: ZoneCardProps & { key?: string }) {
   const color = zoneColor(zone, layer);
 
   return (
@@ -131,6 +141,22 @@ export default function ZoneCard({ layer, zone, onChange, onClose }: ZoneCardPro
             </span>
           </div>
         </div>
+      </div>
+
+      <div className="store-card-footer flex gap-2">
+        <button onClick={onEditShape} className="zone-card-btn primary flex-1">
+          <PenLine size={13} /> Edit shape
+        </button>
+        <ConfirmButton
+          label={
+            <>
+              <Trash2 size={13} /> Delete zone
+            </>
+          }
+          confirmLabel="Click again to delete"
+          onConfirm={onDelete}
+          className="zone-card-btn danger flex-1"
+        />
       </div>
     </div>
   );
