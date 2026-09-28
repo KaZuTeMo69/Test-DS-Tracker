@@ -1,9 +1,16 @@
+import { lazy, memo, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, FileDown, FileUp, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { CitySummary, RenewalFilter, Store } from "../types";
-import { CURRENCY, dataIssues, fmtN, fmtR, hasCoords, isLive, RENEWAL_STYLE } from "../constants";
-import { renewalInfo } from "../lib/contract";
-import CityInsights from "./CityInsights";
+import { CitySummary, SidebarTab, Store } from "../types";
+import { CURRENCY, RENEWAL_STYLE } from "../constants";
+import { Filters } from "../hooks/useFilters";
+import { dataIssues, hasCoords } from "../lib/checks";
+import { fmtN, fmtR } from "../lib/format";
+import { storeRenewal } from "../lib/renewal";
+import { isLive } from "../lib/status";
+
+// The charts library is large and only the Growth tab uses it, so it loads when that tab first opens
+const CityInsights = lazy(() => import("./CityInsights"));
 
 interface SidebarProps {
   isOpen: boolean;
@@ -11,25 +18,14 @@ interface SidebarProps {
   stores: Store[];
   totalStores: number;
   citySummaries: CitySummary[];
-  currentTab: "stores" | "cities" | "insights";
-  setCurrentTab: (tab: "stores" | "cities" | "insights") => void;
+  currentTab: SidebarTab;
+  setCurrentTab: (tab: SidebarTab) => void;
   selectedId: number | null;
   onSelectStore: (id: number) => void;
   onImportSheet: () => void;
   onCityFocus: (city: string) => void;
-  searchQuery: string;
-  setSearchQuery: (q: string) => void;
-  liveFilter: "all" | "live" | "notlive";
-  setLiveFilter: (f: "all" | "live" | "notlive") => void;
-  paidFilter: "all" | "paid" | "notpaid";
-  setPaidFilter: (f: "all" | "paid" | "notpaid") => void;
-  renewalFilter: RenewalFilter;
-  setRenewalFilter: (f: RenewalFilter) => void;
-  cityFilter: string;
-  setCityFilter: (c: string) => void;
+  filters: Filters;
   allCities: string[];
-  unclearOnly: boolean;
-  onClearUnclear: () => void;
   emptyMessage: string; // shown when the list is empty
 }
 
@@ -81,6 +77,97 @@ function downloadStoresCSV(stores: Store[]) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// Long lists are drawn in batches as you scroll, so a sheet with thousands of stores doesn't slow the sidebar down
+const LIST_BATCH = 100;
+
+// One store in the list. Memoised, so selecting a store only redraws the two rows that changed
+const StoreListItem = memo(function StoreListItem({
+  store: s,
+  selected,
+  onSelect,
+}: {
+  store: Store;
+  selected: boolean;
+  onSelect: (id: number) => void;
+  key?: number;
+}) {
+  const renewal = storeRenewal(s);
+  const issues = dataIssues(s);
+  return (
+    <div
+      onClick={() => onSelect(s.id)}
+      className={`store-list-item store-list-card bg-[#111] border border-[#222] p-[20px_21px] rounded-lg cursor-pointer transition-all hover:border-[#333] shadow-sm duration-300 ${selected ? "border-[#fbbf24]/50 bg-[#161616] ring-1 ring-[#fbbf24]/20 shadow-lg" : "opacity-80 hover:opacity-100"}`}
+    >
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="store-title store-card-name text-sm font-bold text-white leading-snug mb-1 truncate">
+            {s.name}
+          </div>
+          <div className="store-card-subtext text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+            {s.dsCode || "No DS code"} · {s.city}
+          </div>
+        </div>
+        <div className="flex flex-col gap-1 items-end pt-0.5">
+          <span
+            className={`px-2 py-0.5 text-[9px] font-bold rounded-full ${isLive(s) ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}
+          >
+            {isLive(s) ? "LIVE" : "NOT LIVE"}
+          </span>
+          {renewal.status !== "unknown" && renewal.status !== "ok" && (
+            <span
+              className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${RENEWAL_STYLE[renewal.status].className}`}
+              title={`Contract ends ${s.endDate}`}
+            >
+              {RENEWAL_STYLE[renewal.status].tag}
+            </span>
+          )}
+          {!hasCoords(s) && (
+            <span
+              className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]"
+              title={s.locationIssue || "No coordinates"}
+            >
+              NO LOCATION
+            </span>
+          )}
+          {hasCoords(s) && issues.length > 0 && (
+            <span
+              className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]"
+              title={issues.join("\n")}
+            >
+              CHECK DATA
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="store-card-footer-metrics mt-3 flex gap-4 text-[11px] font-mono text-gray-400">
+        <span>{s.size || "—"} m²</span>
+        <span>
+          {CURRENCY} {fmtR(s.rentSARAnnual)}/yr
+        </span>
+      </div>
+    </div>
+  );
+});
+
+// Shows the next batch of stores when it scrolls into view. Keyed by the batch size, so it checks again after each batch
+function LoadMore({ onVisible }: { onVisible: () => void; key?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) onVisible();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [onVisible]);
+  return (
+    <div ref={ref} className="text-center py-3 text-[11px] text-gray-500">
+      Loading more stores…
+    </div>
+  );
+}
+
 // A label with a row of three filter buttons, one of them active
 function FilterRow<T extends string>({
   label,
@@ -126,21 +213,26 @@ export default function Sidebar({
   onSelectStore,
   onImportSheet,
   onCityFocus,
-  searchQuery,
-  setSearchQuery,
-  liveFilter,
-  setLiveFilter,
-  paidFilter,
-  setPaidFilter,
-  renewalFilter,
-  setRenewalFilter,
-  cityFilter,
-  setCityFilter,
+  filters,
   allCities,
-  unclearOnly,
-  onClearUnclear,
   emptyMessage,
 }: SidebarProps) {
+  const {
+    searchQuery,
+    setSearchQuery,
+    liveFilter,
+    setLiveFilter,
+    paidFilter,
+    setPaidFilter,
+    renewalFilter,
+    setRenewalFilter,
+    cityFilter,
+    setCityFilter,
+    unclearOnly,
+    setUnclearOnly,
+  } = filters;
+  const [shown, setShown] = useState(LIST_BATCH);
+  const showMore = useCallback(() => setShown((n) => n + LIST_BATCH), []);
   return (
     <AnimatePresence mode="wait">
       {isOpen && (
@@ -202,7 +294,7 @@ export default function Sidebar({
               <div className="flex flex-col gap-2.5">
                 {unclearOnly && (
                   <button
-                    onClick={onClearUnclear}
+                    onClick={() => setUnclearOnly(false)}
                     className="flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg border border-[#FB923C]/40 bg-[#FB923C]/10 text-[#FB923C] text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-[#FB923C]/15 transition-colors"
                     title="Show all stores again"
                   >
@@ -282,65 +374,12 @@ export default function Sidebar({
           >
             {currentTab === "stores" ? (
               stores.length > 0 ? (
-                stores.map((s) => (
-                  <div
-                    key={s.id}
-                    onClick={() => onSelectStore(s.id)}
-                    className={`store-list-item store-list-card bg-[#111] border border-[#222] p-[20px_21px] rounded-lg cursor-pointer transition-all hover:border-[#333] shadow-sm duration-300 ${selectedId === s.id ? "border-[#fbbf24]/50 bg-[#161616] ring-1 ring-[#fbbf24]/20 shadow-lg" : "opacity-80 hover:opacity-100"}`}
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="store-title store-card-name text-sm font-bold text-white leading-snug mb-1 truncate">
-                          {s.name}
-                        </div>
-                        <div className="store-card-subtext text-[10px] font-mono text-gray-500 uppercase tracking-widest">
-                          {s.dsCode || "No DS code"} · {s.city}
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1 items-end pt-0.5">
-                        <span
-                          className={`px-2 py-0.5 text-[9px] font-bold rounded-full ${isLive(s) ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}
-                        >
-                          {isLive(s) ? "LIVE" : "NOT LIVE"}
-                        </span>
-                        {(() => {
-                          const renewal = renewalInfo(s);
-                          if (renewal.status === "unknown" || renewal.status === "ok") return null;
-                          return (
-                            <span
-                              className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${RENEWAL_STYLE[renewal.status].className}`}
-                              title={`Contract ends ${s.endDate}`}
-                            >
-                              {RENEWAL_STYLE[renewal.status].tag}
-                            </span>
-                          );
-                        })()}
-                        {!hasCoords(s) && (
-                          <span
-                            className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]"
-                            title={s.locationIssue || "No coordinates"}
-                          >
-                            NO LOCATION
-                          </span>
-                        )}
-                        {hasCoords(s) && dataIssues(s).length > 0 && (
-                          <span
-                            className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]"
-                            title={dataIssues(s).join("\n")}
-                          >
-                            CHECK DATA
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="store-card-footer-metrics mt-3 flex gap-4 text-[11px] font-mono text-gray-400">
-                      <span>{s.size || "—"} m²</span>
-                      <span>
-                        {CURRENCY} {fmtR(s.rentSARAnnual)}/yr
-                      </span>
-                    </div>
-                  </div>
-                ))
+                <>
+                  {stores.slice(0, shown).map((s) => (
+                    <StoreListItem key={s.id} store={s} selected={selectedId === s.id} onSelect={onSelectStore} />
+                  ))}
+                  {stores.length > shown && <LoadMore key={shown} onVisible={showMore} />}
+                </>
               ) : (
                 <div className="text-center py-10 text-[13px] text-gray-600 uppercase font-bold tracking-widest opacity-50">
                   {emptyMessage}
@@ -414,7 +453,9 @@ export default function Sidebar({
                 )}
               </div>
             ) : (
-              <CityInsights citySummaries={citySummaries} />
+              <Suspense fallback={<div className="text-center py-10 text-[11px] text-gray-500">Loading charts…</div>}>
+                <CityInsights citySummaries={citySummaries} />
+              </Suspense>
             )}
           </div>
 

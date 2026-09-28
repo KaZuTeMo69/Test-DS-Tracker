@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CitySummary } from "../types";
-import { CURRENCY, fmtN } from "../constants";
+import { CURRENCY } from "../constants";
+import { fmtN } from "../lib/format";
 
 interface CityInsightsProps {
   citySummaries: CitySummary[];

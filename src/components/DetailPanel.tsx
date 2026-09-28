@@ -1,29 +1,13 @@
 import { memo, ReactNode, useState } from "react";
 import { X } from "lucide-react";
 import { Store } from "../types";
-import {
-  contractDateIssues,
-  CURRENCY,
-  dataIssues,
-  fmtN,
-  hasCoords,
-  isLive,
-  isPaid,
-  liveStatus,
-  paidStatus,
-  RENEWAL_STYLE,
-} from "../constants";
-import {
-  daysBetween,
-  formatDate,
-  formatDuration,
-  parseDate,
-  pluralDays,
-  RenewalInfo,
-  renewalInfo,
-  today,
-} from "../lib/contract";
+import { CURRENCY, RENEWAL_STYLE } from "../constants";
+import { contractDateIssues, dataIssues, hasCoords } from "../lib/checks";
+import { daysBetween, formatDate, formatDuration, parseDate, pluralDays, RenewalInfo, today } from "../lib/contract";
+import { fmtN } from "../lib/format";
+import { storeRenewal } from "../lib/renewal";
 import { RentComparison, rentComparison } from "../lib/rentStats";
+import { isLive, isPaid, liveStatus, paidStatus } from "../lib/status";
 
 interface DetailPanelProps {
   store: Store | null;
@@ -501,7 +485,7 @@ function StoreCard({ store, stores, onClose, onRemove }: DetailPanelProps & { st
   const [tab, setTab] = useState<Tab>("summary");
   // Removing takes a second click, so a stray tap can't delete a store
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const renewal = renewalInfo(store);
+  const renewal = storeRenewal(store);
   const rent = rentComparison(store, stores);
   const renewalTag = renewal.status === "soon" || renewal.status === "now" || renewal.status === "expired";
 

@@ -22,8 +22,12 @@ export interface Store {
   locationIssue?: string;
 }
 
-// Renewal filter in the sidebar: "renew" = renewal due now or within the warning window
+// Sidebar filters; "renew" = renewal due now or within the warning window
+export type LiveFilter = "all" | "live" | "notlive";
+export type PaidFilter = "all" | "paid" | "notpaid";
 export type RenewalFilter = "all" | "renew" | "expired";
+
+export type SidebarTab = "stores" | "cities" | "insights";
 
 export interface CitySummary {
   city: string;
