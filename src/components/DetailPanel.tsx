@@ -486,6 +486,7 @@ const TABS: Array<[Tab, string]> = [
   ["contract", "Contract"],
 ];
 
+// z-[600]: above the map legend (500), below the sidebar (2000) and toasts (999)
 function StoreCard({ store, stores, onClose }: { store: Store; stores: Store[]; onClose: () => void; key?: number }) {
   const [tab, setTab] = useState<Tab>("summary");
   const renewal = renewalInfo(store);
@@ -495,7 +496,7 @@ function StoreCard({ store, stores, onClose }: { store: Store; stores: Store[]; 
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className="absolute top-[12px] right-[52px] max-h-[calc(100%-32px)] w-[360px] max-w-[calc(100%-64px)] bg-[#111111]/95 backdrop-blur-md border border-[#333] rounded-xl shadow-2xl overflow-hidden flex flex-col z-[500]"
+      className="absolute top-[12px] right-[52px] max-h-[calc(100%-32px)] w-[360px] max-w-[calc(100%-64px)] bg-[#111111]/95 backdrop-blur-md border border-[#333] rounded-xl shadow-2xl overflow-hidden flex flex-col z-[600]"
     >
       <div className="store-card-header border-b border-[#262626]">
         <div className="flex justify-between items-start gap-2">

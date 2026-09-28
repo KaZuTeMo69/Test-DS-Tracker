@@ -504,9 +504,10 @@ export default function MapComponent({
 
   return (
     <div id="map" className="w-full h-full relative cursor-default">
-      {/* Floating Coordinate Search Bar */}
+      {/* Floating Coordinate Search Bar. Below 1280px it would sit on top of the open store card,
+          so it steps aside while a store is selected */}
       <div
-        className="absolute top-4 left-1/2 -translate-x-1/2 sm:w-[340px] w-[220px] max-w-[90vw] z-[1000] pointer-events-auto transition-all duration-300"
+        className={`absolute top-4 left-1/2 -translate-x-1/2 sm:w-[340px] w-[220px] max-w-[90vw] z-[1000] pointer-events-auto transition-all duration-300 ${selectedId !== null ? "max-xl:hidden" : ""}`}
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
