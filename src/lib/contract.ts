@@ -36,13 +36,28 @@ export function formatDate(date: Date): string {
   return `${String(date.getUTCDate()).padStart(2, "0")} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
-/** Reads a contract duration such as "2 Years", "6 Months" or "1 Year 6 Months" as a number of months. */
+// A duration that is only a number is in years ("2" = 2 years); months are always written out ("6 months")
+const BARE_YEARS = /^\d+(?:\.\d+)?$/;
+
+/** Reads a contract duration such as "2", "2 Years", "6 Months" or "1 Year 6 Months" as a number of months. */
 export function parseDurationMonths(text: string): number | null {
+  const bare = text.trim();
+  if (BARE_YEARS.test(bare)) {
+    const months = Math.round(parseFloat(bare) * 12);
+    return months > 0 ? months : null;
+  }
   let months = 0;
   for (const [, n, unit] of text.toLowerCase().matchAll(/(\d+(?:\.\d+)?)\s*(years?|yrs?|y|months?|mos?|m)\b/g)) {
     months += unit.startsWith("y") ? parseFloat(n) * 12 : parseFloat(n);
   }
   return months > 0 ? Math.round(months) : null;
+}
+
+/** How a duration reads on screen: a bare number gets its unit ("2" → "2 years"), anything else stays as written. */
+export function formatDuration(text: string): string {
+  const bare = text.trim();
+  if (!BARE_YEARS.test(bare)) return bare;
+  return `${bare} ${parseFloat(bare) === 1 ? "year" : "years"}`;
 }
 
 /**

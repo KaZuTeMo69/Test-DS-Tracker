@@ -742,7 +742,7 @@ export default function MapComponent({
                     <div className="text-center">
                       <div className="map-popup-title text-sm font-extrabold text-white mb-0.5">{s.name}</div>
                       <div className="map-popup-subtext text-[10px] text-gray-400 mt-1">
-                        {s.dsCode || s.whCode} · {s.city}
+                        {s.dsCode || "No DS code"} · {s.city}
                       </div>
                     </div>
                     <button

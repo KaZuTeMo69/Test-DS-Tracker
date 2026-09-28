@@ -13,7 +13,16 @@ import {
   paidStatus,
   RENEWAL_STYLE,
 } from "../constants";
-import { daysBetween, formatDate, parseDate, pluralDays, RenewalInfo, renewalInfo, today } from "../lib/contract";
+import {
+  daysBetween,
+  formatDate,
+  formatDuration,
+  parseDate,
+  pluralDays,
+  RenewalInfo,
+  renewalInfo,
+  today,
+} from "../lib/contract";
 import { RentComparison, rentComparison } from "../lib/rentStats";
 
 interface DetailPanelProps {
@@ -72,9 +81,9 @@ const ordinal = (n: number) => {
 
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-// "3 Years" → "3-year", "6 Months" → "6-month"; anything else as written
+// "3" or "3 Years" → "3-year", "6 Months" → "6-month"; anything else as written
 function termPhrase(term: string): string {
-  const m = term.trim().match(/^(\d+(?:\.\d+)?)\s*(year|month)s?$/i);
+  const m = formatDuration(term).match(/^(\d+(?:\.\d+)?)\s*(year|month)s?$/i);
   return m ? `${m[1]}-${m[2].toLowerCase()}` : term.trim().toLowerCase();
 }
 
@@ -452,7 +461,7 @@ function ContractTab({ store, renewal }: { store: Store; renewal: RenewalInfo })
   return (
     <>
       <div className="grid grid-cols-2 gap-2">
-        <Tile label="Term" value={store.whCode || "—"} />
+        <Tile label="Term" value={formatDuration(store.whCode) || "—"} />
         <DaysLeftTile renewal={renewal} term="" />
       </div>
 

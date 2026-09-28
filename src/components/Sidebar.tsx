@@ -278,7 +278,7 @@ export default function Sidebar({
                           {s.name}
                         </div>
                         <div className="store-card-subtext text-[10px] font-mono text-gray-500 uppercase tracking-widest">
-                          {s.dsCode || s.whCode} · {s.city}
+                          {s.dsCode || "No DS code"} · {s.city}
                         </div>
                       </div>
                       <div className="flex flex-col gap-1 items-end pt-0.5">
