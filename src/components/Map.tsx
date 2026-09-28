@@ -9,6 +9,7 @@ import { FileUp, Moon, Search, Sun, X } from "lucide-react";
 import { Store } from "../types";
 import { isLive, isPaid, pinColor, PIN_SEL } from "../constants";
 import { parseKML } from "../lib/kml";
+import { clearRoute, showRoute } from "../lib/routing";
 
 // Fix for default marker icons in Leaflet
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -33,56 +34,6 @@ interface MapComponentProps {
   setKmlLayers: (layers: L.Layer[]) => void;
   onAddStore?: (store: Omit<Store, "id">) => void;
   showToast?: (msg: string) => void;
-}
-
-// The route currently drawn on the map (one at a time)
-let activeRoutingControl: any = null;
-
-// Draws a driving route from the searched coordinate to the selected store
-function calculateRouteToStore(
-  userLat: number,
-  userLng: number,
-  storeLat: number,
-  storeLng: number,
-  mapInstance: L.Map,
-) {
-  // Clear any existing route from a previous search so they don't pile up on screen
-  if (activeRoutingControl) {
-    try {
-      mapInstance.removeControl(activeRoutingControl);
-    } catch (e) {
-      console.warn("Error removing routing control", e);
-    }
-    activeRoutingControl = null;
-  }
-
-  // Check if Routing is available on L
-  if (!(L as any).Routing || !(L as any).Routing.control) {
-    console.warn("Leaflet Routing Machine is not yet loaded.");
-    return;
-  }
-
-  // Initialize the Leaflet Routing Machine control pointing to the public OSRM server
-  try {
-    activeRoutingControl = (L as any).Routing.control({
-      waypoints: [
-        L.latLng(userLat, userLng), // Start Point (e.g., your searched/dropped coordinate sandbox pin)
-        L.latLng(storeLat, storeLng), // End Point (The target dark store location coordinate)
-      ],
-      router: (L as any).Routing.osrmv1({
-        serviceUrl: "https://router.project-osrm.org/route/v1", // Public OSRM Backend API
-      }),
-      lineOptions: {
-        styles: [{ color: "#38BDF8", weight: 5, opacity: 0.85 }], // Modern sky-blue route path line
-      },
-      createMarker: function () {
-        return null;
-      }, // Hides default flags so your custom store pins stay visible!
-      show: true, // Displays an interactive step-by-step driving itinerary panel on the map
-    }).addTo(mapInstance);
-  } catch (error) {
-    console.error("Failed to initialize Leaflet Routing control", error);
-  }
 }
 
 // Icons are cached so re-renders hand Leaflet the same icon object instead of rebuilding every pin
@@ -163,7 +114,7 @@ function MapUpdater({
   onMapClick,
   tempPin,
   isNightMode,
-  routingLoaded,
+  routePanelRef,
 }: {
   stores: Store[];
   selectedId: number | null;
@@ -171,7 +122,7 @@ function MapUpdater({
   onMapClick?: () => void;
   tempPin: { lat: number; lng: number } | null;
   isNightMode: boolean;
-  routingLoaded: boolean;
+  routePanelRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const map = useMap();
 
@@ -245,37 +196,17 @@ function MapUpdater({
     }
   }, [selectedId, map, selectedLat, selectedLng]);
 
+  // Route from the searched coordinate to the selected store. It depends on the store's position, not the
+  // store list, so a background refresh doesn't request the same route again
   useEffect(() => {
-    if (!map) return;
-    if (tempPin && selectedId !== null && routingLoaded) {
-      const store = stores.find((s) => s.id === selectedId);
-      if (store && store.lat !== null && store.lng !== null) {
-        calculateRouteToStore(tempPin.lat, tempPin.lng, store.lat, store.lng, map);
-      }
+    if (tempPin && selectedLat !== null && selectedLng !== null) {
+      showRoute(map, [tempPin.lat, tempPin.lng], [selectedLat, selectedLng], routePanelRef.current);
     } else {
-      if (activeRoutingControl) {
-        try {
-          map.removeControl(activeRoutingControl);
-        } catch (e) {
-          console.warn("removeControl failed", e);
-        }
-        activeRoutingControl = null;
-      }
+      clearRoute(map);
     }
-  }, [selectedId, tempPin, map, stores, routingLoaded]);
+  }, [map, tempPin, selectedLat, selectedLng, routePanelRef]);
 
-  useEffect(() => {
-    return () => {
-      if (activeRoutingControl && map) {
-        try {
-          map.removeControl(activeRoutingControl);
-        } catch (e) {
-          // ignore
-        }
-        activeRoutingControl = null;
-      }
-    };
-  }, [map]);
+  useEffect(() => () => clearRoute(map), [map]);
 
   return null;
 }
@@ -336,8 +267,9 @@ export default function MapComponent({
 }: MapComponentProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tempMarkerRef = useRef<L.Marker | null>(null);
+  // The route's directions panel is placed here, under the map buttons
+  const routePanelRef = useRef<HTMLDivElement>(null);
 
-  const [routingLoaded, setRoutingLoaded] = useState(false);
   // Coordinate search and manual store adding
   const [tempPin, setTempPin] = useState<{ lat: number; lng: number } | null>(null);
   const [searchInput, setSearchInput] = useState("");
@@ -345,35 +277,6 @@ export default function MapComponent({
   const [showAddModal, setShowAddModal] = useState(false);
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreCity, setNewStoreCity] = useState("");
-
-  // Load Leaflet Routing Machine from the CDN once
-  useEffect(() => {
-    if ((L as any).Routing && (L as any).Routing.control) {
-      setRoutingLoaded(true);
-      return;
-    }
-
-    const scriptId = "leaflet-routing-machine-script";
-    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-    if (!script) {
-      script = document.createElement("script");
-      script.id = scriptId;
-      script.src = "https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js";
-      script.async = true;
-      document.body.appendChild(script);
-    }
-
-    const onScriptLoad = () => {
-      setRoutingLoaded(true);
-    };
-
-    script.addEventListener("load", onScriptLoad);
-    return () => {
-      if (script) {
-        script.removeEventListener("load", onScriptLoad);
-      }
-    };
-  }, []);
 
   // Automatically open the popup when a coordinate search places the temporary marker
   useEffect(() => {
@@ -471,7 +374,7 @@ export default function MapComponent({
     // Only the name, city and pin are known; everything else stays blank and is flagged as missing
     const newStore: Omit<Store, "id"> = {
       dsCode: "MANUAL",
-      whCode: "",
+      contractDuration: "",
       name: newStoreName.trim(),
       country: "KSA",
       city: newStoreCity.trim(),
@@ -646,7 +549,7 @@ export default function MapComponent({
           onMapClick={onMapClick}
           tempPin={tempPin}
           isNightMode={isNightMode}
-          routingLoaded={routingLoaded}
+          routePanelRef={routePanelRef}
         />
 
         <TileLayer
@@ -795,6 +698,9 @@ export default function MapComponent({
                 <X size={18} />
               </button>
             )}
+
+            {/* Clicks in the directions panel mustn't reach the map area, which would deselect the store */}
+            <div ref={routePanelRef} className="flex flex-col items-end" onClick={(e) => e.stopPropagation()} />
           </div>
         </div>
 

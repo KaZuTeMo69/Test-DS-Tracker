@@ -1,4 +1,4 @@
-import { ChevronLeft, FileDown, FileUp, Search } from "lucide-react";
+import { ChevronLeft, FileDown, FileUp, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { CitySummary, RenewalFilter, Store } from "../types";
 import { CURRENCY, dataIssues, fmtN, fmtR, hasCoords, isLive, RENEWAL_STYLE } from "../constants";
@@ -28,6 +28,9 @@ interface SidebarProps {
   cityFilter: string;
   setCityFilter: (c: string) => void;
   allCities: string[];
+  unclearOnly: boolean;
+  onClearUnclear: () => void;
+  emptyMessage: string; // shown when the list is empty
 }
 
 function downloadStoresCSV(stores: Store[]) {
@@ -51,7 +54,7 @@ function downloadStoresCSV(stores: Store[]) {
     s.name,
     s.city,
     s.dsCode,
-    s.whCode,
+    s.contractDuration,
     s.paid,
     s.live,
     s.startDate,
@@ -134,6 +137,9 @@ export default function Sidebar({
   cityFilter,
   setCityFilter,
   allCities,
+  unclearOnly,
+  onClearUnclear,
+  emptyMessage,
 }: SidebarProps) {
   return (
     <AnimatePresence mode="wait">
@@ -194,6 +200,16 @@ export default function Sidebar({
 
             {currentTab === "stores" && (
               <div className="flex flex-col gap-2.5">
+                {unclearOnly && (
+                  <button
+                    onClick={onClearUnclear}
+                    className="flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg border border-[#FB923C]/40 bg-[#FB923C]/10 text-[#FB923C] text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-[#FB923C]/15 transition-colors"
+                    title="Show all stores again"
+                  >
+                    <span>Only stores with unclear status</span>
+                    <X size={13} />
+                  </button>
+                )}
                 <div className="space-y-2">
                   <FilterRow
                     label="Live"
@@ -327,7 +343,7 @@ export default function Sidebar({
                 ))
               ) : (
                 <div className="text-center py-10 text-[13px] text-gray-600 uppercase font-bold tracking-widest opacity-50">
-                  No results found
+                  {emptyMessage}
                 </div>
               )
             ) : currentTab === "cities" ? (

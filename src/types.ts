@@ -3,10 +3,10 @@ export interface Store {
   id: number;
   name: string;
   dsCode: string;
-  whCode: string; // Holds the contract duration
   city: string;
   country: string;
-  // Contract
+  // Contract; a duration that is only a number is in years ("2" = 2 years)
+  contractDuration: string;
   startDate: string;
   endDate: string;
   live?: string;

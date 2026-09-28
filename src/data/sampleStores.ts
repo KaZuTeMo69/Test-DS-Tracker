@@ -4,7 +4,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 1,
     dsCode: "DS-101",
-    whCode: "2 Years",
+    contractDuration: "2 Years",
     name: "Al Yasmin Express Hub",
     country: "KSA",
     city: "Riyadh",
@@ -22,7 +22,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 2,
     dsCode: "DS-102",
-    whCode: "3 Years",
+    contractDuration: "3 Years",
     name: "Al Malqa Depot",
     country: "KSA",
     city: "Riyadh",
@@ -40,7 +40,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 3,
     dsCode: "DS-103",
-    whCode: "1 Year",
+    contractDuration: "1 Year",
     name: "Olaya Central Hub",
     country: "KSA",
     city: "Riyadh",
@@ -58,7 +58,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 4,
     dsCode: "DS-104",
-    whCode: "2 Years",
+    contractDuration: "2 Years",
     name: "Sulaimaniyah Store",
     country: "KSA",
     city: "Riyadh",
@@ -76,7 +76,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 5,
     dsCode: "DS-105",
-    whCode: "3 Years",
+    contractDuration: "3 Years",
     name: "Al Nakheel Fulfilment",
     country: "KSA",
     city: "Riyadh",
@@ -94,7 +94,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 6,
     dsCode: "DS-106",
-    whCode: "2 Years",
+    contractDuration: "2 Years",
     name: "Al Rawdah East Hub",
     country: "KSA",
     city: "Riyadh",
@@ -112,7 +112,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 7,
     dsCode: "DS-201",
-    whCode: "3 Years",
+    contractDuration: "3 Years",
     name: "Al Shati Coastal Hub",
     country: "KSA",
     city: "Jeddah",
@@ -130,7 +130,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 8,
     dsCode: "DS-202",
-    whCode: "2 Years",
+    contractDuration: "2 Years",
     name: "Al Zahra Depot",
     country: "KSA",
     city: "Jeddah",
@@ -148,7 +148,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 9,
     dsCode: "DS-203",
-    whCode: "1 Year",
+    contractDuration: "1 Year",
     name: "Al Rawdah Jeddah Hub",
     country: "KSA",
     city: "Jeddah",
@@ -166,7 +166,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 10,
     dsCode: "DS-204",
-    whCode: "2 Years",
+    contractDuration: "2 Years",
     name: "Al Hamra Express",
     country: "KSA",
     city: "Jeddah",
@@ -184,7 +184,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 11,
     dsCode: "DS-301",
-    whCode: "2 Years",
+    contractDuration: "2 Years",
     name: "Dammam Corniche Hub",
     country: "KSA",
     city: "Dammam",
@@ -202,7 +202,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 12,
     dsCode: "DS-302",
-    whCode: "3 Years",
+    contractDuration: "3 Years",
     name: "Khobar Coastal Store",
     country: "KSA",
     city: "Khobar",
@@ -220,7 +220,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 13,
     dsCode: "DS-303",
-    whCode: "1 Year",
+    contractDuration: "1 Year",
     name: "Dhahran Techno Hub",
     country: "KSA",
     city: "Dhahran",
@@ -238,7 +238,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 14,
     dsCode: "DS-401",
-    whCode: "2 Years",
+    contractDuration: "2 Years",
     name: "Makkah Shoqiyah Depot",
     country: "KSA",
     city: "Mecca",
@@ -256,7 +256,7 @@ export const SAMPLE_STORES: Store[] = [
   {
     id: 15,
     dsCode: "DS-501",
-    whCode: "2 Years",
+    contractDuration: "2 Years",
     name: "Madinah Qiblatayn Store",
     country: "KSA",
     city: "Medina",

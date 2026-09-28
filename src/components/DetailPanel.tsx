@@ -29,6 +29,7 @@ interface DetailPanelProps {
   store: Store | null;
   stores: Store[]; // all stores, for the rent comparisons
   onClose: () => void;
+  onRemove?: () => void; // only for manually added stores
 }
 
 type Tab = "summary" | "rent" | "contract";
@@ -262,7 +263,7 @@ function SummaryTab({ store, renewal, rent }: { store: Store; renewal: RenewalIn
           note={rateNote}
           noteClass={rateNoteClass}
         />
-        <DaysLeftTile renewal={renewal} term={store.whCode} />
+        <DaysLeftTile renewal={renewal} term={store.contractDuration} />
       </div>
 
       <SectionLabel>Status check</SectionLabel>
@@ -461,7 +462,7 @@ function ContractTab({ store, renewal }: { store: Store; renewal: RenewalInfo })
   return (
     <>
       <div className="grid grid-cols-2 gap-2">
-        <Tile label="Term" value={formatDuration(store.whCode) || "—"} />
+        <Tile label="Term" value={formatDuration(store.contractDuration) || "—"} />
         <DaysLeftTile renewal={renewal} term="" />
       </div>
 
@@ -496,8 +497,10 @@ const TABS: Array<[Tab, string]> = [
 ];
 
 // z-[600]: above the map legend (500), below the sidebar (2000) and toasts (999)
-function StoreCard({ store, stores, onClose }: { store: Store; stores: Store[]; onClose: () => void; key?: number }) {
+function StoreCard({ store, stores, onClose, onRemove }: DetailPanelProps & { store: Store; key?: number }) {
   const [tab, setTab] = useState<Tab>("summary");
+  // Removing takes a second click, so a stray tap can't delete a store
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const renewal = renewalInfo(store);
   const rent = rentComparison(store, stores);
   const renewalTag = renewal.status === "soon" || renewal.status === "now" || renewal.status === "expired";
@@ -576,15 +579,23 @@ function StoreCard({ store, stores, onClose }: { store: Store; stores: Store[]; 
             No Maps link
           </button>
         )}
+        {onRemove && (
+          <button
+            onClick={() => (confirmRemove ? onRemove() : setConfirmRemove(true))}
+            className={`text-[11px] block w-full store-card-gap-top font-bold text-center rounded-lg cursor-pointer transition-colors store-card-button border ${confirmRemove ? "bg-red-500/15 border-red-500/40 text-red-300" : "bg-transparent border-[#333] text-red-400 hover:border-red-500/40"}`}
+          >
+            {confirmRemove ? "Click again to remove this store" : "Remove manual store"}
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
 // A fresh card per store, so it always opens on the Summary tab
-const DetailPanel = memo(function DetailPanel({ store, stores, onClose }: DetailPanelProps) {
+const DetailPanel = memo(function DetailPanel({ store, stores, onClose, onRemove }: DetailPanelProps) {
   if (!store) return null;
-  return <StoreCard key={store.id} store={store} stores={stores} onClose={onClose} />;
+  return <StoreCard key={store.id} store={store} stores={stores} onClose={onClose} onRemove={onRemove} />;
 });
 
 export default DetailPanel;
