@@ -3,6 +3,7 @@ import { MapContainer, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { PolygonRings, Store, ZoneLayer } from "../types";
 import { LatLng } from "../lib/coords";
+import { RentBenchmarks } from "../lib/rentStats";
 import AddStoreModal from "./map/AddStoreModal";
 import CoordinateSearch from "./map/CoordinateSearch";
 import EditBanner from "./map/EditBanner";
@@ -15,6 +16,7 @@ import ZoneLayers, { ZoneRef } from "./map/ZoneLayers";
 
 interface MapComponentProps {
   stores: Store[];
+  benchmarks: RentBenchmarks; // pin colours (rent against the city median) and sizes (annual rent)
   selectedId: number | null;
   onSelectStore: (id: number) => void;
   onMapClick?: () => void;
@@ -38,6 +40,7 @@ interface MapComponentProps {
 
 export default function MapComponent({
   stores,
+  benchmarks,
   selectedId,
   onSelectStore,
   onMapClick,
@@ -172,7 +175,7 @@ export default function MapComponent({
 
         {tempPin && <SearchPin pin={tempPin} onAddStore={() => setShowAddModal(true)} onRemove={removePin} />}
 
-        <StoreMarkers stores={stores} selectedId={selectedId} onSelectStore={onSelectStore} />
+        <StoreMarkers stores={stores} benchmarks={benchmarks} selectedId={selectedId} onSelectStore={onSelectStore} />
 
         <MapControls
           isNightMode={isNightMode}

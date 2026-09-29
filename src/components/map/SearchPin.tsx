@@ -21,7 +21,7 @@ export default function SearchPin({ pin, onAddStore, onRemove }: SearchPinProps)
   }, [pin]);
 
   return (
-    <Marker position={[pin.lat, pin.lng]} icon={makeIcon("#FF5722", true)} ref={markerRef}>
+    <Marker position={[pin.lat, pin.lng]} icon={makeIcon("#FF5722", "round", "m", true)} ref={markerRef}>
       <Popup closeButton={false} maxWidth={280}>
         <div className="map-popup-container p-4 flex flex-col gap-3 bg-[#111] rounded-xl text-white">
           <div className="text-center">

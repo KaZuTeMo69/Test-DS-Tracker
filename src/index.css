@@ -1102,3 +1102,388 @@ body {
 .coverage-note {
   margin-top: 4px;
 }
+
+/* Settings window */
+.settings-backdrop {
+  padding: 16px;
+}
+
+.settings-modal {
+  padding: 22px 22px 18px;
+}
+
+.settings-section {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--token-color-text-primary);
+}
+
+.settings-days {
+  width: 72px;
+  text-align: center;
+}
+
+.settings-days.invalid {
+  border-color: #f87171;
+}
+
+.settings-switch {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--token-color-noon-yellow);
+  cursor: pointer;
+}
+
+.settings-toggle-row {
+  cursor: pointer;
+}
+
+.settings-note {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--token-color-text-secondary);
+}
+
+.settings-note b {
+  color: var(--token-color-text-primary);
+}
+
+.settings-footer {
+  margin-top: 22px;
+}
+
+.settings-done {
+  padding: 7px 18px;
+}
+
+/* Renewal timeline (Renewals tab). The sidebar is wider for it on large screens */
+@media (min-width: 1024px) {
+  .sidebar.sidebar-wide {
+    width: min(640px, calc(100% - 28px)) !important;
+    max-width: none !important;
+  }
+}
+
+.timeline {
+  --tl-label: 104px;
+  gap: 10px;
+}
+
+@media (min-width: 1024px) {
+  .sidebar-wide .timeline {
+    --tl-label: 150px;
+  }
+}
+
+.timeline-legend {
+  gap: 4px 12px;
+}
+
+.timeline-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.timeline-key {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.timeline-key.contract {
+  height: 3px;
+  background: #4b4b4b;
+}
+
+.timeline-key.end {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.timeline-window.now,
+.timeline-key.now {
+  background: #f87171;
+}
+
+.timeline-window.soon,
+.timeline-key.soon {
+  background: #fbbf24;
+}
+
+.timeline-window.ok,
+.timeline-key.ok {
+  background: #8b8b8b;
+}
+
+.timeline-expired summary {
+  padding: 2px 0;
+}
+
+.timeline-chart {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 4px 0 6px;
+}
+
+.timeline-head {
+  position: relative;
+  height: 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.timeline-month {
+  position: absolute;
+  top: 4px;
+  padding-left: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--token-color-text-secondary);
+  white-space: nowrap;
+}
+
+.timeline-year {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  color: #6b6b6b;
+}
+
+/* Month names: short ones when the chart is narrow */
+.timeline-chart {
+  container-type: inline-size;
+}
+
+.timeline-short {
+  display: none;
+}
+
+@container (max-width: 460px) {
+  .timeline-long {
+    display: none;
+  }
+
+  .timeline-short {
+    display: inline;
+  }
+}
+
+.timeline-body {
+  position: relative;
+}
+
+.timeline-gridline,
+.timeline-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  pointer-events: none;
+}
+
+.timeline-gridline {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.timeline-today {
+  width: 2px;
+  margin-left: -1px;
+  background: #38bdf8;
+  z-index: 2;
+}
+
+.timeline-row {
+  display: grid;
+  grid-template-columns: var(--tl-label) 1fr;
+  align-items: center;
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.timeline-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.timeline-row.on {
+  background: var(--token-color-noon-yellow-10);
+  box-shadow: inset 3px 0 0 var(--token-color-noon-yellow);
+}
+
+.timeline-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 4px 8px 4px 10px;
+}
+
+.timeline-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline-sub {
+  font-size: 10px;
+  font-family: var(--token-font-family-mono, "DM Mono", monospace);
+  color: #8a8a8a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline-track {
+  position: relative;
+  height: 36px;
+}
+
+.timeline-contract,
+.timeline-window {
+  position: absolute;
+  top: 50%;
+  display: block;
+}
+
+.timeline-contract {
+  height: 3px;
+  margin-top: -1.5px;
+  background: #4b4b4b;
+}
+
+.timeline-window {
+  height: 10px;
+  margin-top: -5px;
+  border-radius: 3px;
+}
+
+.timeline-end {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px #111111;
+  z-index: 3;
+}
+
+.timeline-more {
+  position: absolute;
+  right: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  z-index: 3;
+}
+
+.timeline-empty {
+  padding: 24px 0;
+}
+
+/* Five tabs don't fit with their emoji in the standard sidebar, so the emoji only show when there's room */
+.tab-container {
+  container-type: inline-size;
+}
+
+@container (max-width: 480px) {
+  .tab-emoji {
+    display: none;
+  }
+}
+
+/* Map legend. On a large screen it sits to the right of the open sidebar, which would otherwise cover it */
+.map-legend {
+  padding: 7px 10px;
+  max-width: calc(100% - 90px);
+  transition: left 0.25s ease;
+}
+
+.map-legend-toggle .fb {
+  padding: 2px 8px !important;
+  font-size: 10px !important;
+  white-space: nowrap;
+}
+
+.map-legend-items {
+  gap: 4px 12px;
+  margin-top: 6px;
+}
+
+/* Room kept on the right for the zoom buttons */
+@media (min-width: 1024px) {
+  .with-sidebar .map-legend {
+    left: 380px;
+    max-width: calc(100% - 460px);
+  }
+
+  .with-wide-sidebar .map-legend {
+    left: min(670px, calc(100% - 300px));
+    max-width: max(220px, calc(100% - 750px));
+  }
+}
+
+/* Data Quality panel */
+.quality {
+  gap: 10px;
+}
+
+.quality-group {
+  padding: 8px 10px;
+}
+
+.quality-group summary {
+  list-style: none;
+}
+
+.quality-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.quality-group summary::before {
+  content: "▸";
+  color: #fb923c;
+  font-size: 11px;
+}
+
+.quality-group[open] summary::before {
+  content: "▾";
+}
+
+.quality-count {
+  padding: 1px 8px;
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.12);
+}
+
+.quality-fix {
+  margin: 6px 0 4px;
+}
+
+.quality-row {
+  gap: 2px;
+}

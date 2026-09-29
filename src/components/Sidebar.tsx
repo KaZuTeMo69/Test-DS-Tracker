@@ -1,14 +1,21 @@
-import { lazy, memo, ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, memo, ReactNode, Suspense, useCallback, useState } from "react";
 import { ChevronLeft, FileDown, FileUp, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { CitySummary, SidebarTab, Store } from "../types";
-import { COVERAGE_TAG, CURRENCY, RENEWAL_STYLE } from "../constants";
+import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, RENEWAL_STYLE } from "../constants";
 import { Filters } from "../hooks/useFilters";
+import { useSettings } from "../hooks/useSettings";
 import { dataIssues, hasCoords } from "../lib/checks";
 import { Coverage, coverageFlags } from "../lib/coverage";
+import { IssueGroup } from "../lib/checks";
+import { RentBenchmarks } from "../lib/rentStats";
 import { fmtN, fmtR } from "../lib/format";
 import { storeRenewal } from "../lib/renewal";
+import { shownRent, vatLabel } from "../lib/settings";
 import { isLive } from "../lib/status";
+import DataQualityPanel from "./DataQualityPanel";
+import LoadMore from "./LoadMore";
+import RenewalTimeline from "./RenewalTimeline";
 
 // The charts library is large and only the Growth tab uses it, so it loads when that tab first opens
 const CityInsights = lazy(() => import("./CityInsights"));
@@ -24,62 +31,17 @@ interface SidebarProps {
   selectedId: number | null;
   onSelectStore: (id: number) => void;
   onImportSheet: () => void;
+  onExportCsv: () => void; // the stores that pass the filters
   onCityFocus: (city: string) => void;
   filters: Filters;
   allCities: string[];
   emptyMessage: string; // shown when the list is empty
   coverage: Coverage; // for the coverage tags in the list
+  benchmarks: RentBenchmarks; // for the HIGH RENT tag
+  quality: { groups: IssueGroup[]; storesWithIssues: number }; // the Data Quality panel
   insightsExtra: ReactNode; // shown above the charts in the Growth tab
   layersPanel: ReactNode; // the Layers tab
   layersSummary: string; // its footer
-}
-
-function downloadStoresCSV(stores: Store[]) {
-  // Same columns as the Google Sheet, so an exported file can be imported again without losing fields
-  const headers = [
-    "Store Name",
-    "City",
-    "DS Code",
-    "Contract Duration",
-    "Paid / Not Paid",
-    "Live / Not Live",
-    "Contract Start Date",
-    "Contract End Date",
-    "Area (sqm.)",
-    "Rent/sqm. (SAR)",
-    "Annual Rent W/O VAT",
-    "Lat",
-    "Lng",
-  ];
-  const rows = stores.map((s) => [
-    s.name,
-    s.city,
-    s.dsCode,
-    s.contractDuration,
-    s.paid,
-    s.live,
-    s.startDate,
-    s.endDate,
-    s.size,
-    s.rentSARsqm,
-    s.rentSARAnnual,
-    s.lat,
-    s.lng,
-  ]);
-  // Quote cells containing commas, quotes or line breaks
-  const cell = (v: string | number | null | undefined) => {
-    const text = v === null || v === undefined ? "" : String(v);
-    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  };
-  // The BOM makes Excel read the file as UTF-8, so Arabic names survive
-  const content = "\uFEFF" + [headers, ...rows].map((r) => r.map(cell).join(",")).join("\r\n");
-  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `dark_stores_${new Date().toISOString().split("T")[0]}.csv`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // Long lists are drawn in batches as you scroll, so a sheet with thousands of stores doesn't slow the sidebar down
@@ -91,16 +53,19 @@ const StoreListItem = memo(function StoreListItem({
   selected,
   outside,
   inWhiteSpace,
+  highRentBy,
   onSelect,
 }: {
   store: Store;
   selected: boolean;
   outside: boolean; // not in any coverage zone
   inWhiteSpace: boolean;
+  highRentBy: number | null; // % above the city median, when flagged
   onSelect: (id: number) => void;
   key?: number;
 }) {
-  const renewal = storeRenewal(s);
+  const settings = useSettings();
+  const renewal = storeRenewal(s, settings);
   const issues = dataIssues(s);
   return (
     <div
@@ -138,6 +103,14 @@ const StoreListItem = memo(function StoreListItem({
               NO LOCATION
             </span>
           )}
+          {highRentBy !== null && (
+            <span
+              className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${HIGH_RENT_TAG.className}`}
+              title={`Rent per m² ${highRentBy}% above the ${s.city} median`}
+            >
+              {HIGH_RENT_TAG.tag}
+            </span>
+          )}
           {outside && (
             <span
               className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${COVERAGE_TAG.outside.className}`}
@@ -167,31 +140,12 @@ const StoreListItem = memo(function StoreListItem({
       <div className="store-card-footer-metrics mt-3 flex gap-4 text-[11px] font-mono text-gray-400">
         <span>{s.size || "—"} m²</span>
         <span>
-          {CURRENCY} {fmtR(s.rentSARAnnual)}/yr
+          {CURRENCY} {fmtR(shownRent(s.rentSARAnnual, settings))}/yr {vatLabel(settings)}
         </span>
       </div>
     </div>
   );
 });
-
-// Shows the next batch of stores when it scrolls into view. Keyed by the batch size, so it checks again after each batch
-function LoadMore({ onVisible }: { onVisible: () => void; key?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting) onVisible();
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [onVisible]);
-  return (
-    <div ref={ref} className="text-center py-3 text-[11px] text-gray-500">
-      Loading more stores…
-    </div>
-  );
-}
 
 // A label with a row of three filter buttons, one of them active
 function FilterRow<T extends string>({
@@ -237,11 +191,14 @@ export default function Sidebar({
   selectedId,
   onSelectStore,
   onImportSheet,
+  onExportCsv,
   onCityFocus,
   filters,
   allCities,
   emptyMessage,
   coverage,
+  benchmarks,
+  quality,
   insightsExtra,
   layersPanel,
   layersSummary,
@@ -262,24 +219,25 @@ export default function Sidebar({
     coverageOnly,
     setCoverageOnly,
   } = filters;
+  const settings = useSettings();
   const [shown, setShown] = useState(LIST_BATCH);
   const showMore = useCallback(() => setShown((n) => n + LIST_BATCH), []);
   return (
     <AnimatePresence mode="wait">
       {isOpen && (
         <motion.div
-          initial={{ x: -350 }}
+          initial={{ x: "-110%" }}
           animate={{ x: 0 }}
-          exit={{ x: -350 }}
+          exit={{ x: "-110%" }}
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="sidebar relative h-full flex-shrink-0 bg-[#0d0d0d]/85 backdrop-blur-md border border-[#262626] rounded-xl flex flex-col overflow-hidden z-[2000] shadow-2xl"
+          className={`sidebar ${currentTab === "renewals" ? "sidebar-wide" : ""} relative h-full flex-shrink-0 bg-[#0d0d0d]/85 backdrop-blur-md border border-[#262626] rounded-xl flex flex-col overflow-hidden z-[2000] shadow-2xl`}
         >
           <div className="sb-top p-3 border-b border-[#262626] flex flex-col gap-2.5 ml-0 pl-[15px] pr-[15px]">
             <div className="flex items-center justify-between pl-[15px] pr-0">
               <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Navigation</div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => downloadStoresCSV(stores)}
+                  onClick={onExportCsv}
                   className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#fbbf24] bg-white/5 rounded-full transition-colors"
                   title="Export to CSV"
                 >
@@ -305,25 +263,31 @@ export default function Sidebar({
                 className={`tab-btn ${currentTab === "stores" ? "on" : ""}`}
                 onClick={() => setCurrentTab("stores")}
               >
-                🏪 Stores
+                <span className="tab-emoji">🏪</span> Stores
               </button>
               <button
                 className={`tab-btn ${currentTab === "cities" ? "on" : ""}`}
                 onClick={() => setCurrentTab("cities")}
               >
-                🏙 City
+                <span className="tab-emoji">🏙</span> City
               </button>
               <button
                 className={`tab-btn ${currentTab === "insights" ? "on" : ""}`}
                 onClick={() => setCurrentTab("insights")}
               >
-                📊 Growth
+                <span className="tab-emoji">📊</span> Growth
+              </button>
+              <button
+                className={`tab-btn ${currentTab === "renewals" ? "on" : ""}`}
+                onClick={() => setCurrentTab("renewals")}
+              >
+                <span className="tab-emoji">📅</span> Renewals
               </button>
               <button
                 className={`tab-btn ${currentTab === "layers" ? "on" : ""}`}
                 onClick={() => setCurrentTab("layers")}
               >
-                🗺 Layers
+                <span className="tab-emoji">🗺</span> Layers
               </button>
             </div>
 
@@ -381,7 +345,9 @@ export default function Sidebar({
                     ]}
                     value={renewalFilter}
                     onChange={setRenewalFilter}
-                    titles={{ renew: "Renewal due now or starting within 30 days, soonest first" }}
+                    titles={{
+                      renew: `Renewal due now or starting within ${settings.warningDays} days, soonest first`,
+                    }}
                   />
                   <div className="flex items-center gap-2">
                     <label className="w-16 shrink-0 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
@@ -426,6 +392,7 @@ export default function Sidebar({
                 <>
                   {stores.slice(0, shown).map((s) => {
                     const flags = coverageFlags(coverage, s);
+                    const rent = benchmarks.of.get(s.id);
                     return (
                       <StoreListItem
                         key={s.id}
@@ -433,6 +400,7 @@ export default function Sidebar({
                         selected={selectedId === s.id}
                         outside={flags.outside}
                         inWhiteSpace={flags.inWhiteSpace}
+                        highRentBy={rent?.level === "high" ? rent.diff : null}
                         onSelect={onSelectStore}
                       />
                     );
@@ -480,7 +448,7 @@ export default function Sidebar({
                       <div className="space-y-2">
                         <div className="flex justify-between items-baseline text-[11px]">
                           <span className="city-card-label text-[10px] text-gray-500 uppercase font-bold">
-                            Monthly Rent
+                            Monthly Rent {vatLabel(settings)}
                           </span>
                           <span className="city-card-value text-[#fbbf24] font-bold">
                             {CURRENCY} {c.annualRent > 0 ? fmtN(c.annualRent / 12) : "—"}
@@ -488,7 +456,7 @@ export default function Sidebar({
                         </div>
                         <div className="flex justify-between items-baseline text-[11px]">
                           <span className="city-card-label text-[10px] text-gray-500 uppercase font-bold">
-                            Annual Rent
+                            Annual Rent {vatLabel(settings)}
                           </span>
                           <span className="city-card-value text-white font-bold">
                             {CURRENCY} {c.annualRent > 0 ? fmtN(c.annualRent) : "—"}
@@ -513,6 +481,22 @@ export default function Sidebar({
               </div>
             ) : currentTab === "layers" ? (
               layersPanel
+            ) : currentTab === "quality" ? (
+              <DataQualityPanel
+                groups={quality.groups}
+                storesWithIssues={quality.storesWithIssues}
+                totalStores={totalStores}
+                selectedId={selectedId}
+                onSelectStore={onSelectStore}
+                onBack={() => setCurrentTab("stores")}
+              />
+            ) : currentTab === "renewals" ? (
+              <RenewalTimeline
+                stores={stores}
+                totalStores={totalStores}
+                selectedId={selectedId}
+                onSelectStore={onSelectStore}
+              />
             ) : (
               <>
                 {insightsExtra}
@@ -529,7 +513,11 @@ export default function Sidebar({
                 ? `Showing ${stores.length} of ${totalStores} Stores`
                 : currentTab === "layers"
                   ? layersSummary
-                  : `${citySummaries.length} Cities Tracked`}
+                  : currentTab === "renewals"
+                    ? `Next 12 months · ${settings.leadDays}-day lead`
+                    : currentTab === "quality"
+                      ? `${quality.storesWithIssues} of ${totalStores} stores to check`
+                      : `${citySummaries.length} Cities Tracked`}
             </span>
           </div>
         </motion.div>

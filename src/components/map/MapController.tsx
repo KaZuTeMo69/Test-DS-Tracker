@@ -16,6 +16,17 @@ export interface ZoomRequest {
   padRight: number;
 }
 
+// Leaflet ignores a new view while it's still animating a zoom (such as the first fit just after the page
+// opens), so a view change asked for then waits for that zoom to end. Returns a cancel for effect clean-ups
+function whenZoomEnds(map: L.Map, move: () => void): () => void {
+  if (!(map as unknown as { _animatingZoom?: boolean })._animatingZoom) {
+    move();
+    return () => {};
+  }
+  map.once("zoomend", move);
+  return () => map.off("zoomend", move);
+}
+
 /**
  * Keeps the map in step with the app: night tiles, fitting the view to the pins, the city or the searched
  * point, zooming to the selected store, and the route from the searched point to the selected store.
@@ -79,41 +90,46 @@ export default function MapController({
     if (!map || !map.getContainer()) return;
     const last = lastFitRef.current;
     if (last && last.pinsKey === pinsKey && last.focusedCity === focusedCity && last.tempPin === tempPin) return;
-    lastFitRef.current = { pinsKey, focusedCity, tempPin };
 
-    if (tempPin) {
-      try {
-        map.setView([tempPin.lat, tempPin.lng], 14, { animate: true });
-      } catch (e) {
-        console.warn("setView to tempPin failed", e);
-      }
-    } else if (focusedCity) {
-      const cityStores = storesWithCoords.filter((s) => s.city === focusedCity);
-      if (cityStores.length > 0) {
+    // Recorded when the fit happens, so a fit still waiting for a zoom to end isn't taken as done
+    return whenZoomEnds(map, () => {
+      lastFitRef.current = { pinsKey, focusedCity, tempPin };
+      if (tempPin) {
         try {
-          const bounds = L.latLngBounds(cityStores.map((s) => [s.lat!, s.lng!]));
-          map.fitBounds(bounds, { padding: [80, 80] });
+          map.setView([tempPin.lat, tempPin.lng], 14, { animate: true });
+        } catch (e) {
+          console.warn("setView to tempPin failed", e);
+        }
+      } else if (focusedCity) {
+        const cityStores = storesWithCoords.filter((s) => s.city === focusedCity);
+        if (cityStores.length > 0) {
+          try {
+            const bounds = L.latLngBounds(cityStores.map((s) => [s.lat!, s.lng!]));
+            map.fitBounds(bounds, { padding: [80, 80] });
+          } catch (e) {
+            console.warn("fitBounds failed", e);
+          }
+        }
+      } else if (storesWithCoords.length > 0) {
+        try {
+          const bounds = L.latLngBounds(storesWithCoords.map((s) => [s.lat!, s.lng!]));
+          map.fitBounds(bounds, { padding: [60, 60] });
         } catch (e) {
           console.warn("fitBounds failed", e);
         }
       }
-    } else if (storesWithCoords.length > 0) {
-      try {
-        const bounds = L.latLngBounds(storesWithCoords.map((s) => [s.lat!, s.lng!]));
-        map.fitBounds(bounds, { padding: [60, 60] });
-      } catch (e) {
-        console.warn("fitBounds failed", e);
-      }
-    }
+    });
   }, [map, pinsKey, storesWithCoords, focusedCity, tempPin]);
 
   useEffect(() => {
     if (!map || !map.getContainer() || selectedLat === null || selectedLng === null) return;
-    try {
-      map.setView([selectedLat, selectedLng], Math.max(map.getZoom(), 14), { animate: true });
-    } catch (e) {
-      console.warn("setView failed", e);
-    }
+    return whenZoomEnds(map, () => {
+      try {
+        map.setView([selectedLat, selectedLng], Math.max(map.getZoom(), 14), { animate: true });
+      } catch (e) {
+        console.warn("setView failed", e);
+      }
+    });
   }, [selectedId, map, selectedLat, selectedLng]);
 
   // Route from the searched coordinate to the selected store. It depends on the store's position, not the
@@ -130,15 +146,17 @@ export default function MapController({
 
   useEffect(() => {
     if (!zoomRequest) return;
-    try {
-      map.fitBounds(zoomRequest.bounds, {
-        paddingTopLeft: [zoomRequest.padLeft, 60],
-        paddingBottomRight: [zoomRequest.padRight, 60],
-        maxZoom: 15,
-      });
-    } catch (e) {
-      console.warn("fitBounds failed", e);
-    }
+    return whenZoomEnds(map, () => {
+      try {
+        map.fitBounds(zoomRequest.bounds, {
+          paddingTopLeft: [zoomRequest.padLeft, 60],
+          paddingBottomRight: [zoomRequest.padRight, 60],
+          maxZoom: 15,
+        });
+      } catch (e) {
+        console.warn("fitBounds failed", e);
+      }
+    });
   }, [map, zoomRequest]);
 
   return null;

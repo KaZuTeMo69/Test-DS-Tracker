@@ -6,9 +6,11 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import { Store } from "../../types";
 import { PIN_SEL } from "../../constants";
+import { useSettings } from "../../hooks/useSettings";
 import { hasCoords } from "../../lib/checks";
+import { PinSize, RentBenchmarks } from "../../lib/rentStats";
 import { isLive, isPaid } from "../../lib/status";
-import { makeIcon, pinColor } from "./pinIcon";
+import { makeIcon, PinShape, pinShape, RENT_COLOR, STATUS_COLOR } from "./pinIcon";
 
 const clusterIcon = (cluster: L.MarkerCluster) =>
   L.divIcon({
@@ -21,10 +23,16 @@ const clusterIcon = (cluster: L.MarkerCluster) =>
 const StoreMarker = memo(function StoreMarker({
   store: s,
   selected,
+  color,
+  shape,
+  size,
   onSelect,
 }: {
   store: Store;
   selected: boolean;
+  color: string;
+  shape: PinShape;
+  size: PinSize;
   onSelect: (id: number) => void;
   key?: number;
 }) {
@@ -32,7 +40,7 @@ const StoreMarker = memo(function StoreMarker({
   return (
     <Marker
       position={[s.lat!, s.lng!]}
-      icon={makeIcon(selected ? PIN_SEL : pinColor(s), selected)}
+      icon={makeIcon(selected ? PIN_SEL : color, shape, size, selected)}
       eventHandlers={eventHandlers}
       zIndexOffset={selected ? 1000 : 0}
     >
@@ -68,16 +76,22 @@ const StoreMarker = memo(function StoreMarker({
   );
 });
 
-/** The store pins, grouped into numbered clusters when they're close together. */
+/**
+ * The store pins, grouped into numbered clusters when they're close together. The shape shows the status, the
+ * size the annual rent, and the colour either the status or rent per m² against the city median (chosen on the legend).
+ */
 export default function StoreMarkers({
   stores,
+  benchmarks,
   selectedId,
   onSelectStore,
 }: {
   stores: Store[];
+  benchmarks: RentBenchmarks;
   selectedId: number | null;
   onSelectStore: (id: number) => void;
 }) {
+  const { pinColors } = useSettings();
   return (
     <MarkerClusterGroup
       chunkedLoading
@@ -85,9 +99,21 @@ export default function StoreMarkers({
       showCoverageOnHover={false}
       iconCreateFunction={clusterIcon}
     >
-      {stores.filter(hasCoords).map((s) => (
-        <StoreMarker key={s.id} store={s} selected={selectedId === s.id} onSelect={onSelectStore} />
-      ))}
+      {stores.filter(hasCoords).map((s) => {
+        const shape = pinShape(s);
+        const level = benchmarks.of.get(s.id)?.level ?? "none";
+        return (
+          <StoreMarker
+            key={s.id}
+            store={s}
+            selected={selectedId === s.id}
+            color={pinColors === "rent" ? RENT_COLOR[level] : STATUS_COLOR[shape]}
+            shape={shape}
+            size={benchmarks.sizeOf.get(s.id) ?? "s"}
+            onSelect={onSelectStore}
+          />
+        );
+      })}
     </MarkerClusterGroup>
   );
 }

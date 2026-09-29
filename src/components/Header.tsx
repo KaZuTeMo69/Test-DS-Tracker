@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { ChevronDown, FileEdit, RefreshCw, Settings, Store as StoreIcon, Upload } from "lucide-react";
+import {
+  ChevronDown,
+  ClipboardCheck,
+  FileEdit,
+  RefreshCw,
+  Settings,
+  SlidersHorizontal,
+  Store as StoreIcon,
+  Upload,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
 const BADGE_TONE = {
@@ -70,6 +79,8 @@ interface HeaderProps {
   onUpload: () => void;
   onSync: () => void;
   onResetSample: () => void;
+  onOpenSettings: () => void;
+  onOpenDataQuality: () => void;
 }
 
 export default function Header({
@@ -81,6 +92,8 @@ export default function Header({
   onUpload,
   onSync,
   onResetSample,
+  onOpenSettings,
+  onOpenDataQuality,
 }: HeaderProps) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
@@ -145,6 +158,28 @@ export default function Header({
                   className="absolute right-0 mt-2 w-48 bg-[#111111] border border-[#262626] rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] z-[101] overflow-hidden"
                 >
                   <div className="p-1.5 flex flex-col gap-1">
+                    <button
+                      onClick={() => {
+                        onOpenSettings();
+                        setShowSettingsMenu(false);
+                      }}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 text-[11px] font-black uppercase text-gray-300 hover:text-[#fbbf24] hover:bg-white/5 rounded-lg transition-all text-left"
+                    >
+                      <SlidersHorizontal size={14} />
+                      <span>Settings</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onOpenDataQuality();
+                        setShowSettingsMenu(false);
+                      }}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 text-[11px] font-black uppercase text-gray-300 hover:text-[#fbbf24] hover:bg-white/5 rounded-lg transition-all text-left"
+                    >
+                      <ClipboardCheck size={14} />
+                      <span>Data quality</span>
+                    </button>
+
                     <button
                       onClick={() => {
                         onUpload();

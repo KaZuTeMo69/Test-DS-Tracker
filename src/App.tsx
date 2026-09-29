@@ -2,15 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Filter } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { CoverageFilter, LayerKind, PolygonRings, SidebarTab, ZoneLayer } from "./types";
-import { hasCoords } from "./lib/checks";
+import { dataQuality, hasCoords } from "./lib/checks";
 import { analyseCoverage } from "./lib/coverage";
+import { csvFileName, storesToCsv } from "./lib/csvExport";
 import { download } from "./lib/download";
 import { kmlFileName, layerToKml } from "./lib/kmlExport";
+import { rentBenchmarks } from "./lib/rentStats";
 import { zoneBounds, zoneColor } from "./lib/layers";
 import { useFilters } from "./hooks/useFilters";
 import { useLayers } from "./hooks/useLayers";
+import { SettingsContext, useSettingsState } from "./hooks/useSettings";
 import { isManualStore, useStores } from "./hooks/useStores";
 import { useToast } from "./hooks/useToast";
+import { linkedView, useUrlState } from "./hooks/useUrlState";
 import CoverageSummary from "./components/CoverageSummary";
 import DetailPanel from "./components/DetailPanel";
 import Header from "./components/Header";
@@ -21,6 +25,7 @@ import { ZoomRequest } from "./components/map/MapController";
 import { MapMode } from "./components/map/ZoneEditor";
 import { ZoneRef } from "./components/map/ZoneLayers";
 import MapLegend from "./components/MapLegend";
+import SettingsModal from "./components/SettingsModal";
 import Sidebar from "./components/Sidebar";
 import Toast from "./components/Toast";
 import UploadModal from "./components/UploadModal";
@@ -36,16 +41,24 @@ export default function App() {
   const { message: toastMsg, showToast } = useToast();
   const data = useStores(showToast);
   const { stores } = data;
+  const { settings, updateSettings } = useSettingsState();
   const mapLayers = useLayers(showToast);
   // Which zones each store is in, across all stores (live or not) and the layers shown on the map
   const coverage = useMemo(() => analyseCoverage(stores, mapLayers.layers), [stores, mapLayers.layers]);
+  // Rent per m² against each city's median (all stores), and pin sizes by annual rent
+  const benchmarks = useMemo(
+    () => rentBenchmarks(stores, settings.rentFlagPercent),
+    [stores, settings.rentFlagPercent],
+  );
   const { filters, filteredStores, citySummaries, allCities, unclear, showUnclearOnly, showCoverageOnly } = useFilters(
     stores,
     coverage,
+    settings,
+    linkedView,
   );
 
   // Sidebar, map and selection
-  const [currentTab, setCurrentTab] = useState<SidebarTab>("stores");
+  const [currentTab, setCurrentTab] = useState<SidebarTab>(linkedView.tab);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isNightMode, setIsNightMode] = useState(true);
@@ -56,6 +69,8 @@ export default function App() {
   // Drawing a new zone or editing a zone's shape; the cards are hidden meanwhile so the map is clear
   const [mapMode, setMapMode] = useState<MapMode | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const closeSettings = useCallback(() => setIsSettingsOpen(false), []);
 
   const selectedStore = useMemo(() => stores.find((s) => s.id === selectedId) || null, [stores, selectedId]);
   // The zone's card closes if its layer is hidden or deleted
@@ -65,6 +80,8 @@ export default function App() {
     return layer && zone ? { layer, zone } : null;
   }, [selectedZone, mapLayers.layers]);
   const notOnMap = useMemo(() => filteredStores.filter((s) => !hasCoords(s)).length, [filteredStores]);
+  // Every problem in the data, for the Data Quality panel (all stores, whatever the filters)
+  const quality = useMemo(() => dataQuality(stores), [stores]);
 
   const openUploadModal = () => {
     data.clearError();
@@ -93,6 +110,11 @@ export default function App() {
     setIsSidebarOpen(true);
   };
 
+  const openDataQuality = useCallback(() => {
+    setCurrentTab("quality");
+    setIsSidebarOpen(true);
+  }, []);
+
   const showCoverageStores = (filter: CoverageFilter) => {
     showCoverageOnly(filter);
     setFocusedCity(null);
@@ -112,6 +134,17 @@ export default function App() {
     },
     [selectStore],
   );
+
+  // The view (filters, tab, selected store) in the page's link, and the linked store selected once loaded
+  useUrlState({
+    filters,
+    currentTab,
+    selectedStore,
+    stores,
+    storesReady: !data.awaitingSheet && stores.length > 0,
+    onSelectStore: selectFromList,
+    showToast,
+  });
 
   const zoomTo = (bounds: ReturnType<typeof zoneBounds>, { sidebar, card }: { sidebar: boolean; card: boolean }) => {
     if (!bounds) return;
@@ -202,6 +235,19 @@ export default function App() {
     showToast(`Deleted "${zoneSelection.zone.name || "Unnamed zone"}"`);
   };
 
+  // The stores that pass the filters, with their renewal dates and zones worked out
+  const exportCsv = () => {
+    if (!filteredStores.length) {
+      showToast("No stores to export. Clear the filters to export all stores");
+      return;
+    }
+    const filtered = filteredStores.length < stores.length;
+    const fileName = csvFileName(filtered, new Date());
+    download(fileName, storesToCsv(filteredStores, settings, coverage), "text/csv;charset=utf-8");
+    const count = `${filteredStores.length} ${filteredStores.length === 1 ? "store" : "stores"}`;
+    showToast(`Saved ${fileName} with ${count}${filtered ? " (the ones that match the filters)" : ""}`);
+  };
+
   const exportLayer = (layer: ZoneLayer) => {
     download(kmlFileName(layer), layerToKml(layer), "application/vnd.google-earth.kml+xml");
     showToast(`Saved ${kmlFileName(layer)}. In My Maps, add a layer and choose Import to bring it in`);
@@ -216,7 +262,7 @@ export default function App() {
       : "Loading stores from Google Sheet…"
     : "No results found";
 
-  return (
+  const page = (
     <div className="app-container flex flex-col h-screen overflow-hidden bg-[#141414] text-[#EFEFEF] p-[10px] gap-[7px]">
       <UploadModal
         isOpen={isUploadModalOpen}
@@ -237,13 +283,19 @@ export default function App() {
         onUpload={openUploadModal}
         onSync={data.syncSheet}
         onResetSample={handleResetSample}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenDataQuality={openDataQuality}
       />
+
+      <SettingsModal isOpen={isSettingsOpen} settings={settings} onChange={updateSettings} onClose={closeSettings} />
 
       <KPIBar
         stores={filteredStores}
         unclear={unclear}
         unclearOnly={filters.unclearOnly}
         onShowUnclear={showUnclearStores}
+        issueCount={quality.storesWithIssues}
+        onShowIssues={openDataQuality}
       />
 
       <main className="app-main flex flex-row flex-1 overflow-hidden min-h-0 relative bg-[#0a0a0a] rounded-xl border border-[#222] shadow-2xl">
@@ -258,6 +310,7 @@ export default function App() {
           selectedId={selectedId}
           onSelectStore={selectFromList}
           onImportSheet={openUploadModal}
+          onExportCsv={exportCsv}
           onCityFocus={(city) => {
             filters.setCityFilter(city);
             setFocusedCity(city);
@@ -267,6 +320,8 @@ export default function App() {
           allCities={allCities}
           emptyMessage={listEmptyMessage}
           coverage={coverage}
+          benchmarks={benchmarks}
+          quality={quality}
           insightsExtra={
             <CoverageSummary
               coverage={coverage}
@@ -296,7 +351,7 @@ export default function App() {
         />
 
         <div
-          className="map-container flex-1 relative min-w-0"
+          className={`map-container flex-1 relative min-w-0 ${isSidebarOpen ? (currentTab === "renewals" ? "with-wide-sidebar" : "with-sidebar") : ""}`}
           onClick={() => {
             if (selectedId !== null) setSelectedId(null);
           }}
@@ -322,6 +377,7 @@ export default function App() {
           <div className="w-full h-full rounded-xl overflow-hidden">
             <MapComponent
               stores={filteredStores}
+              benchmarks={benchmarks}
               selectedId={selectedId}
               onSelectStore={selectStore}
               onMapClick={() => {
@@ -351,6 +407,7 @@ export default function App() {
             store={mapMode ? null : selectedStore}
             stores={stores}
             coverage={coverage}
+            benchmark={selectedStore ? (benchmarks.of.get(selectedStore.id) ?? null) : null}
             onSelectZone={openZone}
             onClose={closeStore}
             onRemove={
@@ -376,11 +433,14 @@ export default function App() {
             />
           )}
 
-          <MapLegend notOnMap={notOnMap} />
+          <MapLegend notOnMap={notOnMap} onPinColors={(pinColors) => updateSettings({ pinColors })} />
         </div>
       </main>
 
       <Toast message={toastMsg} />
     </div>
   );
+
+  // The settings reach the list rows, store card, totals and charts through this, without being passed down
+  return <SettingsContext.Provider value={settings}>{page}</SettingsContext.Provider>;
 }

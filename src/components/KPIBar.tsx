@@ -1,9 +1,10 @@
 import { memo, useMemo } from "react";
 import { Store } from "../types";
 import { CURRENCY } from "../constants";
-import { RENEWAL_LEAD_DAYS, RENEWAL_WARNING_DAYS } from "../lib/contract";
+import { useSettings } from "../hooks/useSettings";
 import { fmtN } from "../lib/format";
 import { storeRenewal } from "../lib/renewal";
+import { rentFactor } from "../lib/settings";
 import { isLive, isPaid } from "../lib/status";
 
 interface KPIBarProps {
@@ -12,13 +13,26 @@ interface KPIBarProps {
   unclear: { total: number; live: number; paid: number };
   unclearOnly: boolean;
   onShowUnclear: () => void;
+  // Stores (out of all stores) with something to fix in their data, and opening the Data Quality panel
+  issueCount: number;
+  onShowIssues: () => void;
 }
 
 // Totals leave out stores with no value, so say how many were left out
 const missing = (n: number, what: string) => (n > 0 ? `${n} without ${what}` : undefined);
 
-const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclear }: KPIBarProps) {
+const KPIBar = memo(function KPIBar({
+  stores,
+  unclear,
+  unclearOnly,
+  onShowUnclear,
+  issueCount,
+  onShowIssues,
+}: KPIBarProps) {
+  const { leadDays, warningDays, includeVat } = useSettings();
   const stats = useMemo(() => {
+    const days = { leadDays, warningDays };
+    const factor = rentFactor(includeVat);
     let live = 0;
     let paid = 0;
     let totalRent = 0;
@@ -33,7 +47,7 @@ const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclea
     stores.forEach((s) => {
       if (isLive(s)) live++;
       if (isPaid(s)) paid++;
-      const rent = s.rentSARAnnual;
+      const rent = s.rentSARAnnual === null ? null : s.rentSARAnnual * factor;
       if (rent === null) noRent++;
       totalRent += rent || 0;
       if (!s.size) noArea++;
@@ -42,7 +56,7 @@ const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclea
         pricedRent += rent;
         pricedArea += s.size;
       }
-      const { status } = storeRenewal(s);
+      const { status } = storeRenewal(s, days);
       if (status === "now" || status === "soon" || status === "expired") renewals[status]++;
     });
 
@@ -56,8 +70,9 @@ const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclea
       renewals,
       avgRent: pricedArea > 0 ? pricedRent / pricedArea : 0,
     };
-  }, [stores]);
+  }, [stores, leadDays, warningDays, includeVat]);
 
+  const vat = includeVat ? " · incl. VAT" : "";
   const kpis: Array<{
     label: string;
     value: string | number;
@@ -78,13 +93,13 @@ const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclea
     { label: "Not Live", value: stores.length - stats.live, color: "#F43F5E", valueClass: "text-[#F43F5E]" },
     { label: "Unpaid Contracts", value: stores.length - stats.paid, color: "#FECC00", valueClass: "text-[#FECC00]" },
     {
-      // Stores whose renewal window (the last RENEWAL_LEAD_DAYS days of the contract) has started
+      // Stores whose renewal window (the last leadDays days of the contract) has started
       label: "Renewals Due",
       value: stats.renewals.now,
-      unit: `start now · ${RENEWAL_LEAD_DAYS}-day lead`,
+      unit: `start now · ${leadDays}-day lead`,
       note:
         [
-          stats.renewals.soon && `${stats.renewals.soon} in next ${RENEWAL_WARNING_DAYS} days`,
+          stats.renewals.soon && `${stats.renewals.soon} in next ${warningDays} days`,
           stats.renewals.expired && `${stats.renewals.expired} expired`,
         ]
           .filter(Boolean)
@@ -95,7 +110,7 @@ const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclea
     {
       label: "Annual Rent",
       value: stats.totalRent > 0 ? fmtN(stats.totalRent) : "—",
-      unit: `${CURRENCY} / year`,
+      unit: `${CURRENCY} / year${vat}`,
       note: missing(stats.noRent, "rent"),
       color: "#FB923C",
       valueColor: "#ffffff",
@@ -103,7 +118,7 @@ const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclea
     {
       label: "Monthly Rent",
       value: stats.totalRent > 0 ? fmtN(stats.totalRent / 12) : "—",
-      unit: `${CURRENCY} / month`,
+      unit: `${CURRENCY} / month${vat}`,
       note: missing(stats.noRent, "rent"),
       color: "#38BDF8",
       valueClass: "text-[#38BDF8]",
@@ -119,7 +134,7 @@ const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclea
     {
       label: "Avg Rent / m²",
       value: stats.avgRent > 0 ? Math.round(stats.avgRent).toLocaleString() : "—",
-      unit: `${CURRENCY} / m²`,
+      unit: `${CURRENCY} / m²${vat}`,
       color: "#FB923C",
       valueClass: "text-[#FECC00]",
     },
@@ -151,6 +166,27 @@ const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclea
             <p className="text-[10px] text-[#FB923C] mt-0.5">
               {unclearOnly ? "Showing these stores" : "View stores →"}
             </p>
+          </div>
+        </button>
+      )}
+      {issueCount > 0 && (
+        <button
+          onClick={onShowIssues}
+          className="kpi-card shrink-0 bg-[#111] border border-[#222] border-t-2 p-[10px_16px] sm:p-[13px_20px] rounded-xl shadow-sm transform transition-transform hover:scale-[1.02] text-center w-auto min-w-max cursor-pointer"
+          style={{ borderTopColor: "#FB923C" }}
+          title="Stores with missing or unreadable data, grouped by problem"
+        >
+          <p className="kpi-label text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1">
+            Data Issues
+          </p>
+          <div className="flex flex-col items-center justify-center">
+            <p className="kpi-value kpi-number text-2xl font-bold tracking-tight" style={{ color: "#FB923C" }}>
+              {issueCount}
+            </p>
+            <p className="text-[10px] text-gray-500 uppercase mt-0.5">
+              {issueCount === 1 ? "store" : "stores"} to check
+            </p>
+            <p className="text-[10px] text-[#FB923C] mt-0.5">View by problem →</p>
           </div>
         </button>
       )}
