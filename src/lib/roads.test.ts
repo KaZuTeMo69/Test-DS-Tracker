@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { Store } from "../types";
 import {
+  checkOrsKey,
+  KEY_CHECK_MESSAGE,
   airDistance,
   createCache,
   failureMessage,
@@ -389,5 +391,43 @@ describe("what the user is told", () => {
     expect(formatDrive(30)).toBe("1 min");
     expect(formatDrive(1080)).toBe("18 min");
     expect(formatDrive(3900)).toBe("1 h 05 min");
+  });
+});
+
+describe("checkOrsKey", () => {
+  const answer = (status: number, body: unknown) => async () =>
+    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+
+  it("says ok when OpenRouteService answers with a route, sending the key in the header only", async () => {
+    const calls: [string, RequestInit | undefined][] = [];
+    const fetcher = async (url: string, init?: RequestInit) => {
+      calls.push([url, init]);
+      return answer(200, {
+        features: [{ properties: { summary: { distance: 400, duration: 60 } }, geometry: { coordinates: [] } }],
+      })();
+    };
+    expect(await checkOrsKey("  my-key ", { fetcher })).toBe("ok");
+    expect(calls).toHaveLength(1);
+    expect(calls[0][0]).toMatch(/openrouteservice/);
+    expect(calls[0][0]).not.toMatch(/my-key/);
+    expect((calls[0][1]?.headers as Record<string, string>).Authorization).toBe("my-key");
+  });
+
+  it("names a refused key, the rate limit and a network failure", async () => {
+    expect(
+      await checkOrsKey("bad", { fetcher: answer(403, { error: "Access to this API has been disallowed" }) }),
+    ).toBe("key");
+    expect(await checkOrsKey("bad", { fetcher: answer(401, {}) })).toBe("key");
+    expect(await checkOrsKey("k", { fetcher: answer(429, { error: "Rate limit exceeded" }) })).toBe("rate-limit");
+    expect(
+      await checkOrsKey("k", {
+        fetcher: async () => {
+          throw new TypeError("Failed to fetch");
+        },
+      }),
+    ).toBe("network");
+    // Accepted, but no road between the test points: the key is still fine
+    expect(await checkOrsKey("k", { fetcher: answer(404, { error: { code: 2009 } }) })).toBe("ok");
+    expect(KEY_CHECK_MESSAGE.key).toMatch(/refused/);
   });
 });

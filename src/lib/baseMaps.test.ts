@@ -5,8 +5,11 @@ describe("base maps", () => {
   it("has the four maps, each with its provider's credit", () => {
     expect(BASE_MAP_ORDER).toEqual(["osm", "positron", "dark", "satellite"]);
     expect(BASE_MAPS.osm.attribution).toMatch(/OpenStreetMap/);
-    expect(BASE_MAPS.positron.attribution).toMatch(/CARTO/);
-    expect(BASE_MAPS.dark.attribution).toMatch(/CARTO/);
+    expect(BASE_MAPS.positron.attribution).toMatch(/Esri/);
+    expect(BASE_MAPS.dark.attribution).toMatch(/Esri/);
+    // CARTO's tiles now need a key (a watermark without one), so they're not used
+    for (const id of BASE_MAP_ORDER) expect(BASE_MAPS[id].url).not.toMatch(/cartocdn/);
+    expect(BASE_MAPS.dark.labels?.url).toMatch(/World_Dark_Gray_Reference/);
     expect(BASE_MAPS.satellite.attribution).toMatch(/Esri/);
     expect(BASE_MAPS.satellite.labels?.url).toMatch(/World_Boundaries_and_Places/);
     // Free tiles only: no keys in any address

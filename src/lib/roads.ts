@@ -419,3 +419,34 @@ export function failureMessage(error: unknown, label: string): string {
   const last = error instanceof RoadsFailed ? error.last : error instanceof RoadError ? error : null;
   return `${label} unavailable: ${REASON[last?.kind ?? "failed"]}`;
 }
+
+// ── Checking an OpenRouteService key ──
+
+export type KeyCheck = "ok" | RoadErrorKind;
+
+// Two points a few hundred metres apart in central Riyadh: the smallest route there is to ask for
+const CHECK_FROM: LatLng = { lat: 24.7136, lng: 46.6753 };
+const CHECK_TO: LatLng = { lat: 24.7166, lng: 46.6783 };
+
+/** Whether OpenRouteService takes this key: one tiny route, asked of ORS alone (no fallback). */
+export async function checkOrsKey(orsKey: string, request: Omit<Request, "orsKey"> = {}): Promise<KeyCheck> {
+  try {
+    await orsRoute(CHECK_FROM, CHECK_TO, { ...request, orsKey: orsKey.trim() });
+    return "ok";
+  } catch (e) {
+    if (isAbort(e)) throw e;
+    // A route not found still means the key was accepted
+    if (e instanceof RoadError) return e.kind === "no-route" ? "ok" : e.kind;
+    return "failed";
+  }
+}
+
+export const KEY_CHECK_MESSAGE: Record<KeyCheck, string> = {
+  ok: "Key works: routes and road distances now come from OpenRouteService.",
+  key: "OpenRouteService refused this key. Copy the key from your openrouteservice.org dashboard (a CARTO key won't work). Until then, routes use the public OSRM server.",
+  "rate-limit":
+    "OpenRouteService accepted the key, but its free daily limit is used up. Routes use the public OSRM server until it resets.",
+  network: "Couldn't reach OpenRouteService to check the key. Check your connection and try again.",
+  "no-route": "Key works: routes and road distances now come from OpenRouteService.",
+  failed: "OpenRouteService had a problem checking the key. Try again in a minute.",
+};

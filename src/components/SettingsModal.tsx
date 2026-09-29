@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Settings as SettingsIcon, X } from "lucide-react";
 import { DEFAULT_SETTINGS, MAX_DAYS, MAX_PERCENT, Settings, toWholeNumber, VAT_RATE } from "../lib/settings";
 import { formatDate, today } from "../lib/contract";
+import { checkOrsKey, KEY_CHECK_MESSAGE, KeyCheck } from "../lib/roads";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -15,11 +16,24 @@ interface SettingsModalProps {
 /**
  * The OpenRouteService key: typed or pasted, and saved when the field is left (or Enter), not on every keystroke,
  * so routes on the map aren't asked for again while it's being typed. Hidden like a password unless shown.
+ * A saved key is checked straight away with one tiny route, so it's clear whether OpenRouteService takes it.
  */
 function OrsKeyField({ value, onSave }: { value: string; onSave: (key: string) => void }) {
   const [draft, setDraft] = useState(value);
   const [shown, setShown] = useState(false);
   useEffect(() => setDraft(value), [value]);
+  const [check, setCheck] = useState<KeyCheck | "checking" | null>(null);
+  const [round, setRound] = useState(0); // "Check again"
+  useEffect(() => {
+    if (!value) {
+      setCheck(null);
+      return;
+    }
+    const abort = new AbortController();
+    setCheck("checking");
+    checkOrsKey(value, { signal: abort.signal }).then(setCheck, () => {}); // only an abort lands here
+    return () => abort.abort();
+  }, [value, round]);
   const save = () => {
     if (draft.trim() !== value) onSave(draft);
   };
@@ -57,10 +71,24 @@ function OrsKeyField({ value, onSave }: { value: string; onSave: (key: string) =
           </button>
         )}
       </div>
-      <p className="settings-key-status" aria-live="polite">
-        {value
-          ? "Saved: routes and road distances use OpenRouteService first."
-          : "No key: routes use the public OSRM server."}
+      <p
+        className={`settings-key-status ${check === "ok" || check === "no-route" ? "ok" : check && check !== "checking" ? "bad" : ""}`}
+        aria-live="polite"
+        data-key-check={check ?? "none"}
+      >
+        {!value
+          ? "No key: routes use the public OSRM server."
+          : check === "checking" || check === null
+            ? "Checking the key with OpenRouteService…"
+            : KEY_CHECK_MESSAGE[check]}
+        {value && check !== "checking" && check !== "ok" && check !== "no-route" && (
+          <>
+            {" "}
+            <button type="button" className="settings-key-retry" onClick={() => setRound(round + 1)}>
+              Check again
+            </button>
+          </>
+        )}
       </p>
     </div>
   );
@@ -234,10 +262,10 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose, ors
             <a href="https://openrouteservice.org/dev/#/signup" target="_blank" rel="noopener noreferrer">
               openrouteservice.org
             </a>{" "}
-            and copy your key from the dashboard (about 2,000 routes and 500 distance lookups a day). Without one, or
-            when it runs out, routes come from the public OSRM server. The key stays in this browser: it isn't in the
-            page's address or the app's code, and only OpenRouteService receives it. Routing sends just the points'
-            coordinates.
+            (run by HeiGIT) and copy the key from your dashboard (about 2,000 routes and 500 distance lookups a day).
+            Without one, or when it runs out, routes come from the public OSRM server. The key stays in this browser: it
+            isn't in the page's address or the app's code, and only OpenRouteService receives it. Routing sends just the
+            points' coordinates.
           </p>
         </section>
 

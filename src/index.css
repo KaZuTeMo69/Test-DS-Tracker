@@ -2928,6 +2928,25 @@ body {
   margin: 0 !important;
 }
 
+.settings-key-status.ok {
+  color: #4ade80;
+}
+
+.settings-key-status.bad {
+  color: #f87171;
+}
+
+.settings-key-retry {
+  color: #fbbf24;
+  text-decoration: underline;
+  font-size: 11px;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
 .settings-note a {
   color: #fbbf24;
   text-decoration: underline;
