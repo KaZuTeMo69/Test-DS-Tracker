@@ -6,6 +6,7 @@ import { fmtN } from "../lib/format";
 import { storeRenewal } from "../lib/renewal";
 import { rentFactor } from "../lib/settings";
 import { isLive, isPaid } from "../lib/status";
+import { Bone } from "./Skeleton";
 
 interface KPIBarProps {
   stores: Store[];
@@ -16,6 +17,7 @@ interface KPIBarProps {
   // Stores (out of all stores) with something to fix in their data, and opening the Data Quality panel
   issueCount: number;
   onShowIssues: () => void;
+  loading: boolean; // a saved Google Sheet is loading: placeholders instead of zeros
 }
 
 // Totals leave out stores with no value, so say how many were left out
@@ -28,6 +30,7 @@ const KPIBar = memo(function KPIBar({
   onShowUnclear,
   issueCount,
   onShowIssues,
+  loading,
 }: KPIBarProps) {
   const { leadDays, warningDays, includeVat } = useSettings();
   const stats = useMemo(() => {
@@ -142,7 +145,7 @@ const KPIBar = memo(function KPIBar({
 
   return (
     <div className="kpis-container flex gap-3 p-1.5 bg-[#0a0a0a] border border-[#222] rounded-xl shrink-0 overflow-x-auto">
-      {unclear.total > 0 && (
+      {!loading && unclear.total > 0 && (
         <button
           onClick={onShowUnclear}
           className={`kpi-card shrink-0 bg-[#111] border border-[#222] border-t-2 p-[10px_16px] sm:p-[13px_20px] rounded-xl shadow-sm transform transition-transform hover:scale-[1.02] text-center w-auto min-w-max cursor-pointer ${unclearOnly ? "ring-1 ring-[#FB923C]/60" : ""}`}
@@ -169,7 +172,7 @@ const KPIBar = memo(function KPIBar({
           </div>
         </button>
       )}
-      {issueCount > 0 && (
+      {!loading && issueCount > 0 && (
         <button
           onClick={onShowIssues}
           className="kpi-card shrink-0 bg-[#111] border border-[#222] border-t-2 p-[10px_16px] sm:p-[13px_20px] rounded-xl shadow-sm transform transition-transform hover:scale-[1.02] text-center w-auto min-w-max cursor-pointer"
@@ -204,14 +207,14 @@ const KPIBar = memo(function KPIBar({
               className="kpi-value kpi-number text-2xl font-bold tracking-tight"
               style={{ color: kpi.valueColor || kpi.color }}
             >
-              {kpi.value}
+              {loading ? <Bone w={56} h={26} className="kpi-bone" /> : kpi.value}
             </p>
-            {kpi.unit ? (
+            {kpi.unit && !loading ? (
               <p className="text-[10px] text-gray-500 uppercase mt-0.5">{kpi.unit}</p>
             ) : (
               <p className="text-[10px] opacity-0 select-none mt-0.5">—</p>
             )}
-            {kpi.note && <p className="text-[10px] text-[#FB923C] mt-0.5">{kpi.note}</p>}
+            {kpi.note && !loading && <p className="text-[10px] text-[#FB923C] mt-0.5">{kpi.note}</p>}
           </div>
         </div>
       ))}

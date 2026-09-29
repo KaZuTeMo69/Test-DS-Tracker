@@ -264,11 +264,12 @@ export default function App() {
   const zoneCount = mapLayers.layers.reduce((n, l) => n + l.zones.length, 0);
   const layersSummary = `${mapLayers.layers.length} ${mapLayers.layers.length === 1 ? "layer" : "layers"} · ${zoneCount} ${zoneCount === 1 ? "zone" : "zones"}`;
 
-  const listEmptyMessage = data.awaitingSheet
-    ? data.syncError
+  // Placeholders while a saved Google Sheet loads (not once it has failed: the message says so instead)
+  const loadingSheet = data.awaitingSheet && !data.syncError;
+  const listEmptyMessage =
+    data.awaitingSheet && data.syncError
       ? "Couldn't load the Google Sheet. Use Sync Sheet to try again."
-      : "Loading stores from Google Sheet…"
-    : "No results found";
+      : "No results found";
 
   const page = (
     <div className="app-container flex flex-col h-screen overflow-hidden bg-[#141414] text-[#EFEFEF] p-[10px] gap-[7px]">
@@ -304,6 +305,7 @@ export default function App() {
         onShowUnclear={showUnclearStores}
         issueCount={quality.storesWithIssues}
         onShowIssues={openDataQuality}
+        loading={loadingSheet}
       />
 
       <main className="app-main flex flex-row flex-1 overflow-hidden min-h-0 relative bg-[#0a0a0a] rounded-xl border border-[#222] shadow-2xl">
@@ -327,6 +329,7 @@ export default function App() {
           filters={filters}
           allCities={allCities}
           emptyMessage={listEmptyMessage}
+          loading={loadingSheet}
           coverage={coverage}
           benchmarks={benchmarks}
           quality={quality}

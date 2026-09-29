@@ -16,6 +16,7 @@ import { isLive } from "../lib/status";
 import DataQualityPanel from "./DataQualityPanel";
 import LoadMore from "./LoadMore";
 import RenewalTimeline from "./RenewalTimeline";
+import { ChartSkeleton, ListSkeleton } from "./Skeleton";
 
 // The charts library is large and only the Growth tab uses it, so it loads when that tab first opens
 const CityInsights = lazy(() => import("./CityInsights"));
@@ -36,6 +37,7 @@ interface SidebarProps {
   filters: Filters;
   allCities: string[];
   emptyMessage: string; // shown when the list is empty
+  loading: boolean; // a saved Google Sheet is loading: placeholders instead of empty lists
   coverage: Coverage; // for the coverage tags in the list
   benchmarks: RentBenchmarks; // for the HIGH RENT tag
   quality: { groups: IssueGroup[]; storesWithIssues: number }; // the Data Quality panel
@@ -196,6 +198,7 @@ export default function Sidebar({
   filters,
   allCities,
   emptyMessage,
+  loading,
   coverage,
   benchmarks,
   quality,
@@ -387,7 +390,16 @@ export default function Sidebar({
           <div
             className={`flex-1 overflow-y-auto pl-[15px] pr-[12px] pt-[15px] pb-5 space-y-3 scrollbar-thin scrollbar-thumb-[#262626] ${currentTab === "stores" ? "sb-list" : "city-list"}`}
           >
-            {currentTab === "stores" ? (
+            {loading && currentTab !== "layers" ? (
+              currentTab === "insights" ? (
+                <ChartSkeleton label="Loading your stores from the Google Sheet" />
+              ) : (
+                <ListSkeleton
+                  rows={currentTab === "cities" ? 4 : 6}
+                  label="Loading your stores from the Google Sheet"
+                />
+              )
+            ) : currentTab === "stores" ? (
               stores.length > 0 ? (
                 <>
                   {stores.slice(0, shown).map((s) => {
@@ -500,7 +512,7 @@ export default function Sidebar({
             ) : (
               <>
                 {insightsExtra}
-                <Suspense fallback={<div className="text-center py-10 text-[11px] text-gray-500">Loading charts…</div>}>
+                <Suspense fallback={<ChartSkeleton />}>
                   <CityInsights citySummaries={citySummaries} />
                 </Suspense>
               </>
@@ -509,15 +521,17 @@ export default function Sidebar({
 
           <div className="p-2.5 text-center border-t border-[#262626] bg-[#0a0a0a]">
             <span className="text-[10px] text-gray-600 font-bold tracking-tight uppercase">
-              {currentTab === "stores"
-                ? `Showing ${stores.length} of ${totalStores} Stores`
-                : currentTab === "layers"
-                  ? layersSummary
-                  : currentTab === "renewals"
-                    ? `Next 12 months · ${settings.leadDays}-day lead`
-                    : currentTab === "quality"
-                      ? `${quality.storesWithIssues} of ${totalStores} stores to check`
-                      : `${citySummaries.length} Cities Tracked`}
+              {loading && currentTab !== "layers"
+                ? "Loading your stores…"
+                : currentTab === "stores"
+                  ? `Showing ${stores.length} of ${totalStores} Stores`
+                  : currentTab === "layers"
+                    ? layersSummary
+                    : currentTab === "renewals"
+                      ? `Next 12 months · ${settings.leadDays}-day lead`
+                      : currentTab === "quality"
+                        ? `${quality.storesWithIssues} of ${totalStores} stores to check`
+                        : `${citySummaries.length} Cities Tracked`}
             </span>
           </div>
         </motion.div>

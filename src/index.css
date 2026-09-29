@@ -1540,3 +1540,45 @@ body {
   bottom: var(--sheet-inset, 0px) !important;
   transition: bottom 0.25s ease;
 }
+
+/* Loading placeholders */
+.skeleton {
+  background: linear-gradient(90deg, #1b1b1b 25%, #2b2b2b 37%, #1b1b1b 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+.skeleton-card {
+  padding: 16px 18px;
+}
+
+.skeleton-gap {
+  margin-top: 14px;
+}
+
+.skeleton-chart {
+  height: 200px;
+  margin-top: 14px;
+  padding: 16px;
+}
+
+.kpi-bone {
+  display: inline-block;
+  vertical-align: middle;
+}
