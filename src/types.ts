@@ -29,7 +29,7 @@ export type RenewalFilter = "all" | "renew" | "expired";
 // Only the stores the coverage checks flag: outside every coverage zone, or inside white space
 export type CoverageFilter = "outside" | "whitespace";
 
-export type SidebarTab = "stores" | "cities" | "insights" | "layers";
+export type SidebarTab = "stores" | "cities" | "insights" | "renewals" | "layers";
 
 export interface CitySummary {
   city: string;

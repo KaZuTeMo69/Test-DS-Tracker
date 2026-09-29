@@ -1,4 +1,4 @@
-import { lazy, memo, ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, memo, ReactNode, Suspense, useCallback, useState } from "react";
 import { ChevronLeft, FileDown, FileUp, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { CitySummary, SidebarTab, Store } from "../types";
@@ -11,6 +11,8 @@ import { fmtN, fmtR } from "../lib/format";
 import { storeRenewal } from "../lib/renewal";
 import { shownRent, vatLabel } from "../lib/settings";
 import { isLive } from "../lib/status";
+import LoadMore from "./LoadMore";
+import RenewalTimeline from "./RenewalTimeline";
 
 // The charts library is large and only the Growth tab uses it, so it loads when that tab first opens
 const CityInsights = lazy(() => import("./CityInsights"));
@@ -177,25 +179,6 @@ const StoreListItem = memo(function StoreListItem({
   );
 });
 
-// Shows the next batch of stores when it scrolls into view. Keyed by the batch size, so it checks again after each batch
-function LoadMore({ onVisible }: { onVisible: () => void; key?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting) onVisible();
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [onVisible]);
-  return (
-    <div ref={ref} className="text-center py-3 text-[11px] text-gray-500">
-      Loading more stores…
-    </div>
-  );
-}
-
 // A label with a row of three filter buttons, one of them active
 function FilterRow<T extends string>({
   label,
@@ -272,11 +255,11 @@ export default function Sidebar({
     <AnimatePresence mode="wait">
       {isOpen && (
         <motion.div
-          initial={{ x: -350 }}
+          initial={{ x: "-110%" }}
           animate={{ x: 0 }}
-          exit={{ x: -350 }}
+          exit={{ x: "-110%" }}
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="sidebar relative h-full flex-shrink-0 bg-[#0d0d0d]/85 backdrop-blur-md border border-[#262626] rounded-xl flex flex-col overflow-hidden z-[2000] shadow-2xl"
+          className={`sidebar ${currentTab === "renewals" ? "sidebar-wide" : ""} relative h-full flex-shrink-0 bg-[#0d0d0d]/85 backdrop-blur-md border border-[#262626] rounded-xl flex flex-col overflow-hidden z-[2000] shadow-2xl`}
         >
           <div className="sb-top p-3 border-b border-[#262626] flex flex-col gap-2.5 ml-0 pl-[15px] pr-[15px]">
             <div className="flex items-center justify-between pl-[15px] pr-0">
@@ -309,25 +292,31 @@ export default function Sidebar({
                 className={`tab-btn ${currentTab === "stores" ? "on" : ""}`}
                 onClick={() => setCurrentTab("stores")}
               >
-                🏪 Stores
+                <span className="tab-emoji">🏪</span> Stores
               </button>
               <button
                 className={`tab-btn ${currentTab === "cities" ? "on" : ""}`}
                 onClick={() => setCurrentTab("cities")}
               >
-                🏙 City
+                <span className="tab-emoji">🏙</span> City
               </button>
               <button
                 className={`tab-btn ${currentTab === "insights" ? "on" : ""}`}
                 onClick={() => setCurrentTab("insights")}
               >
-                📊 Growth
+                <span className="tab-emoji">📊</span> Growth
+              </button>
+              <button
+                className={`tab-btn ${currentTab === "renewals" ? "on" : ""}`}
+                onClick={() => setCurrentTab("renewals")}
+              >
+                <span className="tab-emoji">📅</span> Renewals
               </button>
               <button
                 className={`tab-btn ${currentTab === "layers" ? "on" : ""}`}
                 onClick={() => setCurrentTab("layers")}
               >
-                🗺 Layers
+                <span className="tab-emoji">🗺</span> Layers
               </button>
             </div>
 
@@ -519,6 +508,13 @@ export default function Sidebar({
               </div>
             ) : currentTab === "layers" ? (
               layersPanel
+            ) : currentTab === "renewals" ? (
+              <RenewalTimeline
+                stores={stores}
+                totalStores={totalStores}
+                selectedId={selectedId}
+                onSelectStore={onSelectStore}
+              />
             ) : (
               <>
                 {insightsExtra}
@@ -535,7 +531,9 @@ export default function Sidebar({
                 ? `Showing ${stores.length} of ${totalStores} Stores`
                 : currentTab === "layers"
                   ? layersSummary
-                  : `${citySummaries.length} Cities Tracked`}
+                  : currentTab === "renewals"
+                    ? `Next 12 months · ${settings.leadDays}-day lead`
+                    : `${citySummaries.length} Cities Tracked`}
             </span>
           </div>
         </motion.div>
