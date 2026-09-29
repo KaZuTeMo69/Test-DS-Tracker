@@ -1,16 +1,18 @@
 import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Filter } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { Minimize2 } from "lucide-react";
 import { CoverageFilter, LayerKind, PolygonRings, SidebarTab, ZoneLayer } from "./types";
 import { dataQuality, hasCoords } from "./lib/checks";
 import { analyseCoverage } from "./lib/coverage";
 import { csvFileName, storesToCsv } from "./lib/csvExport";
 import { download } from "./lib/download";
+import { kpiStats } from "./lib/kpis";
 import { kmlFileName, layerToKml } from "./lib/kmlExport";
 import { rentBenchmarks } from "./lib/rentStats";
 import { zoneBounds, zoneColor } from "./lib/layers";
+import { loadPanelOpen, savePanelOpen } from "./lib/storage";
 import { useFilters } from "./hooks/useFilters";
 import { useLayers } from "./hooks/useLayers";
+import { useIsNarrow } from "./hooks/useMediaQuery";
 import { SettingsContext, useSettingsState } from "./hooks/useSettings";
 import { isManualStore, useStores } from "./hooks/useStores";
 import { useToast } from "./hooks/useToast";
@@ -18,27 +20,32 @@ import { linkedView, useUrlState } from "./hooks/useUrlState";
 import { openingSheetHeight } from "./components/CardFrame";
 import CoverageSummary from "./components/CoverageSummary";
 import DetailPanel from "./components/DetailPanel";
-import Header from "./components/Header";
-import KPIBar from "./components/KPIBar";
+import { ExtraFigures } from "./components/KpiFigures";
 import LayersPanel from "./components/LayersPanel";
 import MapComponent from "./components/Map";
 import { ZoomRequest } from "./components/map/MapController";
 import { MapMode } from "./components/map/ZoneEditor";
 import { ZoneRef } from "./components/map/ZoneLayers";
 import MapLegend from "./components/MapLegend";
+import NavRail from "./components/NavRail";
 import SettingsModal from "./components/SettingsModal";
 import Sidebar from "./components/Sidebar";
 import Toast from "./components/Toast";
+import TopBar from "./components/TopBar";
 import UploadModal from "./components/UploadModal";
 import ZoneCard from "./components/ZoneCard";
 
-// Below this width the sidebar covers the store card, so picking something in it closes it
+// Below this width the panels are a sheet over the bottom of the map, so picking something in one closes it
 const NARROW_SCREEN = 1024;
-// Room kept free when zooming to an area: the sidebar on the left, a store or zone card on the right
-const SIDEBAR_ROOM = 390;
+// The open panel's width over the left of the map on large screens (the Renewals timeline is wider); as in the CSS
+const PANEL_WIDTH = 340;
+const WIDE_PANEL_WIDTH = 640;
+// Room kept free when zooming to an area, besides the panel: a store or zone card on the right
 const CARD_ROOM = 420;
 // On a phone the card is a sheet over the bottom of the map instead, about half its height when it opens
 const PHONE_SCREEN = 768;
+// The closed panel sheet (its icons) along the bottom of the map on smaller screens
+const PANEL_BAR_ROOM = 100;
 
 export default function App() {
   const { message: toastMsg, showToast } = useToast();
@@ -60,9 +67,18 @@ export default function App() {
     linkedView,
   );
 
-  // Sidebar, map and selection
+  // The panels, the map and the selection
+  const narrow = useIsNarrow();
   const [currentTab, setCurrentTab] = useState<SidebarTab>(linkedView.tab);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // Open or closed as it was left; the first time, open on a large screen and closed on a small one
+  const [isPanelOpen, setPanelOpenState] = useState(() => loadPanelOpen() ?? window.innerWidth >= NARROW_SCREEN);
+  const setPanelOpen = useCallback((open: boolean) => {
+    setPanelOpenState(open);
+    savePanelOpen(open);
+  }, []);
+  // Only the map: no bars, panels, cards or buttons
+  const [focusMode, setFocusMode] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isNightMode, setIsNightMode] = useState(true);
   const [focusedCity, setFocusedCity] = useState<string | null>(null);
@@ -73,8 +89,9 @@ export default function App() {
   const [mapMode, setMapMode] = useState<MapMode | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  // On a phone: how much of the bottom of the map the store or zone sheet covers
-  const [sheetInset, setSheetInset] = useState(0);
+  // On smaller screens: how much of the bottom of the map the store or zone sheet, and the panel sheet, cover
+  const [cardInset, setCardInset] = useState(0);
+  const [panelInset, setPanelInset] = useState(0);
   const mapRef = useRef<HTMLDivElement>(null);
   const closeSettings = useCallback(() => setIsSettingsOpen(false), []);
 
@@ -88,11 +105,34 @@ export default function App() {
   const notOnMap = useMemo(() => filteredStores.filter((s) => !hasCoords(s)).length, [filteredStores]);
   // Every problem in the data, for the Data Quality panel (all stores, whatever the filters)
   const quality = useMemo(() => dataQuality(stores), [stores]);
+  // The totals in the top bar, for the stores that pass the filters
+  const stats = useMemo(() => kpiStats(filteredStores, settings, settings.includeVat), [filteredStores, settings]);
 
-  const openUploadModal = () => {
-    data.clearError();
-    setIsUploadModalOpen(true);
-  };
+  // What covers the map: the panel on the left (large screens), the sheets at the bottom (smaller ones)
+  const panelShown = isPanelOpen && !focusMode;
+  const leftInset = panelShown && !narrow ? (currentTab === "renewals" ? WIDE_PANEL_WIDTH : PANEL_WIDTH) : 0;
+  const bottomInset = focusMode ? 0 : Math.max(cardInset, panelInset);
+
+  // A panel's icon opens it, or closes it if it's the one open
+  const selectTab = useCallback(
+    (tab: SidebarTab) => {
+      if (isPanelOpen && currentTab === tab) setPanelOpen(false);
+      else {
+        setCurrentTab(tab);
+        setPanelOpen(true);
+      }
+    },
+    [isPanelOpen, currentTab, setPanelOpen],
+  );
+  const openPanel = useCallback(
+    (tab: SidebarTab) => {
+      setCurrentTab(tab);
+      setPanelOpen(true);
+    },
+    [setPanelOpen],
+  );
+  const closePanel = useCallback(() => setPanelOpen(false), [setPanelOpen]);
+  const reopenPanel = useCallback(() => setPanelOpen(true), [setPanelOpen]);
 
   const handleSheetImport = async (url: string) => {
     if (await data.importSheet(url)) setIsUploadModalOpen(false);
@@ -112,20 +152,15 @@ export default function App() {
   const showUnclearStores = () => {
     showUnclearOnly();
     setFocusedCity(null);
-    setCurrentTab("stores");
-    setIsSidebarOpen(true);
+    openPanel("stores");
   };
 
-  const openDataQuality = useCallback(() => {
-    setCurrentTab("quality");
-    setIsSidebarOpen(true);
-  }, []);
+  const openDataQuality = useCallback(() => openPanel("quality"), [openPanel]);
 
   const showCoverageStores = (filter: CoverageFilter) => {
     showCoverageOnly(filter);
     setFocusedCity(null);
-    setCurrentTab("stores");
-    setIsSidebarOpen(true);
+    openPanel("stores");
   };
 
   const closeStore = useCallback(() => setSelectedId(null), []);
@@ -136,9 +171,9 @@ export default function App() {
   const selectFromList = useCallback(
     (id: number) => {
       selectStore(id);
-      if (window.innerWidth < NARROW_SCREEN) setIsSidebarOpen(false);
+      if (window.innerWidth < NARROW_SCREEN) setPanelOpen(false);
     },
-    [selectStore],
+    [selectStore, setPanelOpen],
   );
 
   // The view (filters, tab, selected store) in the page's link, and the linked store selected once loaded
@@ -152,16 +187,23 @@ export default function App() {
     showToast,
   });
 
-  const zoomTo = (bounds: ReturnType<typeof zoneBounds>, { sidebar, card }: { sidebar: boolean; card: boolean }) => {
+  // Zooms to an area, clear of the open panel and of the card that's about to open. On smaller screens the panel
+  // sheet closes to its bar when something in it is picked (closesPanel), or stays as it is
+  const zoomTo = (
+    bounds: ReturnType<typeof zoneBounds>,
+    { card, closesPanel }: { card: boolean; closesPanel: boolean },
+  ) => {
     if (!bounds) return;
     const wide = window.innerWidth >= NARROW_SCREEN;
     const phone = window.innerWidth < PHONE_SCREEN;
+    const sheet = wide ? 0 : closesPanel ? PANEL_BAR_ROOM : panelInset;
+    const cardSheet = card && phone ? openingSheetHeight(mapRef.current?.clientHeight ?? window.innerHeight) : 0;
     setZoomRequest({
       id: Date.now(),
       bounds,
-      padLeft: sidebar && wide ? SIDEBAR_ROOM : 40,
+      padLeft: leftInset + 40,
       padRight: card && wide ? CARD_ROOM : 40,
-      padBottom: card && phone ? openingSheetHeight(mapRef.current?.clientHeight ?? window.innerHeight) + 20 : 60,
+      padBottom: Math.max(sheet, cardSheet) + 20 || 60,
     });
   };
 
@@ -173,9 +215,9 @@ export default function App() {
   const selectZoneFromList = (layerId: string, zoneId: string) => {
     selectZone(layerId, zoneId);
     const zone = mapLayers.layers.find((l) => l.id === layerId)?.zones.find((z) => z.id === zoneId);
-    if (zone) zoomTo(zoneBounds([zone]), { sidebar: true, card: true });
+    if (zone) zoomTo(zoneBounds([zone]), { card: true, closesPanel: true });
     if (!mapLayers.layers.find((l) => l.id === layerId)?.visible) mapLayers.updateLayer(layerId, { visible: true });
-    if (window.innerWidth < NARROW_SCREEN) setIsSidebarOpen(false);
+    if (window.innerWidth < NARROW_SCREEN) setPanelOpen(false);
   };
   // The same, as a callback that never changes, for the memoised store card
   const selectZoneRef = useRef(selectZoneFromList);
@@ -186,13 +228,10 @@ export default function App() {
 
   const importLayers = async (files: File[]) => {
     const added = await mapLayers.importFiles(files);
-    zoomTo(zoneBounds(added.flatMap((l) => l.zones)), { sidebar: true, card: false });
+    zoomTo(zoneBounds(added.flatMap((l) => l.zones)), { card: false, closesPanel: false });
   };
 
-  const openLayers = () => {
-    setCurrentTab("layers");
-    setIsSidebarOpen(true);
-  };
+  const openLayers = () => openPanel("layers");
 
   const addLayer = (kind: LayerKind) => {
     const layer = mapLayers.addLayer(kind);
@@ -206,7 +245,7 @@ export default function App() {
     setSelectedId(null);
     setSelectedZone(null);
     setMapMode({ kind: "draw", layerId, color: layer.color });
-    if (window.innerWidth < NARROW_SCREEN) setIsSidebarOpen(false);
+    if (window.innerWidth < NARROW_SCREEN) setPanelOpen(false);
   };
 
   const finishDrawing = (polygons: PolygonRings[]) => {
@@ -271,8 +310,54 @@ export default function App() {
       ? "Couldn't load the Google Sheet. Use Sync Sheet to try again."
       : "No results found";
 
+  // Keys: F for focus mode, Esc to leave it or to close the panel. Not while typing, in a window over the page, or
+  // while drawing or editing a zone (Esc cancels that). Read through a ref, so the listener is added once
+  const keyState = useRef({ focusMode, isPanelOpen, busy: false });
+  useEffect(() => {
+    keyState.current = { focusMode, isPanelOpen, busy: mapMode !== null || isUploadModalOpen || isSettingsOpen };
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Something else (a popover closing) has already used the key
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+      const { focusMode, isPanelOpen, busy } = keyState.current;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      const typing = !!target?.closest("input, textarea, select, [contenteditable]:not([contenteditable='false'])");
+      const blocked = busy || !!document.querySelector("[data-modal]");
+      if (e.key === "Escape") {
+        if (focusMode) setFocusMode(false);
+        else if (blocked) return;
+        else if (typing) target?.blur();
+        else if (isPanelOpen) setPanelOpen(false);
+      } else if ((e.key === "f" || e.key === "F") && !typing && !blocked && !e.repeat) {
+        setFocusMode(!focusMode);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [setPanelOpen]);
+  const enterFocusMode = useCallback(() => {
+    if (!keyState.current.busy) setFocusMode(true);
+  }, []);
+  const toggleSearch = useCallback(() => setSearchOpen((open) => !open), []);
+  const { clearError } = data;
+  const openUpload = useCallback(() => {
+    clearError();
+    setIsUploadModalOpen(true);
+  }, [clearError]);
+  const openSettings = useCallback(() => setIsSettingsOpen(true), []);
+
+  const railBadges = useMemo(
+    () => ({ renewals: stats.renewals.now, quality: quality.storesWithIssues }),
+    [stats.renewals.now, quality.storesWithIssues],
+  );
+  // Leaflet is told to measure itself again when anything around the map opens or closes
+  const layoutKey = `${focusMode}|${panelShown}|${narrow}|${leftInset}`;
+
   const page = (
-    <div className="app-container flex flex-col h-screen overflow-hidden bg-[#141414] text-[#EFEFEF] p-[10px] gap-[7px]">
+    <div
+      className={`app-container flex flex-col overflow-hidden bg-[#141414] text-[#EFEFEF] ${focusMode ? "focus-mode" : ""}`}
+    >
       <UploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
@@ -283,115 +368,54 @@ export default function App() {
         error={data.error}
       />
 
-      <Header
-        sheetId={data.sheetId}
-        lastSync={data.lastSync}
-        syncError={data.syncError}
-        fileName={data.fileName}
-        isSyncing={data.isSyncing}
-        onUpload={openUploadModal}
-        onSync={data.syncSheet}
-        onResetSample={handleResetSample}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenDataQuality={openDataQuality}
-      />
+      {!focusMode && (
+        <TopBar
+          sheetId={data.sheetId}
+          lastSync={data.lastSync}
+          syncError={data.syncError}
+          fileName={data.fileName}
+          isSyncing={data.isSyncing}
+          onUpload={openUpload}
+          onSync={data.syncSheet}
+          onResetSample={handleResetSample}
+          onOpenSettings={openSettings}
+          onOpenDataQuality={openDataQuality}
+          stats={stats}
+          unclear={unclear}
+          unclearOnly={filters.unclearOnly}
+          onShowUnclear={showUnclearStores}
+          issueCount={quality.storesWithIssues}
+          onShowIssues={openDataQuality}
+          loading={loadingSheet}
+          searchOpen={searchOpen}
+          onToggleSearch={toggleSearch}
+        />
+      )}
 
       <SettingsModal isOpen={isSettingsOpen} settings={settings} onChange={updateSettings} onClose={closeSettings} />
 
-      <KPIBar
-        stores={filteredStores}
-        unclear={unclear}
-        unclearOnly={filters.unclearOnly}
-        onShowUnclear={showUnclearStores}
-        issueCount={quality.storesWithIssues}
-        onShowIssues={openDataQuality}
-        loading={loadingSheet}
-      />
-
-      <main className="app-main flex flex-row flex-1 overflow-hidden min-h-0 relative bg-[#0a0a0a] rounded-xl border border-[#222] shadow-2xl">
-        <Sidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          stores={filteredStores}
-          totalStores={stores.length}
-          citySummaries={citySummaries}
-          currentTab={currentTab}
-          setCurrentTab={setCurrentTab}
-          selectedId={selectedId}
-          onSelectStore={selectFromList}
-          onImportSheet={openUploadModal}
-          onExportCsv={exportCsv}
-          onCityFocus={(city) => {
-            filters.setCityFilter(city);
-            setFocusedCity(city);
-            if (window.innerWidth < NARROW_SCREEN) setIsSidebarOpen(false);
-          }}
-          filters={filters}
-          allCities={allCities}
-          emptyMessage={listEmptyMessage}
-          loading={loadingSheet}
-          coverage={coverage}
-          benchmarks={benchmarks}
-          quality={quality}
-          insightsExtra={
-            <CoverageSummary
-              coverage={coverage}
-              storeCount={stores.length}
-              zoneCount={zoneCount}
-              onShowStores={showCoverageStores}
-              onSelectZone={selectZoneFromList}
-              onOpenLayers={openLayers}
-            />
-          }
-          layersSummary={layersSummary}
-          layersPanel={
-            <LayersPanel
-              layers={mapLayers.layers}
-              canSave={mapLayers.canSave}
-              selectedZone={zoneSelection ? selectedZone : null}
-              onImport={importLayers}
-              onUpdateLayer={mapLayers.updateLayer}
-              onRemoveLayer={mapLayers.removeLayer}
-              onClearAll={mapLayers.clearAll}
-              onSelectZone={selectZoneFromList}
-              onAddLayer={addLayer}
-              onDrawZone={startDrawing}
-              onExport={exportLayer}
-            />
-          }
-        />
+      <main className="app-main flex flex-1 min-h-0 relative">
+        {!narrow && !focusMode && (
+          <NavRail currentTab={currentTab} open={isPanelOpen} badges={railBadges} onSelect={selectTab} />
+        )}
 
         <div
-          ref={mapRef}
-          className={`map-container flex-1 relative min-w-0 ${isSidebarOpen ? (currentTab === "renewals" ? "with-wide-sidebar" : "with-sidebar") : ""} ${sheetInset ? "sheet-open" : ""}`}
-          style={{ "--sheet-inset": `${sheetInset}px` } as CSSProperties}
-          onClick={() => {
-            if (selectedId !== null) setSelectedId(null);
-          }}
+          className={`map-area relative flex-1 min-w-0 min-h-0 ${panelShown && !narrow ? (currentTab === "renewals" ? "panel-open panel-wide" : "panel-open") : ""} ${panelShown && narrow ? "panel-sheet-open" : ""}`}
         >
-          <AnimatePresence>
-            {!isSidebarOpen && (
-              <motion.button
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsSidebarOpen(true);
-                }}
-                className="absolute top-6 left-6 w-12 h-12 flex items-center justify-center bg-[#111111]/90 backdrop-blur-md border border-[#333] rounded-xl text-[#fbbf24] shadow-2xl z-[500] cursor-pointer hover:bg-[#222] transition-transform active:scale-95"
-                title="Open Navigation"
-              >
-                <Filter size={22} />
-              </motion.button>
-            )}
-          </AnimatePresence>
-
-          <div className="w-full h-full rounded-xl overflow-hidden">
+          <div
+            ref={mapRef}
+            className={`map-container absolute inset-0 ${cardInset ? "sheet-open" : ""}`}
+            style={{ "--sheet-inset": `${bottomInset}px` } as CSSProperties}
+            onClick={() => {
+              if (selectedId !== null) setSelectedId(null);
+            }}
+          >
             <MapComponent
               stores={filteredStores}
               benchmarks={benchmarks}
-              bottomInset={sheetInset}
+              bottomInset={bottomInset}
+              leftInset={leftInset}
+              layoutKey={layoutKey}
               selectedId={selectedId}
               onSelectStore={selectStore}
               onMapClick={() => {
@@ -406,6 +430,10 @@ export default function App() {
               selectedZone={zoneSelection ? selectedZone : null}
               onSelectZone={selectZone}
               onOpenLayers={openLayers}
+              pinColors={settings.pinColors}
+              onPinColors={(pinColors) => updateSettings({ pinColors })}
+              onFocusMode={enterFocusMode}
+              searchOpen={searchOpen && !focusMode}
               zoomRequest={zoomRequest}
               cardOpen={selectedId !== null || zoneSelection !== null}
               mapMode={mapMode}
@@ -415,41 +443,112 @@ export default function App() {
               onAddStore={data.addManualStore}
               showToast={showToast}
             />
+
+            <DetailPanel
+              store={mapMode ? null : selectedStore}
+              stores={stores}
+              coverage={coverage}
+              benchmark={selectedStore ? (benchmarks.of.get(selectedStore.id) ?? null) : null}
+              onSelectZone={openZone}
+              onClose={closeStore}
+              onInset={setCardInset}
+              onRemove={
+                selectedStore && isManualStore(selectedStore)
+                  ? () => handleRemoveManualStore(selectedStore.id)
+                  : undefined
+              }
+            />
+
+            {zoneSelection && !selectedStore && !mapMode && (
+              <ZoneCard
+                key={zoneSelection.zone.id}
+                layer={zoneSelection.layer}
+                zone={zoneSelection.zone}
+                storesInside={coverage.storesIn.get(zoneSelection.zone.id) ?? []}
+                onSelectStore={selectStore}
+                onChange={(patch, delay) =>
+                  mapLayers.updateZone(zoneSelection.layer.id, zoneSelection.zone.id, patch, delay)
+                }
+                onClose={() => setSelectedZone(null)}
+                onEditShape={startEditingShape}
+                onDelete={deleteSelectedZone}
+                onInset={setCardInset}
+              />
+            )}
+
+            {!focusMode && <MapLegend notOnMap={notOnMap} />}
           </div>
 
-          <DetailPanel
-            store={mapMode ? null : selectedStore}
-            stores={stores}
-            coverage={coverage}
-            benchmark={selectedStore ? (benchmarks.of.get(selectedStore.id) ?? null) : null}
-            onSelectZone={openZone}
-            onClose={closeStore}
-            onInset={setSheetInset}
-            onRemove={
-              selectedStore && isManualStore(selectedStore)
-                ? () => handleRemoveManualStore(selectedStore.id)
-                : undefined
-            }
-          />
-
-          {zoneSelection && !selectedStore && !mapMode && (
-            <ZoneCard
-              key={zoneSelection.zone.id}
-              layer={zoneSelection.layer}
-              zone={zoneSelection.zone}
-              storesInside={coverage.storesIn.get(zoneSelection.zone.id) ?? []}
-              onSelectStore={selectStore}
-              onChange={(patch, delay) =>
-                mapLayers.updateZone(zoneSelection.layer.id, zoneSelection.zone.id, patch, delay)
+          {!focusMode && (
+            <Sidebar
+              layout={narrow ? "sheet" : "overlay"}
+              isOpen={isPanelOpen}
+              onOpen={reopenPanel}
+              onClose={closePanel}
+              onSelectTab={selectTab}
+              onInset={setPanelInset}
+              badges={railBadges}
+              stores={filteredStores}
+              totalStores={stores.length}
+              citySummaries={citySummaries}
+              currentTab={currentTab}
+              setCurrentTab={setCurrentTab}
+              selectedId={selectedId}
+              onSelectStore={selectFromList}
+              onImportSheet={openUpload}
+              onExportCsv={exportCsv}
+              onCityFocus={(city) => {
+                filters.setCityFilter(city);
+                setFocusedCity(city);
+                if (window.innerWidth < NARROW_SCREEN) setPanelOpen(false);
+              }}
+              filters={filters}
+              allCities={allCities}
+              emptyMessage={listEmptyMessage}
+              loading={loadingSheet}
+              coverage={coverage}
+              benchmarks={benchmarks}
+              quality={quality}
+              cityFigures={<ExtraFigures stats={stats} className="city-figures" />}
+              insightsExtra={
+                <CoverageSummary
+                  coverage={coverage}
+                  storeCount={stores.length}
+                  zoneCount={zoneCount}
+                  onShowStores={showCoverageStores}
+                  onSelectZone={selectZoneFromList}
+                  onOpenLayers={openLayers}
+                />
               }
-              onClose={() => setSelectedZone(null)}
-              onEditShape={startEditingShape}
-              onDelete={deleteSelectedZone}
-              onInset={setSheetInset}
+              layersSummary={layersSummary}
+              layersPanel={
+                <LayersPanel
+                  layers={mapLayers.layers}
+                  canSave={mapLayers.canSave}
+                  selectedZone={zoneSelection ? selectedZone : null}
+                  onImport={importLayers}
+                  onUpdateLayer={mapLayers.updateLayer}
+                  onRemoveLayer={mapLayers.removeLayer}
+                  onClearAll={mapLayers.clearAll}
+                  onSelectZone={selectZoneFromList}
+                  onAddLayer={addLayer}
+                  onDrawZone={startDrawing}
+                  onExport={exportLayer}
+                />
+              }
             />
           )}
 
-          <MapLegend notOnMap={notOnMap} onPinColors={(pinColors) => updateSettings({ pinColors })} />
+          {focusMode && (
+            <button
+              className="focus-exit flex items-center gap-2 absolute bg-[#111]/90 backdrop-blur-md border border-[#333] hover:border-[#fbbf24] hover:text-[#fbbf24] rounded-lg text-[11px] font-bold uppercase tracking-wider text-gray-200 cursor-pointer"
+              onClick={() => setFocusMode(false)}
+              title="Leave focus mode (F or Esc)"
+            >
+              <Minimize2 size={15} />
+              <span>Exit focus</span>
+            </button>
+          )}
         </div>
       </main>
 

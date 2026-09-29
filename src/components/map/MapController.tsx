@@ -42,6 +42,8 @@ export default function MapController({
   routePanelRef,
   zoomRequest,
   bottomInset = 0,
+  leftInset = 0,
+  layoutKey,
 }: {
   stores: Store[];
   selectedId: number | null;
@@ -51,7 +53,9 @@ export default function MapController({
   isNightMode: boolean;
   routePanelRef: RefObject<HTMLDivElement | null>;
   zoomRequest: ZoomRequest | null;
-  bottomInset?: number; // on a phone, the height of the sheet over the bottom of the map
+  bottomInset?: number; // the height of the sheet (store card or panels) over the bottom of the map
+  leftInset?: number; // the width of the panel over the left of the map
+  layoutKey?: string; // changes when the panels or bars around the map open or close
 }) {
   const map = useMap();
 
@@ -81,13 +85,37 @@ export default function MapController({
   const selectedLat = selectedStore?.lat ?? null;
   const selectedLng = selectedStore?.lng ?? null;
 
+  // Leaflet only measures its box when told to; without this, a map that grows (the top bar hidden in focus mode,
+  // a window resized) is left with grey gaps where no tiles were loaded
   useEffect(() => {
-    // Small delay to ensure container is ready
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 100);
-    return () => clearTimeout(timer);
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => map.invalidateSize());
+    });
+    observer.observe(map.getContainer());
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
   }, [map]);
+  // And again once a panel or bar has finished sliding in or out
+  useEffect(() => {
+    map.invalidateSize();
+    const timer = setTimeout(() => map.invalidateSize(), 350);
+    return () => clearTimeout(timer);
+  }, [map, layoutKey]);
+
+  // What covers the map, for fitting areas into the part that's still visible. Read when fitting, so a panel
+  // opening or closing doesn't move the map by itself
+  const insetRef = useRef({ left: leftInset, bottom: bottomInset });
+  useEffect(() => {
+    insetRef.current = { left: leftInset, bottom: bottomInset };
+  }, [leftInset, bottomInset]);
+  const fitPadding = (pad: number) => ({
+    paddingTopLeft: [pad + insetRef.current.left, pad] as L.PointTuple,
+    paddingBottomRight: [pad, pad + insetRef.current.bottom] as L.PointTuple,
+  });
 
   useEffect(() => {
     if (!map || !map.getContainer()) return;
@@ -108,7 +136,7 @@ export default function MapController({
         if (cityStores.length > 0) {
           try {
             const bounds = L.latLngBounds(cityStores.map((s) => [s.lat!, s.lng!]));
-            map.fitBounds(bounds, { padding: [80, 80] });
+            map.fitBounds(bounds, fitPadding(80));
           } catch (e) {
             console.warn("fitBounds failed", e);
           }
@@ -116,7 +144,7 @@ export default function MapController({
       } else if (storesWithCoords.length > 0) {
         try {
           const bounds = L.latLngBounds(storesWithCoords.map((s) => [s.lat!, s.lng!]));
-          map.fitBounds(bounds, { padding: [60, 60] });
+          map.fitBounds(bounds, fitPadding(60));
         } catch (e) {
           console.warn("fitBounds failed", e);
         }

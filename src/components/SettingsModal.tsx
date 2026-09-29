@@ -54,7 +54,12 @@ function NumberInput({
 export default function SettingsModal({ isOpen, settings, onChange, onClose }: SettingsModalProps) {
   useEffect(() => {
     if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    // Esc closes just this window (preventDefault tells the page's own Esc handling it's been used)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      onClose();
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
@@ -76,6 +81,7 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose }: S
 
   return (
     <div
+      data-modal
       className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9000] backdrop-blur-md settings-backdrop"
       onClick={onClose}
     >

@@ -27,6 +27,7 @@ export default function AddStoreModal({ pin, onCancel, onSave }: AddStoreModalPr
 
   return (
     <div
+      data-modal
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 pointer-events-auto"
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
