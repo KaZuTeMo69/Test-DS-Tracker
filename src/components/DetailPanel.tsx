@@ -1,6 +1,10 @@
-import { memo, ReactNode, useState } from "react";
+import { memo, ReactNode, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import CardFrame from "./CardFrame";
+import NearbyStores from "./NearbyStores";
+import { LatLng } from "../lib/coords";
+import { formatDrive, formatKm, googleMapsDirections, nearestByAir, SERVICE_NAME } from "../lib/roads";
+import { RouteInfo } from "../lib/routing";
 import { Store } from "../types";
 import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, RENEWAL_STYLE } from "../constants";
 import { contractDateIssues, dataIssues, hasCoords } from "../lib/checks";
@@ -29,12 +33,15 @@ interface DetailPanelProps {
   coverage: Coverage;
   benchmark: RentBenchmark | null; // rent per m² against the city median
   onSelectZone: (layerId: string, zoneId: string) => void;
+  onSelectStore: (id: number) => void; // one of the nearby stores
+  searchPin: LatLng | null; // the searched point: directions start there when there is one
+  route: RouteInfo | null; // the road route drawn from the searched point to this store
   onClose: () => void;
   onRemove?: () => void; // only for manually added stores
   onInset?: (px: number) => void; // on a phone: how much of the map the card covers
 }
 
-type Tab = "summary" | "rent" | "contract";
+type Tab = "summary" | "rent" | "contract" | "nearby";
 type Tone = "good" | "warn" | "bad";
 
 // Class names are written out in full so Tailwind generates them
@@ -614,7 +621,38 @@ const TABS: Array<[Tab, string]> = [
   ["summary", "Summary"],
   ["rent", "Rent"],
   ["contract", "Contract"],
+  ["nearby", "Nearby"],
 ];
+
+/**
+ * Directions to the store in Google Maps: from the searched point when there is one, otherwise from the nearest
+ * other live store; or just the store's place when there's neither.
+ */
+function MapsLink({ store, stores, searchPin }: { store: Store; stores: Store[]; searchPin: LatLng | null }) {
+  const here = { lat: store.lat!, lng: store.lng! };
+  const nearest = useMemo(
+    () => (searchPin ? null : nearestByAir({ lat: store.lat!, lng: store.lng! }, stores, 1, store.id)[0]),
+    [searchPin, stores, store],
+  );
+  const origin = searchPin ?? (nearest ? { lat: nearest.store.lat!, lng: nearest.store.lng! } : null);
+  const from = searchPin ? "the searched point" : nearest ? `${nearest.store.name}, the nearest store` : null;
+  return (
+    <a
+      href={
+        origin
+          ? googleMapsDirections(origin, here)
+          : `https://www.google.com/maps/search/?api=1&query=${store.lat},${store.lng}`
+      }
+      target="_blank"
+      rel="noopener noreferrer"
+      title={from ? `Driving directions from ${from}` : "This store in Google Maps"}
+      className="detail-panel-maps-btn text-[12px] block w-full store-card-button bg-[#fbbf24] text-black font-extrabold text-center rounded-lg transition-transform active:scale-95 no-underline shadow-lg"
+    >
+      📍 Open in Google Maps
+      {from && <span className="detail-panel-maps-from">Directions from {from}</span>}
+    </a>
+  );
+}
 
 // z-[600]: above the map legend (500), below the sidebar (2000) and toasts (999)
 function StoreCard({
@@ -623,6 +661,9 @@ function StoreCard({
   coverage,
   benchmark,
   onSelectZone,
+  onSelectStore,
+  searchPin,
+  route,
   onClose,
   onRemove,
   onInset,
@@ -718,18 +759,40 @@ function StoreCard({
         )}
         {tab === "rent" && <RentTab store={store} rent={rent} benchmark={benchmark} />}
         {tab === "contract" && <ContractTab store={store} renewal={renewal} />}
+        {tab === "nearby" &&
+          (hasCoords(store) ? (
+            <>
+              <div className="detail-panel-row-label text-[11px]">Nearest live stores by road</div>
+              <NearbyStores
+                point={{ lat: store.lat!, lng: store.lng! }}
+                stores={stores}
+                excludeId={store.id}
+                onSelect={onSelectStore}
+              />
+            </>
+          ) : (
+            <p className="nearby-empty">This store has no location, so there's nothing to measure from.</p>
+          ))}
       </div>
 
       <div className="store-card-footer">
+        {searchPin && hasCoords(store) && (
+          <div className="card-route" role="status" aria-live="polite">
+            <span className="card-route-label">From the searched point</span>
+            {route ? (
+              <>
+                <span className="card-route-figures">
+                  <b>{formatKm(route.distance)}</b> · <b>{formatDrive(route.duration)}</b> by road
+                </span>
+                <span className="card-route-via">via {SERVICE_NAME[route.service].replace(/^the /, "")}</span>
+              </>
+            ) : (
+              <span className="card-route-via">Working out the road route…</span>
+            )}
+          </div>
+        )}
         {hasCoords(store) ? (
-          <a
-            href={`https://www.google.com/maps/search/?api=1&query=${store.lat},${store.lng}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="detail-panel-maps-btn text-[12px] block w-full store-card-button bg-[#fbbf24] text-black font-extrabold text-center rounded-lg transition-transform active:scale-95 no-underline shadow-lg"
-          >
-            📍 Open in Google Maps
-          </a>
+          <MapsLink store={store} stores={stores} searchPin={searchPin} />
         ) : (
           <button
             disabled

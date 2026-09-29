@@ -9,10 +9,14 @@ import { kpiStats } from "./lib/kpis";
 import { kmlFileName, layerToKml } from "./lib/kmlExport";
 import { rentBenchmarks } from "./lib/rentStats";
 import { zoneBounds, zoneColor } from "./lib/layers";
-import { loadPanelOpen, savePanelOpen } from "./lib/storage";
+import { loadBaseMap, loadOrsKey, loadPanelOpen, saveBaseMap, saveOrsKey, savePanelOpen } from "./lib/storage";
+import { BaseMapChoice, BaseMapId, chooseBaseMap, toBaseMapChoice, toggleNight } from "./lib/baseMaps";
+import { LatLng } from "./lib/coords";
+import { RouteInfo } from "./lib/routing";
 import { useFilters } from "./hooks/useFilters";
 import { useLayers } from "./hooks/useLayers";
 import { useIsNarrow } from "./hooks/useMediaQuery";
+import { RoadsContext } from "./hooks/useRoads";
 import { SettingsContext, useSettingsState } from "./hooks/useSettings";
 import { isManualStore, useStores } from "./hooks/useStores";
 import { useToast } from "./hooks/useToast";
@@ -80,7 +84,27 @@ export default function App() {
   const [focusMode, setFocusMode] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [isNightMode, setIsNightMode] = useState(true);
+  // The base map (night mode is the dark one), and the coordinate search's pin
+  const [baseMap, setBaseMapState] = useState(() => toBaseMapChoice(loadBaseMap()));
+  const updateBaseMap = useCallback((next: (choice: BaseMapChoice) => BaseMapChoice) => {
+    setBaseMapState((choice) => {
+      const updated = next(choice);
+      saveBaseMap(updated);
+      return updated;
+    });
+  }, []);
+  const chooseBase = useCallback((id: BaseMapId) => updateBaseMap((c) => chooseBaseMap(c, id)), [updateBaseMap]);
+  const switchNight = useCallback(() => updateBaseMap(toggleNight), [updateBaseMap]);
+  const [searchPin, setSearchPin] = useState<LatLng | null>(null);
+  // The road route from the searched point to the selected store, once worked out
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+  // The OpenRouteService key from Settings (this browser only), and where routing says what happened
+  const [orsKey, setOrsKeyState] = useState(loadOrsKey);
+  const setOrsKey = useCallback((key: string) => {
+    setOrsKeyState(key.trim());
+    saveOrsKey(key);
+  }, []);
+  const roadsSetup = useMemo(() => ({ orsKey, notify: showToast }), [orsKey, showToast]);
   const [focusedCity, setFocusedCity] = useState<string | null>(null);
   // A selected map zone; a store and a zone are never selected at the same time, so one card shows
   const [selectedZone, setSelectedZone] = useState<ZoneRef | null>(null);
@@ -392,7 +416,14 @@ export default function App() {
         />
       )}
 
-      <SettingsModal isOpen={isSettingsOpen} settings={settings} onChange={updateSettings} onClose={closeSettings} />
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        settings={settings}
+        onChange={updateSettings}
+        onClose={closeSettings}
+        orsKey={orsKey}
+        onOrsKey={setOrsKey}
+      />
 
       <main className="app-main flex flex-1 min-h-0 relative">
         {!narrow && !focusMode && (
@@ -400,7 +431,7 @@ export default function App() {
         )}
 
         <div
-          className={`map-area relative flex-1 min-w-0 min-h-0 ${panelShown && !narrow ? (currentTab === "renewals" ? "panel-open panel-wide" : "panel-open") : ""} ${panelShown && narrow ? "panel-sheet-open" : ""}`}
+          className={`map-area relative flex-1 min-w-0 min-h-0 ${panelShown && !narrow ? (currentTab === "renewals" ? "panel-open panel-wide" : "panel-open") : ""} ${panelShown && narrow ? "panel-sheet-open" : ""} ${(selectedStore || zoneSelection) && !mapMode ? "card-open" : ""}`}
         >
           <div
             ref={mapRef}
@@ -423,8 +454,13 @@ export default function App() {
                 setSelectedZone(null);
                 setFocusedCity(null);
               }}
-              isNightMode={isNightMode}
-              setIsNightMode={setIsNightMode}
+              allStores={stores}
+              baseMap={baseMap.base}
+              onChooseBase={chooseBase}
+              onToggleNight={switchNight}
+              searchPin={searchPin}
+              onSearchPin={setSearchPin}
+              onRoute={setRouteInfo}
               focusedCity={focusedCity}
               layers={mapLayers.layers}
               selectedZone={zoneSelection ? selectedZone : null}
@@ -450,6 +486,9 @@ export default function App() {
               coverage={coverage}
               benchmark={selectedStore ? (benchmarks.of.get(selectedStore.id) ?? null) : null}
               onSelectZone={openZone}
+              onSelectStore={selectStore}
+              searchPin={searchPin}
+              route={searchPin ? routeInfo : null}
               onClose={closeStore}
               onInset={setCardInset}
               onRemove={
@@ -557,5 +596,9 @@ export default function App() {
   );
 
   // The settings reach the list rows, store card, totals and charts through this, without being passed down
-  return <SettingsContext.Provider value={settings}>{page}</SettingsContext.Provider>;
+  return (
+    <SettingsContext.Provider value={settings}>
+      <RoadsContext.Provider value={roadsSetup}>{page}</RoadsContext.Provider>
+    </SettingsContext.Provider>
+  );
 }

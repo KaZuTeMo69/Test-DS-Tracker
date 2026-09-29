@@ -15,11 +15,13 @@ const ZoneShape = memo(function ZoneShape({
   zone,
   selected,
   onSelect,
+  interactive,
 }: {
   layer: ZoneLayer;
   zone: Zone;
   selected: boolean;
   onSelect: (layerId: string, zoneId: string) => void;
+  interactive: boolean;
   key?: string;
 }) {
   const ref = useRef<L.Polygon>(null);
@@ -56,6 +58,7 @@ const ZoneShape = memo(function ZoneShape({
         pathOptions={pathOptions}
         eventHandlers={eventHandlers}
         bubblingMouseEvents={false}
+        interactive={interactive}
       >
         <Tooltip sticky className="zone-tooltip" opacity={1}>
           {zone.name || "Unnamed zone"}
@@ -71,11 +74,13 @@ export default function ZoneLayers({
   selected,
   onSelect,
   hiddenZoneId,
+  interactive = true,
 }: {
   layers: ZoneLayer[];
   selected: ZoneRef | null;
   onSelect: (layerId: string, zoneId: string) => void;
   hiddenZoneId?: string; // a zone whose shape is being edited is drawn by the editor instead
+  interactive?: boolean; // off while measuring, so a click inside a zone places a point (Leaflet reads it once)
 }) {
   return (
     <>
@@ -100,6 +105,7 @@ export default function ZoneLayers({
                   zone={zone}
                   selected={selected?.layerId === layer.id && selected.zoneId === zone.id}
                   onSelect={onSelect}
+                  interactive={interactive}
                 />
               ))}
           </Fragment>

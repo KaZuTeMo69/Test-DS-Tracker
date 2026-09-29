@@ -6,6 +6,8 @@ const SHEET_ID_KEY = "dst.sheetId";
 const MANUAL_STORES_KEY = "dst.manualStores";
 const SETTINGS_KEY = "dst.settings";
 const PANEL_OPEN_KEY = "dst.panelOpen";
+const ORS_KEY = "dst.orsKey";
+const BASE_MAP_KEY = "dst.baseMap";
 
 export type ManualStore = Omit<Store, "id">;
 
@@ -107,3 +109,24 @@ export function loadPanelOpen(): boolean | null {
 }
 
 export const savePanelOpen = (open: boolean) => write(PANEL_OPEN_KEY, open ? "1" : "0");
+
+// ── Routing ──
+
+/** The OpenRouteService API key the user added in Settings; kept in this browser only, never in a link. */
+export const loadOrsKey = () => (read(ORS_KEY) ?? "").trim();
+
+export const saveOrsKey = (key: string) => write(ORS_KEY, key.trim() || null);
+
+// ── Base map ──
+
+/** The base map chosen on the map, and the last light one (the night button goes back to it); unchecked here. */
+export function loadBaseMap(): { base?: string; day?: string } {
+  try {
+    const saved = JSON.parse(read(BASE_MAP_KEY) || "null");
+    return saved && typeof saved === "object" ? saved : {};
+  } catch {
+    return {};
+  }
+}
+
+export const saveBaseMap = (choice: { base: string; day: string }) => write(BASE_MAP_KEY, JSON.stringify(choice));

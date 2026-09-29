@@ -9,7 +9,8 @@ export function useToast() {
   const showToast = useCallback((msg: string) => {
     window.clearTimeout(timerRef.current);
     setMessage(msg);
-    timerRef.current = window.setTimeout(() => setMessage(null), 2800);
+    // Longer messages (a routing fallback, say) stay long enough to read
+    timerRef.current = window.setTimeout(() => setMessage(null), Math.min(8000, Math.max(2800, msg.length * 55)));
   }, []);
 
   useEffect(() => () => window.clearTimeout(timerRef.current), []);

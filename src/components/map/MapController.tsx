@@ -1,9 +1,10 @@
-import { RefObject, useEffect, useMemo, useRef } from "react";
+import { RefObject, useContext, useEffect, useMemo, useRef } from "react";
 import { useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { Store } from "../../types";
 import { LatLng } from "../../lib/coords";
-import { clearRoute, showRoute } from "../../lib/routing";
+import { clearRoute, RouteInfo, showRoute } from "../../lib/routing";
+import { RoadsContext } from "../../hooks/useRoads";
 
 /**
  * A request to show an area (a zone, or newly imported layers). A new id means a new request. The padding
@@ -38,8 +39,8 @@ export default function MapController({
   focusedCity,
   onMapClick,
   tempPin,
-  isNightMode,
   routePanelRef,
+  onRoute,
   zoomRequest,
   bottomInset = 0,
   leftInset = 0,
@@ -50,26 +51,14 @@ export default function MapController({
   focusedCity?: string | null;
   onMapClick?: () => void;
   tempPin: LatLng | null;
-  isNightMode: boolean;
   routePanelRef: RefObject<HTMLDivElement | null>;
+  onRoute?: (info: RouteInfo | null) => void; // the route's length and drive time, once known
   zoomRequest: ZoomRequest | null;
   bottomInset?: number; // the height of the sheet (store card or panels) over the bottom of the map
   leftInset?: number; // the width of the panel over the left of the map
   layoutKey?: string; // changes when the panels or bars around the map open or close
 }) {
   const map = useMap();
-
-  useEffect(() => {
-    if (!map) return;
-    const tilePane = map.getPane("tilePane") || map.getContainer().querySelector(".leaflet-tile-pane");
-    if (tilePane) {
-      if (isNightMode) {
-        tilePane.classList.add("night-map-tiles");
-      } else {
-        tilePane.classList.remove("night-map-tiles");
-      }
-    }
-  }, [map, isNightMode]);
 
   useMapEvents({
     click: () => {
@@ -127,10 +116,12 @@ export default function MapController({
       lastFitRef.current = { pinsKey, focusedCity, tempPin };
       if (tempPin) {
         try {
-          // In the middle of the part of the map the panel and sheets leave in view
+          // In the middle of the part of the map the panel and sheets leave in view, a little low, so its
+          // popup (the nearest stores) has room above it
           const { left, bottom } = insetRef.current;
           const pin = L.latLng(tempPin.lat, tempPin.lng);
-          const center = left || bottom ? map.unproject(map.project(pin, 14).add([-left / 2, bottom / 2]), 14) : pin;
+          const popupRoom = Math.min(190, (map.getSize().y - bottom) * 0.24);
+          const center = map.unproject(map.project(pin, 14).add([-left / 2, bottom / 2 - popupRoom]), 14);
           map.setView(center, 14, { animate: true });
         } catch (e) {
           console.warn("setView to tempPin failed", e);
@@ -173,13 +164,22 @@ export default function MapController({
 
   // Route from the searched coordinate to the selected store. It depends on the store's position, not the
   // store list, so a background refresh doesn't request the same route again
+  // A new key in Settings draws the route again with it
+  const roads = useContext(RoadsContext);
+  const onRouteRef = useRef(onRoute);
+  useEffect(() => {
+    onRouteRef.current = onRoute;
+  });
   useEffect(() => {
     if (tempPin && selectedLat !== null && selectedLng !== null) {
-      showRoute(map, [tempPin.lat, tempPin.lng], [selectedLat, selectedLng], routePanelRef.current);
+      showRoute(map, [tempPin.lat, tempPin.lng], [selectedLat, selectedLng], routePanelRef.current, roads, (info) =>
+        onRouteRef.current?.(info),
+      );
     } else {
       clearRoute(map);
     }
-  }, [map, tempPin, selectedLat, selectedLng, routePanelRef]);
+    onRouteRef.current?.(null);
+  }, [map, tempPin, selectedLat, selectedLng, routePanelRef, roads]);
 
   useEffect(() => () => clearRoute(map), [map]);
 

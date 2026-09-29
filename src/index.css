@@ -626,7 +626,8 @@ body {
 .focus-mode .map-card,
 .focus-mode .map-controls,
 .focus-mode .map-zoom-buttons,
-.focus-mode .coord-search {
+.focus-mode .coord-search,
+.focus-mode .measure-bar {
   display: none !important;
 }
 
@@ -1174,11 +1175,6 @@ body {
 
 .route-directions .leaflet-routing-collapse-btn {
   color: var(--token-color-text-secondary);
-}
-
-/* Dark map: invert the light OpenStreetMap tiles */
-.night-map-tiles {
-  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%) !important;
 }
 
 .map-popup-container {
@@ -2412,6 +2408,531 @@ body {
   border-color: rgba(251, 191, 36, 0.45);
 }
 
+/* ==========================================================================
+   BASE MAPS, ROUTES, MEASURING, NEARBY STORES
+   ========================================================================== */
+
+/* The base map menu, to the left of its button */
+.base-map-menu {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 0;
+  width: 250px;
+  padding: 6px !important;
+  margin: 0 !important;
+  border-radius: 12px;
+  background: rgba(17, 17, 17, 0.97);
+  border: 1px solid #333;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  z-index: 10;
+}
+
+.base-map-menu-title {
+  padding: 6px 8px 4px !important;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--token-color-text-secondary);
+}
+
+.base-map-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px !important;
+  margin: 0 !important;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.base-map-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.base-map-option.on {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.base-map-swatch {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  margin: 0 !important;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.base-map-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.base-map-hint {
+  font-size: 11px;
+  color: var(--token-color-text-secondary);
+}
+
+.measure-maps-link,
+.candidate-maps {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px !important;
+  margin: 2px 0 0 !important;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #111111 !important;
+  background: #fbbf24;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.measure-maps-link:hover,
+.candidate-maps:hover {
+  background: #ffd24d;
+}
+
+/* Measuring */
+.measuring .leaflet-container {
+  cursor: crosshair;
+}
+
+.measure-pin {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #fbbf24;
+  border: 2px solid #111111;
+  box-shadow:
+    0 0 0 2px rgba(251, 191, 36, 0.4),
+    0 4px 10px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+}
+
+.measure-pin span {
+  font-family: var(--token-font-family-sans);
+  font-size: 12px;
+  font-weight: 900;
+  color: #111111;
+}
+
+.measure-bar {
+  top: 14px;
+  width: min(560px, calc(100% - 120px));
+  padding: 10px 12px !important;
+  margin: 0 !important;
+  border-radius: 12px;
+  background: rgba(17, 17, 17, 0.96);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (min-width: 1024px) {
+  .panel-open .measure-bar {
+    left: calc(50% + 170px);
+    width: min(560px, calc(100% - 460px));
+  }
+}
+
+@media (max-width: 767px) {
+  /* Tailwind centres it with the translate property, so that's what's undone here */
+  .measure-bar {
+    width: calc(100% - 76px);
+    left: 12px;
+    translate: none;
+  }
+}
+
+.measure-bar-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.measure-bar-title {
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fbbf24;
+}
+
+.measure-bar-step {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: #d4d4d4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.measure-bar-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 999px;
+  color: var(--token-color-text-secondary);
+  border: 1px solid #333;
+  cursor: pointer;
+}
+
+.measure-bar-close:hover {
+  color: #ffffff;
+}
+
+.measure-bar-figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+}
+
+.measure-figure {
+  display: flex;
+  flex-direction: column;
+}
+
+.measure-figure-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--token-color-text-secondary);
+}
+
+.measure-figure-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.measure-maps-link {
+  margin-left: auto !important;
+}
+
+.measure-bar-via {
+  font-size: 11px;
+  color: var(--token-color-text-secondary);
+}
+
+/* Nearest stores by road */
+.nearby {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nearby-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 !important;
+  margin: 0 !important;
+  list-style: none;
+}
+
+.nearby-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "name road" "name air";
+  align-items: center;
+  gap: 1px 10px;
+  width: 100%;
+  padding: 9px 11px !important;
+  margin: 0 !important;
+  border-radius: 9px;
+  border: 1px solid #2e2e2e;
+  background: #151515;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.nearby-row:hover:not(:disabled) {
+  border-color: #fbbf24;
+}
+
+.nearby-row:disabled {
+  cursor: default;
+}
+
+.nearby-name {
+  grid-area: name;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nearby-road {
+  grid-area: road;
+  justify-self: end;
+  font-size: 12px;
+  color: #d4d4d4;
+  white-space: nowrap;
+}
+
+.nearby-road b {
+  font-size: 14px;
+  color: #ffffff;
+}
+
+.nearby-air {
+  grid-area: air;
+  justify-self: end;
+  font-size: 11px;
+  color: var(--token-color-text-secondary);
+  white-space: nowrap;
+}
+
+.nearby-none,
+.nearby-wait {
+  font-size: 11px;
+  color: #fb923c;
+}
+
+.nearby-wait {
+  color: var(--token-color-text-secondary);
+}
+
+.nearby-foot,
+.nearby-empty {
+  font-size: 11px;
+  color: var(--token-color-text-secondary);
+  margin: 0 !important;
+}
+
+.nearby.compact {
+  gap: 6px;
+}
+
+.nearby.compact .nearby-list {
+  gap: 4px;
+}
+
+/* In the map popup each store is one line: name, road distance and time, straight line */
+.nearby.compact .nearby-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "name road air";
+  padding: 5px 8px !important;
+  gap: 0 8px;
+}
+
+.nearby.compact .nearby-air::before {
+  content: "(";
+}
+
+.nearby.compact .nearby-air::after {
+  content: ")";
+}
+
+.nearby.compact .nearby-name {
+  font-size: 12px;
+}
+
+.nearby.compact .nearby-road b {
+  font-size: 13px;
+}
+
+.nearby.compact .nearby-road,
+.nearby.compact .nearby-air {
+  line-height: 1.3;
+}
+
+/* The searched point's popup: a candidate site */
+.candidate-popup {
+  gap: 10px;
+  padding: 12px !important;
+  font-family: var(--token-font-family-sans) !important;
+}
+
+.candidate-title {
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #ff5722;
+}
+
+.candidate-coords {
+  margin-top: 4px !important;
+  padding: 3px 8px !important;
+  border-radius: 6px;
+  font-family: var(--token-font-family-mono);
+  font-size: 12px;
+  color: #d4d4d4;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.candidate-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.candidate-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--token-color-text-secondary);
+}
+
+.candidate-maps {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.candidate-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.candidate-btn {
+  width: 100%;
+  padding: 8px 4px !important;
+  margin: 0 !important;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.candidate-btn.primary {
+  color: #111111;
+  background: #fbbf24;
+}
+
+.candidate-btn.danger {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* The road route from the searched point, above the store card's Google Maps button */
+.card-route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 8px 10px !important;
+  margin: 0 0 8px !important;
+  border-radius: 9px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.card-route-label {
+  width: 100%;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #38bdf8;
+}
+
+.card-route-figures {
+  font-size: 13px;
+  color: #d4d4d4;
+}
+
+.card-route-figures b {
+  font-size: 15px;
+  color: #ffffff;
+}
+
+.card-route-via {
+  font-size: 11px;
+  color: var(--token-color-text-secondary);
+}
+
+/* With a store card open on a wide screen, the search and measuring bars sit in the middle of what's left */
+@media (min-width: 1280px) {
+  .card-open .coord-search,
+  .card-open .measure-bar {
+    left: calc(50% - 206px);
+  }
+
+  .panel-open.card-open .coord-search,
+  .panel-open.card-open .measure-bar {
+    left: calc(50% - 36px);
+  }
+
+  .card-open .measure-bar {
+    width: min(520px, calc(100% - 760px));
+  }
+}
+
+/* Directions under the store card's Google Maps button */
+.detail-panel-maps-from {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+/* The OpenRouteService key in Settings */
+.settings-key {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-key-label {
+  font-size: 13px;
+  color: #e5e5e5;
+}
+
+.settings-key-row {
+  display: flex;
+  gap: 6px;
+}
+
+.settings-key-input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--token-font-family-mono);
+  font-size: 12px;
+}
+
+.settings-key-status {
+  font-size: 11px;
+  color: var(--token-color-text-secondary);
+  margin: 0 !important;
+}
+
+.settings-note a {
+  color: #fbbf24;
+  text-decoration: underline;
+}
+
 /* Data Quality panel */
 .quality {
   gap: 10px;
@@ -2502,7 +3023,8 @@ body {
     display: none;
   }
 
-  .map-container:has(.bottom-sheet[data-snap="full"]) .map-zoom-buttons {
+  /* With a store or zone sheet open there's no room for them beside the map buttons; pinch to zoom */
+  .sheet-open .map-zoom-buttons {
     display: none;
   }
 }
