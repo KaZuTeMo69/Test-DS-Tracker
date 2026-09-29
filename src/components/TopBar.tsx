@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ClipboardCheck,
   FileEdit,
+  Menu,
   RefreshCw,
   Search,
   Settings,
@@ -69,7 +70,7 @@ function SourceBadge({
       />
       <span className="max-xl:sr-only">{label}</span>
       {detail && (
-        <span className="hidden 2xl:inline font-mono font-normal normal-case tracking-normal truncate max-w-[140px]">
+        <span className="hidden min-[1400px]:inline font-mono font-normal normal-case tracking-normal truncate max-w-[140px]">
           · {detail}
         </span>
       )}
@@ -178,13 +179,15 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
 
   const toggleMore = () => setMoreOpen((o) => !o);
   const pct = stats.total ? `${Math.round((stats.live / stats.total) * 100)}%` : undefined;
-  const renewNote =
-    [
-      stats.renewals.soon && `+${stats.renewals.soon} in ${warningDays}d`,
-      stats.renewals.expired && `${stats.renewals.expired} expired`,
-    ]
-      .filter(Boolean)
-      .join(" · ") || undefined;
+  // The bar says how many start soon; how many have already expired is in the tooltip (and the Renewals panel)
+  const renewNote = stats.renewals.soon ? `+${stats.renewals.soon} in ${warningDays}d` : undefined;
+  const renewTitle = [
+    `Renewal window (the last ${leadDays} days of the contract) has started`,
+    stats.renewals.soon && `+${stats.renewals.soon} more start in the next ${warningDays} days`,
+    stats.renewals.expired && `${stats.renewals.expired} expired (the contract has ended)`,
+  ]
+    .filter(Boolean)
+    .join("\n");
   const rentNote = [`${CURRENCY} / yr${includeVat ? " incl. VAT" : ""}`, missing(stats.noRent, "rent")]
     .filter(Boolean)
     .join(" · ");
@@ -199,8 +202,8 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
           <StoreIcon size={17} />
         </div>
         <span className="logo-text font-['Oswald'] italic font-bold uppercase whitespace-nowrap text-[#fbbf24]">
-          <span className="hidden 2xl:inline">Dark Store Tracker</span>
-          <span className="2xl:hidden">DS Tracker</span>
+          <span className="hidden min-[1400px]:inline">Dark Store Tracker</span>
+          <span className="min-[1400px]:hidden">DS Tracker</span>
         </span>
         <SourceBadge
           sheetId={props.sheetId}
@@ -258,7 +261,7 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
           color="#F43F5E"
           onClick={toggleMore}
           loading={loading}
-          title={`Renewal window (the last ${leadDays} days of the contract) has started`}
+          title={renewTitle}
         />
         <Kpi
           id="rent"
@@ -273,7 +276,7 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
           <Kpi
             id="unclear"
             value={unclear.total}
-            label="⚠ Unclear status"
+            label="⚠\u00a0Unclear status"
             note={unclearOnly ? "Showing these" : "View stores"}
             noteColor="text-[#FB923C]"
             color="#FB923C"
@@ -335,11 +338,12 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
         </button>
         <button
           onClick={props.onUpload}
-          className="topbar-upload flex items-center gap-1.5 h-9 px-2.5 xl:px-3 bg-[#fbbf24] hover:bg-[#ffe169] text-black rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer"
+          className="topbar-upload max-sm:!hidden flex items-center gap-1.5 h-9 px-2.5 2xl:px-3 bg-[#fbbf24] hover:bg-[#ffe169] text-black rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer"
           title="Upload CSV/JSON file or sync Google Sheet"
+          aria-label="Upload data"
         >
           <Upload size={15} />
-          <span className="hidden xl:inline">Upload</span>
+          <span className="hidden 2xl:inline">Upload</span>
         </button>
         {props.sheetId && (
           <button onClick={props.onSync} className={iconBtn} title="Sync from Google Sheet">
@@ -353,7 +357,9 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
             title="Settings"
             aria-expanded={menuOpen}
           >
-            <Settings size={16} />
+            {/* On a phone it's the menu: Upload lives in it there, to leave the row to the app and its status */}
+            <Settings size={16} className="max-sm:hidden" />
+            <Menu size={18} className="sm:hidden" />
           </button>
           <AnimatePresence>
             {menuOpen && (

@@ -247,7 +247,7 @@ body {
 
 .logo-text {
   font-family: var(--token-font-family-display);
-  font-size: 1.15rem !important;
+  font-size: 1.1rem !important;
   font-weight: 800;
   color: var(--token-color-noon-yellow);
   letter-spacing: -0.3px;
@@ -259,8 +259,8 @@ body {
 
 /* A figure in the top bar: the number, and its label (and a note) beside it; no box around it */
 .kpi-inline {
-  gap: 7px;
-  padding: 5px 9px !important;
+  gap: 6px;
+  padding: 4px 7px !important;
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
@@ -289,22 +289,34 @@ body {
 
 @media (min-width: 1280px) {
   .kpi-inline .kpi-number {
-    font-size: 1.4rem;
+    font-size: 1.35rem;
   }
 }
 
+/* Two-word labels stack ("Not / live"), so the row of figures stays short */
 .kpi-label {
+  width: min-content;
   font-size: 11px;
   font-weight: 700;
+  line-height: 1.15;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
   color: var(--token-color-text-secondary);
-  white-space: nowrap;
+  text-align: left;
 }
 
 .kpi-note {
   font-size: 11px;
+  line-height: 1.2;
   white-space: nowrap;
+}
+
+/* On a phone the figures scroll sideways in one short row instead */
+@media (max-width: 767px) {
+  .kpi-label {
+    width: auto;
+    white-space: nowrap;
+  }
 }
 
 /* ==========================================================================
@@ -532,6 +544,15 @@ body {
 
 .panel-sheet .panel-filters {
   margin-bottom: 4px !important;
+}
+
+/* Messages sit above the panel bar along the bottom of smaller screens */
+@media (max-width: 1023px) {
+  .app-toast {
+    bottom: 116px !important;
+    max-width: calc(100vw - 32px);
+    text-align: center;
+  }
 }
 
 /* Focus mode: only the map, and a button to leave */
