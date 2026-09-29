@@ -89,31 +89,31 @@ export default function MapControls({
   );
 }
 
-/** Zoom in and out, bottom right of the map. */
+/** Zoom in and out, bottom right of the map: one control with a line between the two. */
 export function ZoomButtons() {
   const map = useMap();
   return (
-    <>
+    <div className="zoom-control" role="group" aria-label="Zoom">
       <button
-        className="bg-[#1e1e1e]/90 backdrop-blur-md border border-[#383838] hover:bg-[#252525] w-[40px] h-[40px] flex items-center justify-center text-[#EFEFEF] rounded-t-lg cursor-pointer text-xl font-bold"
         onClick={(e) => {
           e.stopPropagation();
           map.zoomIn();
         }}
         title="Zoom In"
+        aria-label="Zoom in"
       >
         +
       </button>
       <button
-        className="bg-[#1e1e1e]/90 backdrop-blur-md border border-[#383838] border-t-0 hover:bg-[#252525] w-[40px] h-[40px] flex items-center justify-center text-[#EFEFEF] rounded-b-lg cursor-pointer text-xl font-bold"
         onClick={(e) => {
           e.stopPropagation();
           map.zoomOut();
         }}
         title="Zoom Out"
+        aria-label="Zoom out"
       >
-        -
+        −
       </button>
-    </>
+    </div>
   );
 }
