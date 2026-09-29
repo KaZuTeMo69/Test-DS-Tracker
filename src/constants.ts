@@ -19,3 +19,6 @@ export const COVERAGE_TAG: Record<"outside" | "whitespace", { tag: string; short
   },
   whitespace: { tag: "IN WHITE SPACE", short: "WHITE SPACE", className: "bg-white/10 border-white/25 text-gray-100" },
 };
+
+// Tag for a store whose rent per m² is more than the Settings % above its city median
+export const HIGH_RENT_TAG = { tag: "HIGH RENT", className: "bg-red-500/10 border-red-500/35 text-red-300" };

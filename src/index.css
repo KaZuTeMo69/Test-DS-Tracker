@@ -1415,3 +1415,34 @@ body {
     display: none;
   }
 }
+
+/* Map legend. On a large screen it sits to the right of the open sidebar, which would otherwise cover it */
+.map-legend {
+  padding: 7px 10px;
+  max-width: calc(100% - 90px);
+  transition: left 0.25s ease;
+}
+
+.map-legend-toggle .fb {
+  padding: 2px 8px !important;
+  font-size: 10px !important;
+  white-space: nowrap;
+}
+
+.map-legend-items {
+  gap: 4px 12px;
+  margin-top: 6px;
+}
+
+/* Room kept on the right for the zoom buttons */
+@media (min-width: 1024px) {
+  .with-sidebar .map-legend {
+    left: 380px;
+    max-width: calc(100% - 460px);
+  }
+
+  .with-wide-sidebar .map-legend {
+    left: min(670px, calc(100% - 300px));
+    max-width: max(220px, calc(100% - 750px));
+  }
+}

@@ -2,11 +2,12 @@ import { lazy, memo, ReactNode, Suspense, useCallback, useState } from "react";
 import { ChevronLeft, FileDown, FileUp, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { CitySummary, SidebarTab, Store } from "../types";
-import { COVERAGE_TAG, CURRENCY, RENEWAL_STYLE } from "../constants";
+import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, RENEWAL_STYLE } from "../constants";
 import { Filters } from "../hooks/useFilters";
 import { useSettings } from "../hooks/useSettings";
 import { dataIssues, hasCoords } from "../lib/checks";
 import { Coverage, coverageFlags } from "../lib/coverage";
+import { RentBenchmarks } from "../lib/rentStats";
 import { fmtN, fmtR } from "../lib/format";
 import { storeRenewal } from "../lib/renewal";
 import { shownRent, vatLabel } from "../lib/settings";
@@ -34,6 +35,7 @@ interface SidebarProps {
   allCities: string[];
   emptyMessage: string; // shown when the list is empty
   coverage: Coverage; // for the coverage tags in the list
+  benchmarks: RentBenchmarks; // for the HIGH RENT tag
   insightsExtra: ReactNode; // shown above the charts in the Growth tab
   layersPanel: ReactNode; // the Layers tab
   layersSummary: string; // its footer
@@ -48,12 +50,14 @@ const StoreListItem = memo(function StoreListItem({
   selected,
   outside,
   inWhiteSpace,
+  highRentBy,
   onSelect,
 }: {
   store: Store;
   selected: boolean;
   outside: boolean; // not in any coverage zone
   inWhiteSpace: boolean;
+  highRentBy: number | null; // % above the city median, when flagged
   onSelect: (id: number) => void;
   key?: number;
 }) {
@@ -94,6 +98,14 @@ const StoreListItem = memo(function StoreListItem({
               title={s.locationIssue || "No coordinates"}
             >
               NO LOCATION
+            </span>
+          )}
+          {highRentBy !== null && (
+            <span
+              className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${HIGH_RENT_TAG.className}`}
+              title={`Rent per m² ${highRentBy}% above the ${s.city} median`}
+            >
+              {HIGH_RENT_TAG.tag}
             </span>
           )}
           {outside && (
@@ -182,6 +194,7 @@ export default function Sidebar({
   allCities,
   emptyMessage,
   coverage,
+  benchmarks,
   insightsExtra,
   layersPanel,
   layersSummary,
@@ -375,6 +388,7 @@ export default function Sidebar({
                 <>
                   {stores.slice(0, shown).map((s) => {
                     const flags = coverageFlags(coverage, s);
+                    const rent = benchmarks.of.get(s.id);
                     return (
                       <StoreListItem
                         key={s.id}
@@ -382,6 +396,7 @@ export default function Sidebar({
                         selected={selectedId === s.id}
                         outside={flags.outside}
                         inWhiteSpace={flags.inWhiteSpace}
+                        highRentBy={rent?.level === "high" ? rent.diff : null}
                         onSelect={onSelectStore}
                       />
                     );

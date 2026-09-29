@@ -23,11 +23,19 @@ describe("toSettings", () => {
   });
 
   it("keeps valid saved values", () => {
+    expect(
+      toSettings({ leadDays: 60, warningDays: 14, includeVat: true, rentFlagPercent: 40, pinColors: "rent" }),
+    ).toEqual({ leadDays: 60, warningDays: 14, includeVat: true, rentFlagPercent: 40, pinColors: "rent" });
+  });
+
+  it("fills in settings saved by an earlier version", () => {
     expect(toSettings({ leadDays: 60, warningDays: 14, includeVat: true })).toEqual({
+      ...DEFAULT_SETTINGS,
       leadDays: 60,
       warningDays: 14,
       includeVat: true,
     });
+    expect(toSettings({ rentFlagPercent: 501, pinColors: "size" })).toEqual(DEFAULT_SETTINGS);
   });
 });
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Settings as SettingsIcon, X } from "lucide-react";
-import { DEFAULT_SETTINGS, MAX_DAYS, Settings, toDays, VAT_RATE } from "../lib/settings";
+import { DEFAULT_SETTINGS, MAX_DAYS, MAX_PERCENT, Settings, toWholeNumber, VAT_RATE } from "../lib/settings";
 import { formatDate, today } from "../lib/contract";
 
 interface SettingsModalProps {
@@ -13,18 +13,28 @@ interface SettingsModalProps {
 const DAY_MS = 86_400_000;
 const VAT_PERCENT = Math.round(VAT_RATE * 100);
 
-// A number of days, typed freely; it takes effect as soon as it's a whole number from 0 to 365
-function DaysInput({ value, onChange, label }: { value: number; onChange: (days: number) => void; label: string }) {
+// A number typed freely; it takes effect as soon as it's a whole number from 0 to max
+function NumberInput({
+  value,
+  onChange,
+  label,
+  max = MAX_DAYS,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  label: string;
+  max?: number;
+}) {
   const [draft, setDraft] = useState(String(value));
   // Follow changes made elsewhere, such as Reset to defaults
   useEffect(() => setDraft(String(value)), [value]);
-  const valid = toDays(draft) !== null;
+  const valid = toWholeNumber(draft, max) !== null;
   return (
     <input
       type="number"
       inputMode="numeric"
       min={0}
-      max={MAX_DAYS}
+      max={max}
       step={1}
       aria-label={label}
       aria-invalid={!valid}
@@ -32,8 +42,8 @@ function DaysInput({ value, onChange, label }: { value: number; onChange: (days:
       value={draft}
       onChange={(e) => {
         setDraft(e.target.value);
-        const days = toDays(e.target.value);
-        if (days !== null) onChange(days);
+        const n = toWholeNumber(e.target.value, max);
+        if (n !== null) onChange(n);
       }}
       onBlur={() => setDraft(String(value))}
     />
@@ -57,10 +67,12 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose }: S
   const end = new Date(Date.UTC(year, 11, 31));
   const start = new Date(end.getTime() - settings.leadDays * DAY_MS);
   const warn = new Date(start.getTime() - settings.warningDays * DAY_MS);
+  // Pin colours are chosen on the map legend, so Reset leaves them as they are
   const isDefault =
     settings.leadDays === DEFAULT_SETTINGS.leadDays &&
     settings.warningDays === DEFAULT_SETTINGS.warningDays &&
-    settings.includeVat === DEFAULT_SETTINGS.includeVat;
+    settings.includeVat === DEFAULT_SETTINGS.includeVat &&
+    settings.rentFlagPercent === DEFAULT_SETTINGS.rentFlagPercent;
 
   return (
     <div
@@ -98,7 +110,7 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose }: S
           <h3 className="detail-panel-row-label text-[10px]">Renewal</h3>
           <label className="settings-row">
             <span>Start renewal</span>
-            <DaysInput
+            <NumberInput
               value={settings.leadDays}
               onChange={(leadDays) => onChange({ leadDays })}
               label="Days before the contract ends"
@@ -107,7 +119,7 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose }: S
           </label>
           <label className="settings-row">
             <span>Show Renew soon</span>
-            <DaysInput
+            <NumberInput
               value={settings.warningDays}
               onChange={(warningDays) => onChange({ warningDays })}
               label="Days before renewal starts"
@@ -136,11 +148,29 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose }: S
             The rent in your data is without VAT. With this on, annual, monthly and per m² rent across the app include{" "}
             {VAT_PERCENT}% VAT. The CSV export keeps the figures as they are in your data.
           </p>
+          <label className="settings-row">
+            <span>Flag rent per m² more than</span>
+            <NumberInput
+              value={settings.rentFlagPercent}
+              onChange={(rentFlagPercent) => onChange({ rentFlagPercent })}
+              label="Percent above the city median"
+              max={MAX_PERCENT}
+            />
+            <span>% above the city median</span>
+          </label>
+          <p className="settings-note">
+            Stores over this get a HIGH RENT tag, and a red pin when the map colours pins by rent per m². A city needs 3
+            stores with rent and area to have a median. Whole numbers from 0 to {MAX_PERCENT}.
+          </p>
         </section>
 
         <div className="settings-footer flex items-center gap-3">
           <span className="text-[11px] text-gray-500 flex-1">Saved in this browser only.</span>
-          <button onClick={() => onChange(DEFAULT_SETTINGS)} disabled={isDefault} className="layer-action">
+          <button
+            onClick={() => onChange({ ...DEFAULT_SETTINGS, pinColors: settings.pinColors })}
+            disabled={isDefault}
+            className="layer-action"
+          >
             Reset to defaults
           </button>
           <button onClick={onClose} className="zone-card-btn primary settings-done">

@@ -1,7 +1,7 @@
 import { memo, ReactNode, useState } from "react";
 import { X } from "lucide-react";
 import { Store } from "../types";
-import { COVERAGE_TAG, CURRENCY, RENEWAL_STYLE } from "../constants";
+import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, RENEWAL_STYLE } from "../constants";
 import { contractDateIssues, dataIssues, hasCoords } from "../lib/checks";
 import { Coverage, coverageFlags, ZoneHit } from "../lib/coverage";
 import { daysBetween, formatDate, formatDuration, parseDate, pluralDays, RenewalInfo, today } from "../lib/contract";
@@ -9,13 +9,14 @@ import { useSettings } from "../hooks/useSettings";
 import { fmtN } from "../lib/format";
 import { RENEWAL_STATUS_LABEL, storeRenewal } from "../lib/renewal";
 import { rentFactor, shownRent, vatLabel } from "../lib/settings";
-import { RentComparison, rentComparison } from "../lib/rentStats";
+import { MIN_BENCHMARK_STORES, RentBenchmark, RentComparison, rentComparison } from "../lib/rentStats";
 import { isLive, isPaid, liveStatus, paidStatus } from "../lib/status";
 
 interface DetailPanelProps {
   store: Store | null;
   stores: Store[]; // all stores, for the rent comparisons
   coverage: Coverage;
+  benchmark: RentBenchmark | null; // rent per m² against the city median
   onSelectZone: (layerId: string, zoneId: string) => void;
   onClose: () => void;
   onRemove?: () => void; // only for manually added stores
@@ -208,12 +209,14 @@ function SummaryTab({
   store,
   renewal,
   rent,
+  benchmark,
   coverage,
   onSelectZone,
 }: {
   store: Store;
   renewal: RenewalInfo;
   rent: RentComparison;
+  benchmark: RentBenchmark | null;
   coverage: Coverage;
   onSelectZone: (layerId: string, zoneId: string) => void;
 }) {
@@ -255,6 +258,12 @@ function SummaryTab({
       ? { tone: "good", text: "On the map" }
       : { tone: "warn", text: `${store.locationIssue || "No coordinates"}. Not on the map.` },
   );
+  if (benchmark?.level === "high") {
+    checks.push({
+      tone: "warn",
+      text: `Rent per m² is ${benchmark.diff}% above the ${cityName} median (flagged above ${settings.rentFlagPercent}%)`,
+    });
+  }
   const issues = dataIssues(store, { location: false, status: false });
   if (issues.length === 0) checks.push({ tone: "good", text: "No missing data" });
   issues.forEach((issue) => checks.push({ tone: "warn", text: issue }));
@@ -364,6 +373,26 @@ function CoverageSection({
 
 // ── Rent tab ──
 
+// This store's rent per m² against its city's median, or why it isn't compared
+function MedianRow({ store, benchmark }: { store: Store; benchmark: RentBenchmark | null }) {
+  const settings = useSettings();
+  const city = store.city || "city";
+  if (!benchmark || benchmark.median === null) {
+    return (
+      <Row
+        label={`vs ${city} median`}
+        value={`Needs ${MIN_BENCHMARK_STORES} ${city} stores with rent and area`}
+        valueClass="!text-gray-400 !text-[11px]"
+      />
+    );
+  }
+  const median = `median ${CURRENCY} ${Math.round(shownRent(benchmark.median, settings)!).toLocaleString()}`;
+  if (benchmark.diff === null) return <Row label={`vs ${city} median`} value={`— (${median})`} />;
+  const tone = benchmark.level === "high" ? TONE.bad.row : benchmark.level === "above" ? TONE.warn.row : TONE.good.row;
+  const diff = benchmark.diff === 0 ? "Same" : `${benchmark.diff > 0 ? "+" : ""}${benchmark.diff}%`;
+  return <Row label={`vs ${city} median`} value={`${diff} (${median})`} valueClass={tone} />;
+}
+
 function rentSentences(store: Store, rent: RentComparison): string {
   const city = store.city || "this city";
   const compare = (diff: number, what: string) =>
@@ -392,13 +421,14 @@ function rentSentences(store: Store, rent: RentComparison): string {
   return [first, second].filter(Boolean).join(" ");
 }
 
-function RentTab({ store, rent }: { store: Store; rent: RentComparison }) {
+function RentTab({ store, rent, benchmark }: { store: Store; rent: RentComparison; benchmark: RentBenchmark | null }) {
   const settings = useSettings();
   const vat = vatLabel(settings);
   const factor = rentFactor(settings.includeVat);
   const bars = [
     { label: "This store", value: rent.storeRate, mine: true },
     ...(rent.cityRateCount >= 2 ? [{ label: `${store.city} avg`, value: rent.cityRate, mine: false }] : []),
+    ...(benchmark?.median ? [{ label: `${store.city} median`, value: benchmark.median, mine: false }] : []),
     { label: "All stores", value: rent.portfolioRate, mine: false },
   ]
     .filter((b): b is { label: string; value: number; mine: boolean } => b.value !== null)
@@ -425,6 +455,7 @@ function RentTab({ store, rent }: { store: Store; rent: RentComparison }) {
 
       <div>
         <Row label={`Rent per m² ${vat}`} value={sar(shownRent(store.rentSARsqm, settings))} />
+        <MedianRow store={store} benchmark={benchmark} />
         <Row label="Area" value={store.size ? `${store.size} m²` : "—"} />
         <Row
           label="Payment"
@@ -567,6 +598,7 @@ function StoreCard({
   store,
   stores,
   coverage,
+  benchmark,
   onSelectZone,
   onClose,
   onRemove,
@@ -619,6 +651,14 @@ function StoreCard({
               {RENEWAL_STYLE[renewal.status as "soon" | "now" | "expired"].tag}
             </span>
           )}
+          {benchmark?.level === "high" && (
+            <span
+              className={`detail-panel-tag-live text-[10px] store-card-chip rounded-full border ${HIGH_RENT_TAG.className}`}
+              title={`Rent per m² ${benchmark.diff}% above the ${store.city} median`}
+            >
+              {HIGH_RENT_TAG.tag}
+            </span>
+          )}
           {flags.outside && (
             <span
               className={`detail-panel-tag-live text-[10px] store-card-chip rounded-full border ${COVERAGE_TAG.outside.className}`}
@@ -646,9 +686,16 @@ function StoreCard({
 
       <div className="store-card-body flex flex-col gap-2.5 overflow-y-auto flex-1 min-h-0">
         {tab === "summary" && (
-          <SummaryTab store={store} renewal={renewal} rent={rent} coverage={coverage} onSelectZone={onSelectZone} />
+          <SummaryTab
+            store={store}
+            renewal={renewal}
+            rent={rent}
+            benchmark={benchmark}
+            coverage={coverage}
+            onSelectZone={onSelectZone}
+          />
         )}
-        {tab === "rent" && <RentTab store={store} rent={rent} />}
+        {tab === "rent" && <RentTab store={store} rent={rent} benchmark={benchmark} />}
         {tab === "contract" && <ContractTab store={store} renewal={renewal} />}
       </div>
 

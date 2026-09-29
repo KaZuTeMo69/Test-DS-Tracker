@@ -7,6 +7,7 @@ import { analyseCoverage } from "./lib/coverage";
 import { csvFileName, storesToCsv } from "./lib/csvExport";
 import { download } from "./lib/download";
 import { kmlFileName, layerToKml } from "./lib/kmlExport";
+import { rentBenchmarks } from "./lib/rentStats";
 import { zoneBounds, zoneColor } from "./lib/layers";
 import { useFilters } from "./hooks/useFilters";
 import { useLayers } from "./hooks/useLayers";
@@ -43,6 +44,11 @@ export default function App() {
   const mapLayers = useLayers(showToast);
   // Which zones each store is in, across all stores (live or not) and the layers shown on the map
   const coverage = useMemo(() => analyseCoverage(stores, mapLayers.layers), [stores, mapLayers.layers]);
+  // Rent per m² against each city's median (all stores), and pin sizes by annual rent
+  const benchmarks = useMemo(
+    () => rentBenchmarks(stores, settings.rentFlagPercent),
+    [stores, settings.rentFlagPercent],
+  );
   const { filters, filteredStores, citySummaries, allCities, unclear, showUnclearOnly, showCoverageOnly } = useFilters(
     stores,
     coverage,
@@ -291,6 +297,7 @@ export default function App() {
           allCities={allCities}
           emptyMessage={listEmptyMessage}
           coverage={coverage}
+          benchmarks={benchmarks}
           insightsExtra={
             <CoverageSummary
               coverage={coverage}
@@ -320,7 +327,7 @@ export default function App() {
         />
 
         <div
-          className="map-container flex-1 relative min-w-0"
+          className={`map-container flex-1 relative min-w-0 ${isSidebarOpen ? (currentTab === "renewals" ? "with-wide-sidebar" : "with-sidebar") : ""}`}
           onClick={() => {
             if (selectedId !== null) setSelectedId(null);
           }}
@@ -346,6 +353,7 @@ export default function App() {
           <div className="w-full h-full rounded-xl overflow-hidden">
             <MapComponent
               stores={filteredStores}
+              benchmarks={benchmarks}
               selectedId={selectedId}
               onSelectStore={selectStore}
               onMapClick={() => {
@@ -375,6 +383,7 @@ export default function App() {
             store={mapMode ? null : selectedStore}
             stores={stores}
             coverage={coverage}
+            benchmark={selectedStore ? (benchmarks.of.get(selectedStore.id) ?? null) : null}
             onSelectZone={openZone}
             onClose={closeStore}
             onRemove={
@@ -400,7 +409,7 @@ export default function App() {
             />
           )}
 
-          <MapLegend notOnMap={notOnMap} />
+          <MapLegend notOnMap={notOnMap} onPinColors={(pinColors) => updateSettings({ pinColors })} />
         </div>
       </main>
 
