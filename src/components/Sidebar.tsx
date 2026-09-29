@@ -77,77 +77,67 @@ const StoreListItem = memo(function StoreListItem({
   const settings = useSettings();
   const renewal = storeRenewal(s, settings);
   const issues = dataIssues(s);
+  const badge = "px-2 py-0.5 text-[11px] font-bold rounded-full";
   return (
     <div
       onClick={() => onSelect(s.id)}
-      className={`store-list-item store-list-card bg-[#111] border border-[#222] p-[20px_21px] rounded-lg cursor-pointer transition-all hover:border-[#333] shadow-sm duration-300 ${selected ? "border-[#fbbf24]/50 bg-[#161616] ring-1 ring-[#fbbf24]/20 shadow-lg" : ""}`}
+      className={`store-list-item store-list-card cursor-pointer transition-colors ${selected ? "selected" : ""}`}
     >
-      <div className="flex justify-between items-start gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="store-title store-card-name text-sm font-bold text-white leading-snug mb-1 truncate">
-            {s.name}
-          </div>
-          <div className="store-card-subtext text-[11px] font-mono text-gray-400 uppercase tracking-widest">
-            {s.dsCode || "No DS code"} · {s.city}
-          </div>
-        </div>
-        <div className="flex flex-col gap-1 items-end pt-0.5">
-          <span
-            className={`px-2 py-0.5 text-[11px] font-bold rounded-full ${isLive(s) ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}
-          >
-            {isLive(s) ? "LIVE" : "NOT LIVE"}
-          </span>
-          {renewal.status !== "unknown" && renewal.status !== "ok" && (
-            <span
-              className={`px-2 py-0.5 text-[11px] font-bold rounded-full border ${RENEWAL_STYLE[renewal.status].className}`}
-              title={`Contract ends ${s.endDate}`}
-            >
-              {RENEWAL_STYLE[renewal.status].tag}
-            </span>
-          )}
-          {!hasCoords(s) && (
-            <span
-              className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]"
-              title={s.locationIssue || "No coordinates"}
-            >
-              NO LOCATION
-            </span>
-          )}
-          {highRentBy !== null && (
-            <span
-              className={`px-2 py-0.5 text-[11px] font-bold rounded-full border ${HIGH_RENT_TAG.className}`}
-              title={`Rent per m² ${highRentBy}% above the ${s.city} median`}
-            >
-              {HIGH_RENT_TAG.tag}
-            </span>
-          )}
-          {outside && (
-            <span
-              className={`px-2 py-0.5 text-[11px] font-bold rounded-full border ${COVERAGE_TAG.outside.className}`}
-              title="Not in any coverage zone on the map"
-            >
-              {COVERAGE_TAG.outside.short}
-            </span>
-          )}
-          {inWhiteSpace && (
-            <span
-              className={`px-2 py-0.5 text-[11px] font-bold rounded-full border ${COVERAGE_TAG.whitespace.className}`}
-              title="Inside a white-space zone on the map"
-            >
-              {COVERAGE_TAG.whitespace.short}
-            </span>
-          )}
-          {hasCoords(s) && issues.length > 0 && (
-            <span
-              className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]"
-              title={issues.join("\n")}
-            >
-              CHECK DATA
-            </span>
-          )}
-        </div>
+      {/* The name has the whole width; only a very long one is cut short, with all of it in the tooltip */}
+      <div className="store-title store-card-name text-white truncate" title={s.name}>
+        {s.name}
       </div>
-      <div className="store-card-footer-metrics mt-3 flex gap-4 text-[11px] font-mono text-gray-400">
+      <div className="store-card-subtext text-[11px] font-mono text-gray-400 uppercase tracking-widest truncate">
+        {s.dsCode || "No DS code"} · {s.city}
+      </div>
+      <div className="store-card-badges flex flex-wrap items-center">
+        <span className={`${badge} ${isLive(s) ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}>
+          {isLive(s) ? "LIVE" : "NOT LIVE"}
+        </span>
+        {renewal.status !== "unknown" && renewal.status !== "ok" && (
+          <span
+            className={`${badge} border ${RENEWAL_STYLE[renewal.status].className}`}
+            title={`Contract ends ${s.endDate}`}
+          >
+            {RENEWAL_STYLE[renewal.status].tag}
+          </span>
+        )}
+        {!hasCoords(s) && (
+          <span className={`${badge} bg-[#FB923C]/10 text-[#FB923C]`} title={s.locationIssue || "No coordinates"}>
+            NO LOCATION
+          </span>
+        )}
+        {highRentBy !== null && (
+          <span
+            className={`${badge} border ${HIGH_RENT_TAG.className}`}
+            title={`Rent per m² ${highRentBy}% above the ${s.city} median`}
+          >
+            {HIGH_RENT_TAG.tag}
+          </span>
+        )}
+        {outside && (
+          <span
+            className={`${badge} border ${COVERAGE_TAG.outside.className}`}
+            title="Not in any coverage zone on the map"
+          >
+            {COVERAGE_TAG.outside.short}
+          </span>
+        )}
+        {inWhiteSpace && (
+          <span
+            className={`${badge} border ${COVERAGE_TAG.whitespace.className}`}
+            title="Inside a white-space zone on the map"
+          >
+            {COVERAGE_TAG.whitespace.short}
+          </span>
+        )}
+        {hasCoords(s) && issues.length > 0 && (
+          <span className={`${badge} bg-[#FB923C]/10 text-[#FB923C]`} title={issues.join("\n")}>
+            CHECK DATA
+          </span>
+        )}
+      </div>
+      <div className="store-card-footer-metrics text-[11px] font-mono text-gray-400">
         <span>{s.size || "—"} m²</span>
         <span>
           {CURRENCY} {fmtR(shownRent(s.rentSARAnnual, settings))}/yr {vatLabel(settings)}

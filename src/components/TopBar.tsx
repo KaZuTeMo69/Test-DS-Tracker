@@ -1,4 +1,4 @@
-import { memo, ReactNode, useEffect, useRef, useState } from "react";
+import { memo, ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ClipboardCheck,
@@ -70,7 +70,7 @@ function SourceBadge({
       />
       <span className="max-xl:sr-only">{label}</span>
       {detail && (
-        <span className="hidden min-[1400px]:inline font-mono font-normal normal-case tracking-normal truncate max-w-[140px]">
+        <span className="hidden min-[1600px]:inline font-mono font-normal normal-case tracking-normal truncate max-w-[140px]">
           · {detail}
         </span>
       )}
@@ -107,15 +107,13 @@ function Kpi({
       data-kpi={id}
       onClick={onClick}
       title={title}
-      className={`kpi-card kpi-inline flex items-center shrink-0 rounded-md ${active ? "on" : ""}`}
+      className={`kpi-card kpi-inline flex items-baseline shrink-0 rounded-md ${active ? "on" : ""}`}
     >
       <span className="kpi-number" style={{ color }}>
         {loading ? <Bone w={34} h={18} className="kpi-bone" /> : value}
       </span>
-      <span className="flex flex-col items-start leading-tight">
-        <span className="kpi-label">{label}</span>
-        {note && !loading && <span className={`kpi-note max-md:hidden ${noteColor}`}>{note}</span>}
-      </span>
+      <span className="kpi-label">{label}</span>
+      {note && !loading && <span className={`kpi-note ${noteColor}`}>{note}</span>}
     </button>
   );
 }
@@ -177,6 +175,49 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
     };
   }, [moreOpen]);
 
+  // The figures stay on one line each. When they don't all fit, their notes go first (the "compact" class);
+  // when they still don't, the row scrolls sideways, with a fade on the edge that has more
+  const kpisRef = useRef<HTMLDivElement>(null);
+  const figuresKey = [
+    stats.total,
+    stats.live,
+    stats.paid,
+    stats.totalRent,
+    stats.renewals.now,
+    stats.renewals.soon,
+    stats.noRent,
+    unclear.total,
+    issueCount,
+    loading,
+    includeVat,
+    warningDays,
+  ].join();
+  useLayoutEffect(() => {
+    const row = kpisRef.current;
+    if (!row) return;
+    const fit = () => {
+      // Measured with the notes showing: the width the row wants, against the width it has
+      row.classList.remove("compact");
+      row.classList.toggle("compact", row.scrollWidth > row.clientWidth + 1);
+      fade();
+    };
+    const fade = () => {
+      const more = row.scrollWidth - row.clientWidth - row.scrollLeft;
+      row.classList.toggle("fade-right", more > 1);
+      row.classList.toggle("fade-left", row.scrollLeft > 1);
+    };
+    fit();
+    // Widths change again once the fonts have loaded
+    document.fonts?.ready.then(fit);
+    const observer = new ResizeObserver(fit);
+    observer.observe(row);
+    row.addEventListener("scroll", fade, { passive: true });
+    return () => {
+      observer.disconnect();
+      row.removeEventListener("scroll", fade);
+    };
+  }, [figuresKey]);
+
   const toggleMore = () => setMoreOpen((o) => !o);
   const pct = stats.total ? `${Math.round((stats.live / stats.total) * 100)}%` : undefined;
   // The bar says how many start soon; how many have already expired is in the tooltip (and the Renewals panel)
@@ -188,9 +229,8 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
   ]
     .filter(Boolean)
     .join("\n");
-  const rentNote = [`${CURRENCY} / yr${includeVat ? " incl. VAT" : ""}`, missing(stats.noRent, "rent")]
-    .filter(Boolean)
-    .join(" · ");
+  // Rent is always SAR a year (the label and tooltip say so); the note is only for what changes it
+  const rentNote = [includeVat && "incl. VAT", missing(stats.noRent, "rent")].filter(Boolean).join(" · ") || undefined;
 
   const iconBtn =
     "topbar-btn flex items-center justify-center h-9 min-w-9 rounded-lg border border-[#333] bg-[#1a1a1a] text-[#d4d4d4] hover:border-[#fbbf24] hover:text-[#fbbf24] transition-colors cursor-pointer";
@@ -214,6 +254,7 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
       </div>
 
       <div
+        ref={kpisRef}
         className="topbar-kpis order-3 md:order-2 w-full md:w-auto md:flex-1 min-w-0 flex items-center overflow-x-auto"
         aria-label="Totals"
       >
@@ -235,6 +276,7 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
           color="#22C55E"
           onClick={toggleMore}
           loading={loading}
+          title={pct ? `${pct} of these stores are live` : undefined}
         />
         <Kpi
           id="notlive"
@@ -271,6 +313,7 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
           color="#ffffff"
           onClick={toggleMore}
           loading={loading}
+          title={`Annual rent, ${CURRENCY} a year${rentNote ? ` (${rentNote})` : ""}. Click for monthly rent, area and rent per m²`}
         />
         {!loading && unclear.total > 0 && (
           <Kpi

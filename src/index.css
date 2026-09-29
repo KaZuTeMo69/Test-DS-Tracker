@@ -134,6 +134,47 @@ body {
   margin: 0 12px 28px 0 !important;
 }
 
+/* Zoom in and out: one control, a line between the two */
+.zoom-control {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid #383838;
+  background: rgba(30, 30, 30, 0.92);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.zoom-control button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 38px;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  color: #efefef;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.zoom-control button + button {
+  border-top: 1px solid #383838;
+}
+
+.zoom-control button:hover {
+  background: #2a2a2a;
+}
+
+.zoom-control button:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: -2px;
+}
+
 .app-main {
   display: flex !important;
   flex-direction: row !important;
@@ -184,9 +225,26 @@ body {
 }
 
 .topbar-kpis {
-  gap: 2px;
+  gap: 0;
   scrollbar-width: none;
-  mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+}
+
+/* When the figures scroll, the edge with more to see fades out */
+.topbar-kpis.fade-right {
+  mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+}
+
+.topbar-kpis.fade-left {
+  mask-image: linear-gradient(to right, transparent, #000 32px);
+}
+
+.topbar-kpis.fade-left.fade-right {
+  mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 40px), transparent);
+}
+
+/* Not enough room for every figure with its note: the notes go first */
+.topbar-kpis.compact .kpi-note {
+  display: none;
 }
 
 .topbar-kpis::-webkit-scrollbar {
@@ -209,6 +267,10 @@ body {
   .source-badge {
     padding: 4px 11px !important;
   }
+}
+
+.topbar-actions {
+  margin: 0 0 0 auto !important;
 }
 
 .topbar-btn {
@@ -259,8 +321,8 @@ body {
 
 /* A figure in the top bar: the number, and its label (and a note) beside it; no box around it */
 .kpi-inline {
-  gap: 6px;
-  padding: 4px 7px !important;
+  gap: 5px;
+  padding: 4px 6px !important;
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
@@ -289,34 +351,23 @@ body {
 
 @media (min-width: 1280px) {
   .kpi-inline .kpi-number {
-    font-size: 1.35rem;
+    font-size: 1.3rem;
   }
 }
 
-/* Two-word labels stack ("Not / live"), so the row of figures stays short */
+/* Each figure is one line: the number, its label and a note side by side */
 .kpi-label {
-  width: min-content;
   font-size: 11px;
   font-weight: 700;
-  line-height: 1.15;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: var(--token-color-text-secondary);
-  text-align: left;
+  white-space: nowrap;
 }
 
 .kpi-note {
   font-size: 11px;
-  line-height: 1.2;
   white-space: nowrap;
-}
-
-/* On a phone the figures scroll sideways in one short row instead */
-@media (max-width: 767px) {
-  .kpi-label {
-    width: auto;
-    white-space: nowrap;
-  }
 }
 
 /* ==========================================================================
@@ -389,6 +440,22 @@ body {
   border: 2px solid #0d0d0d;
   box-sizing: content-box;
   font-family: var(--token-font-family-sans);
+}
+
+/* In the rail the count sits in the button's top-right corner, inside the rail */
+.nav-rail .rail-icon {
+  position: static;
+}
+
+.nav-rail .rail-badge {
+  top: 1px;
+  right: 1px;
+  left: auto;
+  min-width: 14px;
+  height: 14px;
+  line-height: 14px;
+  padding: 0 3px !important;
+  border-width: 1.5px;
 }
 
 .rail-badge.red {
@@ -784,17 +851,47 @@ body {
   font-size: 1rem !important;
 }
 
+/* A store in the list: its name on its own line, then the code and city, the tags, and area and rent */
 .store-list-card {
-  background: var(--token-color-bg-surface-s2);
-  border: 5px solid var(--token-color-border-muted);
-  border-radius: var(--token-border-radius-sub);
-  padding: 7px var(--token-spacing-md);
-  margin-bottom: 7px;
+  display: flex;
+  flex-direction: column;
+  background: #141414;
+  border: 1px solid #2e2e2e;
+  border-radius: 10px;
+  padding: 12px 14px !important;
+  margin: 0 0 8px !important;
+}
+
+.store-list-card:hover {
+  border-color: #3d3d3d;
+  background: #171717;
+}
+
+.store-list-card.selected {
+  border-color: rgba(251, 191, 36, 0.6);
+  background: #1a1812;
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.2);
 }
 
 .store-list-item .store-title {
-  font-size: 1.35rem !important;
+  font-size: 1.1rem !important;
   font-weight: 650;
+  line-height: 1.3;
+}
+
+.store-card-badges {
+  gap: 5px;
+  margin-top: 8px !important;
+}
+
+.store-card-badges:empty {
+  display: none;
+}
+
+.store-card-badges > span {
+  padding: 2px 8px !important;
+  margin: 0 !important;
+  line-height: 1.35;
 }
 
 .store-card-name {
@@ -1826,6 +1923,493 @@ body {
   .panel-wide .coord-search {
     left: calc(50% + 320px);
   }
+}
+
+/* ==========================================================================
+   WINDOWS OVER THE PAGE (Import, Add store)
+   Spacing is set here: the base rule at the top of this file overrides the padding and margin utilities
+   ========================================================================== */
+
+.modal-backdrop {
+  padding: 16px !important;
+}
+
+.modal-card {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 32px);
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.import-modal {
+  max-width: 560px;
+}
+
+.add-store-modal {
+  max-width: 420px;
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 20px 18px 24px !important;
+  border-bottom: 1px solid #222;
+}
+
+.modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  padding: 0 !important;
+  border-radius: 12px;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.modal-title {
+  font-family: var(--token-font-family-display);
+  font-size: 20px;
+  font-weight: 700;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  color: #ffffff;
+  margin: 0 !important;
+}
+
+.modal-subtitle {
+  font-size: 13px;
+  color: var(--token-color-text-secondary);
+  margin: 3px 0 0 !important;
+}
+
+.modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  margin: 0 0 0 auto !important;
+  padding: 0 !important;
+  border-radius: 999px;
+  border: 1px solid #2a2a2a;
+  color: var(--token-color-text-secondary);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.modal-close:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px 22px !important;
+}
+
+.modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 24px 22px !important;
+  border-top: 1px solid #222;
+  background: #0c0c0c;
+  border-radius: 0 0 20px 20px;
+}
+
+/* Upload file / Google Sheet / Paste CSV */
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 4px !important;
+  border-radius: 12px;
+  background: #0a0a0a;
+  border: 1px solid #262626;
+}
+
+.seg-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 6px !important;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--token-color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.seg-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.seg-btn.on {
+  color: #111111;
+  background: #fbbf24;
+}
+
+.seg-btn:focus-visible,
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.dropzone:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* Phones: tighter edges, and the header and tabs made to fit */
+@media (max-width: 480px) {
+  .modal-backdrop {
+    padding: 10px !important;
+  }
+
+  .modal-card {
+    max-height: calc(100dvh - 20px);
+  }
+
+  .modal-head {
+    padding: 16px 14px 14px 18px !important;
+  }
+
+  .modal-head .modal-icon {
+    display: none;
+  }
+
+  .modal-title {
+    font-size: 18px;
+  }
+
+  .modal-body {
+    padding: 16px 16px 18px !important;
+  }
+
+  .modal-foot {
+    padding: 14px 16px 18px !important;
+  }
+
+  .seg-btn {
+    font-size: 12px;
+    padding: 9px 2px !important;
+  }
+
+  .seg-btn svg {
+    display: none;
+  }
+
+  .dropzone {
+    padding: 26px 14px 22px !important;
+  }
+}
+
+/* Drop a file */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 34px 20px 30px !important;
+  border-radius: 16px;
+  border: 2px dashed #353535;
+  background: #151515;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.dropzone:hover,
+.dropzone.dragging {
+  border-color: #fbbf24;
+  background: #1a1a14;
+}
+
+.dropzone-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 4px !important;
+  border-radius: 999px;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.dropzone-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.dropzone-hint {
+  font-size: 13px;
+  color: var(--token-color-text-secondary);
+}
+
+.file-chip {
+  margin-top: 4px !important;
+  padding: 2px 8px !important;
+  border-radius: 999px;
+  font-family: var(--token-font-family-mono);
+  font-size: 11px;
+  color: #d4d4d4;
+  background: #222;
+}
+
+/* Numbered steps (sharing a sheet) */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px !important;
+  margin: 0 !important;
+  border-radius: 12px;
+  background: #151515;
+  border: 1px solid #242424;
+  list-style: none;
+}
+
+.steps li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #d4d4d4;
+}
+
+.steps b {
+  color: #ffffff;
+}
+
+.step-n {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0 !important;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #111111;
+  background: #fbbf24;
+}
+
+/* Fields */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--token-color-text-secondary);
+  margin: 0 !important;
+}
+
+.field-box {
+  position: relative;
+  display: block;
+}
+
+.field-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8f8f8f;
+  pointer-events: none;
+}
+
+.field-input {
+  width: 100%;
+  padding: 12px 14px 12px 40px !important;
+  margin: 0 !important;
+  border-radius: 10px;
+  border: 1px solid #2e2e2e;
+  background: #161616;
+  color: #ffffff;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.field-input.plain,
+.field-textarea {
+  padding: 12px 14px !important;
+}
+
+.field-textarea {
+  resize: vertical;
+  min-height: 150px;
+  line-height: 1.5;
+  font-size: 12px;
+}
+
+.field-input::placeholder {
+  color: #7a7a7a;
+}
+
+.field-input:hover {
+  border-color: #3a3a3a;
+}
+
+.field-input:focus {
+  border-color: #fbbf24;
+}
+
+.field-input.invalid {
+  border-color: #f97316;
+}
+
+.field-help {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--token-color-text-secondary);
+  margin: 0 !important;
+}
+
+.field-help b {
+  color: #e5e5e5;
+}
+
+.field-help.warn {
+  color: #fb923c;
+}
+
+/* Buttons */
+.btn-primary,
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 16px !important;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.btn-primary {
+  color: #111111;
+  background: #fbbf24;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #ffd24d;
+}
+
+.btn-primary:disabled {
+  cursor: not-allowed;
+  color: #8f8f8f;
+  background: #262626;
+}
+
+.btn-secondary {
+  color: #d4d4d4;
+  background: #1c1c1c;
+  border: 1px solid #333;
+}
+
+.btn-secondary:hover {
+  background: #252525;
+}
+
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px !important;
+}
+
+.modal-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--token-color-text-secondary);
+  margin: 0 !important;
+}
+
+.modal-note svg {
+  margin-top: 2px !important;
+  color: #4ade80;
+}
+
+.modal-error {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px !important;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* The columns the importer reads */
+.col-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.col-chip {
+  padding: 3px 9px !important;
+  margin: 0 !important;
+  border-radius: 999px;
+  font-family: var(--token-font-family-mono);
+  font-size: 11px;
+  color: #d4d4d4;
+  background: #1a1a1a;
+  border: 1px solid #2c2c2c;
+}
+
+.col-chip.required {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.45);
 }
 
 /* Data Quality panel */

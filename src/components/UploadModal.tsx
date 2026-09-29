@@ -1,5 +1,17 @@
 import { ChangeEvent, DragEvent, useEffect, useRef, useState } from "react";
-import { AlertCircle, Check, FileText, Link, Upload, X } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  FileText,
+  FileUp,
+  Link,
+  Loader2,
+  LucideIcon,
+  RefreshCw,
+  ShieldCheck,
+  Upload,
+  X,
+} from "lucide-react";
 import { Store } from "../types";
 import { parseCSVData, parseJSONData } from "../lib/importer";
 
@@ -18,6 +30,32 @@ const parseContent = (text: string): Store[] => (/^\s*[[{]/.test(text) ? parseJS
 
 const errorText = (err: unknown, fallback: string) => (err instanceof Error && err.message ? err.message : fallback);
 
+type Tab = "file" | "sheet" | "paste";
+const TABS: [Tab, string, LucideIcon][] = [
+  ["file", "Upload file", Upload],
+  ["sheet", "Google Sheet", Link],
+  ["paste", "Paste CSV", FileText],
+];
+
+// The same test the sheet import makes, so the button only turns on for a link it can use
+const SHEET_LINK = /\/spreadsheets\/d\/[a-zA-Z0-9\-_]+/;
+
+// The headers the importer looks for (it also knows common variants of each)
+const COLUMNS = [
+  "Store Name",
+  "City",
+  "DS Code",
+  "Contract Start Date",
+  "Contract End Date",
+  "Contract Duration",
+  "Paid / Not Paid",
+  "Live / Not Live",
+  "Area (sqm)",
+  "Annual Rent",
+  "Lat",
+  "Lng",
+];
+
 export default function UploadModal({
   isOpen,
   onClose,
@@ -27,7 +65,7 @@ export default function UploadModal({
   loadingMsg,
   error,
 }: UploadModalProps) {
-  const [activeTab, setActiveTab] = useState<"file" | "sheet" | "paste">("file");
+  const [activeTab, setActiveTab] = useState<Tab>("file");
   const [sheetUrl, setSheetUrl] = useState("");
   const [pastedText, setPastedText] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
@@ -38,6 +76,18 @@ export default function UploadModal({
   useEffect(() => {
     if (isOpen) setLocalError(null);
   }, [isOpen]);
+
+  // Esc closes the window (and only the window: preventDefault tells the page it's been used)
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -113,170 +163,210 @@ export default function UploadModal({
     onGoogleSheetImport(sheetUrl.trim());
   };
 
+  const sheetLinkOk = SHEET_LINK.test(sheetUrl);
+  const sheetLinkWrong = sheetUrl.trim() !== "" && !sheetLinkOk;
+  const pastedRows = pastedText.trim() ? pastedText.trim().split(/\r?\n/).length - 1 : 0;
+  const shownError = localError || error;
+
   return (
     <div
       data-modal
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9000] backdrop-blur-md p-4 sm:p-6"
+      className="modal-backdrop fixed inset-0 bg-black/75 flex items-center justify-center z-[9000] backdrop-blur-md"
       onClick={onClose}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       <div
-        className="relative bg-[#111111] border border-[#262626] rounded-[24px] p-6 sm:p-8 w-full max-w-[580px] duration-200 shadow-[0_30px_80px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[92vh] scrollbar-thin"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="import-title"
+        className="modal-card import-modal relative bg-[#111111] border border-[#2a2a2a] rounded-[20px] w-full shadow-[0_30px_80px_rgba(0,0,0,0.8)] overflow-y-auto scrollbar-thin"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-all cursor-pointer border border-[#262626]"
-          title="Close"
-        >
-          <X size={16} />
-        </button>
-
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-[#fbbf24]/10 border border-[#fbbf24]/20 flex items-center justify-center text-[#fbbf24]">
-            <Upload size={20} />
+        <header className="modal-head">
+          <div className="modal-icon">
+            <Upload size={19} />
           </div>
-          <div>
-            <h2 className="text-xl font-bold font-['Oswald'] tracking-wide text-white uppercase italic">
-              Import Store Data
+          <div className="min-w-0">
+            <h2 id="import-title" className="modal-title">
+              Import store data
             </h2>
-            <p className="text-xs text-gray-400">Upload a CSV/JSON file or sync from Google Sheets</p>
+            <p className="modal-subtitle">From a file, a Google Sheet, or rows pasted from a spreadsheet.</p>
           </div>
-        </div>
+          <button onClick={onClose} className="modal-close" title="Close" aria-label="Close">
+            <X size={16} />
+          </button>
+        </header>
 
-        {/* Tab Buttons */}
-        <div className="flex bg-[#1a1a1a] p-1 rounded-xl border border-[#262626] mb-6">
-          <button
-            onClick={() => setActiveTab("file")}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === "file" ? "bg-[#fbbf24] text-black shadow" : "text-gray-400 hover:text-white"}`}
-          >
-            <Upload size={14} />
-            <span>Upload File</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("sheet")}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === "sheet" ? "bg-[#fbbf24] text-black shadow" : "text-gray-400 hover:text-white"}`}
-          >
-            <Link size={14} />
-            <span>Google Sheet</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("paste")}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === "paste" ? "bg-[#fbbf24] text-black shadow" : "text-gray-400 hover:text-white"}`}
-          >
-            <FileText size={14} />
-            <span>Paste CSV</span>
-          </button>
-        </div>
+        <div className="modal-body">
+          {/* Outside the tabs, so a file can be taken whichever tab is showing */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept=".csv,.json,.txt"
+            onChange={handleFileUpload}
+          />
+          <div className="seg" role="tablist" aria-label="Where the data comes from">
+            {TABS.map(([tab, label, Icon]) => (
+              <button
+                key={tab}
+                role="tab"
+                aria-selected={activeTab === tab}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setLocalError(null);
+                }}
+                className={`seg-btn ${activeTab === tab ? "on" : ""}`}
+              >
+                <Icon size={15} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
 
-        {/* File Tab */}
-        {activeTab === "file" && (
-          <div className="space-y-4">
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed ${isDragging ? "border-[#fbbf24] bg-[#1c1c1c]" : "border-[#333] bg-[#161616]"} hover:border-[#fbbf24] hover:bg-[#1c1c1c] rounded-2xl p-8 text-center cursor-pointer transition-all group`}
-            >
-              <div className="w-12 h-12 rounded-full bg-white/5 group-hover:bg-[#fbbf24]/20 text-gray-400 group-hover:text-[#fbbf24] flex items-center justify-center mx-auto mb-3 transition-colors">
-                <Upload size={24} />
-              </div>
-              <p className="text-sm font-bold text-white mb-1">Click or Drag & Drop File</p>
-              <p className="text-xs text-gray-400">Supports .csv and .json store datasets</p>
+          {activeTab === "file" && (
+            <div role="tabpanel" className="modal-section">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={`dropzone ${isDragging ? "dragging" : ""}`}
+              >
+                <span className="dropzone-icon">
+                  <FileUp size={24} />
+                </span>
+                <span className="dropzone-title">
+                  {isDragging ? "Drop it here" : "Drop a file here, or click to choose"}
+                </span>
+                <span className="dropzone-hint">CSV or JSON, with a header row</span>
+                <span className="flex gap-1.5 justify-center">
+                  {[".csv", ".json", ".txt"].map((ext) => (
+                    <span key={ext} className="file-chip">
+                      {ext}
+                    </span>
+                  ))}
+                </span>
+              </button>
             </div>
+          )}
 
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept=".csv,.json,.txt"
-              onChange={handleFileUpload}
-            />
-          </div>
-        )}
+          {activeTab === "sheet" && (
+            <div role="tabpanel" className="modal-section">
+              <ol className="steps">
+                <li>
+                  <span className="step-n">1</span>
+                  <span>
+                    In Google Sheets, click <b>Share</b> and set General access to <b>Anyone with the link</b> ·{" "}
+                    <b>Viewer</b>.
+                  </span>
+                </li>
+                <li>
+                  <span className="step-n">2</span>
+                  <span>Copy the link from the address bar and paste it here.</span>
+                </li>
+              </ol>
 
-        {/* Google Sheet Tab */}
-        {activeTab === "sheet" && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">
-                Google Sheets Public Link
+              <label className="field">
+                <span className="field-label">Sheet link</span>
+                <span className="field-box">
+                  <Link size={15} className="field-icon" />
+                  <input
+                    type="url"
+                    autoFocus
+                    placeholder="https://docs.google.com/spreadsheets/d/…"
+                    className={`field-input font-mono ${sheetLinkWrong ? "invalid" : ""}`}
+                    value={sheetUrl}
+                    onChange={(e) => setSheetUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && sheetLinkOk && handleSheetSubmit()}
+                    aria-invalid={sheetLinkWrong}
+                  />
+                </span>
+                {sheetLinkWrong && (
+                  <span className="field-help warn">
+                    That isn't a Google Sheets link. It should contain <b>/spreadsheets/d/</b>.
+                  </span>
+                )}
               </label>
-              <input
-                type="url"
-                placeholder="https://docs.google.com/spreadsheets/d/..."
-                className="w-full bg-[#161616] border border-[#262626] hover:border-[#333] focus:border-[#fbbf24] text-white text-xs font-mono outline-none transition-all placeholder:text-gray-400 rounded-xl px-4 py-3"
-                value={sheetUrl}
-                onChange={(e) => setSheetUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSheetSubmit()}
-              />
-              <p className="text-[11px] text-gray-400 mt-2">
-                Ensure sheet sharing is set to{" "}
-                <span className="text-gray-300 font-bold">"Anyone with link → Viewer"</span>.
+
+              <button disabled={!sheetLinkOk || isLoading} onClick={handleSheetSubmit} className="btn-primary">
+                {isLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>{loadingMsg || "Connecting to the sheet…"}</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={15} />
+                    <span>Sync Google Sheet</span>
+                  </>
+                )}
+              </button>
+              <p className="modal-note">
+                <ShieldCheck size={14} className="shrink-0" />
+                <span>
+                  It refreshes every 5 minutes while the page is open. The link is kept only in this browser and is
+                  never put in the page's address, so links you share don't show your data.
+                </span>
               </p>
             </div>
+          )}
 
-            <button
-              disabled={!sheetUrl.trim() || isLoading}
-              onClick={handleSheetSubmit}
-              className="w-full bg-[#fbbf24] disabled:bg-[#fbbf24]/30 disabled:text-black/40 text-black border-none rounded-xl py-3 font-extrabold text-xs cursor-pointer tracking-wider hover:opacity-90 active:scale-[0.99] transition-all uppercase flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <span>{loadingMsg || "Connecting to Sheet..."}</span>
-              ) : (
-                <>
-                  <Check size={16} />
-                  <span>Sync Google Sheet</span>
-                </>
-              )}
-            </button>
-          </div>
-        )}
-
-        {/* Paste CSV Tab */}
-        {activeTab === "paste" && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">
-                Paste Raw CSV / TSV Content
+          {activeTab === "paste" && (
+            <div role="tabpanel" className="modal-section">
+              <label className="field">
+                <span className="field-label flex justify-between">
+                  <span>Rows from a spreadsheet, header row first</span>
+                  {pastedRows > 0 && (
+                    <span className="normal-case tracking-normal text-gray-300">
+                      {pastedRows} {pastedRows === 1 ? "row" : "rows"}
+                    </span>
+                  )}
+                </span>
+                <textarea
+                  rows={7}
+                  autoFocus
+                  placeholder={
+                    "Store Name, City, DS Code, Contract Start Date, Contract Duration, …\nAl Malqa Depot, Riyadh, DS-102, 01 Mar 2024, 3, …"
+                  }
+                  className="field-input field-textarea font-mono scrollbar-thin"
+                  value={pastedText}
+                  onChange={(e) => setPastedText(e.target.value)}
+                />
+                <span className="field-help">
+                  Comma- or tab-separated: copying cells from Excel or Google Sheets works.
+                </span>
               </label>
-              <textarea
-                rows={6}
-                placeholder="Store Name, City, DS Code, Area, Rent, Lat, Lng..."
-                className="w-full bg-[#161616] border border-[#262626] focus:border-[#fbbf24] text-white text-xs font-mono outline-none transition-all placeholder:text-gray-400 rounded-xl p-3 resize-none scrollbar-thin"
-                value={pastedText}
-                onChange={(e) => setPastedText(e.target.value)}
-              />
+
+              <button disabled={!pastedText.trim()} onClick={handlePasteSubmit} className="btn-primary">
+                <Check size={16} />
+                <span>Import pasted data</span>
+              </button>
             </div>
+          )}
 
-            <button
-              disabled={!pastedText.trim()}
-              onClick={handlePasteSubmit}
-              className="w-full bg-[#fbbf24] disabled:bg-[#fbbf24]/30 disabled:text-black/40 text-black border-none rounded-xl py-3 font-extrabold text-xs cursor-pointer tracking-wider hover:opacity-90 active:scale-[0.99] transition-all uppercase flex items-center justify-center gap-2"
-            >
-              <Check size={16} />
-              <span>Import Pasted Content</span>
-            </button>
-          </div>
-        )}
-
-        {(localError || error) && (
-          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl flex items-center gap-2">
-            <AlertCircle size={16} className="shrink-0" />
-            <span>{localError || error}</span>
-          </div>
-        )}
-
-        {/* Schema hint */}
-        <div className="mt-6 pt-5 border-t border-white/5">
-          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">
-            Recommended Header Fields
-          </p>
-          <p className="text-[11px] font-mono text-gray-400 leading-relaxed">
-            Store Name · City · DS Code · Contract Duration · Paid/Unpaid · Live Status · Area (sqm) · Annual Rent · Lat
-            · Lng
-          </p>
+          {shownError && (
+            <div className="modal-error" role="alert">
+              <AlertCircle size={16} className="shrink-0" />
+              <span>{shownError}</span>
+            </div>
+          )}
         </div>
+
+        <footer className="modal-foot">
+          <p className="field-label">Columns it reads</p>
+          <div className="col-chips">
+            {COLUMNS.map((c) => (
+              <span key={c} className={`col-chip ${c === "Store Name" ? "required" : ""}`}>
+                {c}
+              </span>
+            ))}
+          </div>
+          <p className="field-help">
+            Matched by header name, in any order. Only <b>Store Name</b> is required; anything else missing is left
+            blank and listed under Data quality.
+          </p>
+        </footer>
       </div>
     </div>
   );

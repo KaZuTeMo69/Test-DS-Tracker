@@ -5,7 +5,17 @@ import { Store } from "../types";
 import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, RENEWAL_STYLE } from "../constants";
 import { contractDateIssues, dataIssues, hasCoords } from "../lib/checks";
 import { Coverage, coverageFlags, ZoneHit } from "../lib/coverage";
-import { daysBetween, formatDate, formatDuration, parseDate, pluralDays, RenewalInfo, today } from "../lib/contract";
+import {
+  daysBetween,
+  durationOptionMonths,
+  durationTerm,
+  formatDate,
+  formatDuration,
+  parseDate,
+  pluralDays,
+  RenewalInfo,
+  today,
+} from "../lib/contract";
 import { useSettings } from "../hooks/useSettings";
 import { fmtN } from "../lib/format";
 import { RENEWAL_STATUS_LABEL, storeRenewal } from "../lib/renewal";
@@ -74,9 +84,10 @@ const ordinal = (n: number) => {
 
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-// "3" or "3 Years" → "3-year", "6 Months" → "6-month"; anything else as written
+// "3" or "3 Years" → "3-year", "6 Months" → "6-month", "2+1 years" → "2-year" (the term, not its option); anything
+// else as written
 function termPhrase(term: string): string {
-  const m = formatDuration(term).match(/^(\d+(?:\.\d+)?)\s*(year|month)s?$/i);
+  const m = formatDuration(durationTerm(term)).match(/^(\d+(?:\.\d+)?)\s*(year|month)s?$/i);
   return m ? `${m[1]}-${m[2].toLowerCase()}` : term.trim().toLowerCase();
 }
 
@@ -563,7 +574,15 @@ function ContractTab({ store, renewal }: { store: Store; renewal: RenewalInfo })
   return (
     <>
       <div className="grid grid-cols-2 gap-2">
-        <Tile label="Term" value={formatDuration(store.contractDuration) || "—"} />
+        <Tile
+          label="Term"
+          value={formatDuration(store.contractDuration) || "—"}
+          note={
+            durationOptionMonths(store.contractDuration).length
+              ? `Renewal is due at the end of the ${termPhrase(store.contractDuration)} term, unless the option is taken`
+              : undefined
+          }
+        />
         <DaysLeftTile renewal={renewal} term="" />
       </div>
 

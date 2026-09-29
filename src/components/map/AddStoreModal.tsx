@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { X } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import { MapPin, X } from "lucide-react";
 import { LatLng } from "../../lib/coords";
 
 interface AddStoreModalProps {
@@ -12,88 +12,113 @@ interface AddStoreModalProps {
 export default function AddStoreModal({ pin, onCancel, onSave }: AddStoreModalProps) {
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
+  // Once Save has been tried, what's missing is said under its field (instead of a browser alert)
+  const [tried, setTried] = useState(false);
+  const nameMissing = !name.trim();
+  const cityMissing = !city.trim();
 
-  const save = () => {
-    if (!name.trim()) {
-      alert("Please enter a store name.");
-      return;
-    }
-    if (!city.trim()) {
-      alert("Please enter a city.");
-      return;
-    }
+  // Esc closes the window, also when nothing in it has focus (preventDefault tells the page it's been used)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      onCancel();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  const save = (e: FormEvent) => {
+    e.preventDefault();
+    setTried(true);
+    if (nameMissing || cityMissing) return;
     onSave(name.trim(), city.trim());
   };
 
   return (
     <div
       data-modal
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 pointer-events-auto"
-      onClick={(e) => e.stopPropagation()}
+      className="modal-backdrop fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] pointer-events-auto"
+      onClick={(e) => {
+        e.stopPropagation();
+        onCancel();
+      }}
       onMouseDown={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
+      // Keys typed here stay here (not the map's, nor the page's F for focus mode); Esc still closes
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Escape") onCancel();
+      }}
     >
-      <div className="bg-[#111111] border border-[#333] rounded-2xl p-6 w-[400px] max-w-[90vw] shadow-[0_20px_50px_rgba(0,0,0,0.6)] duration-300">
-        <div className="flex justify-between items-center mb-5 border-b border-white/5 pb-3">
-          <h3 className="text-sm font-black font-sans text-[#fbbf24] uppercase tracking-wider">Add Manual Store</h3>
-          <button onClick={onCancel} className="text-gray-400 hover:text-white transition-colors" type="button">
-            <X size={18} />
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-store-title"
+        className="modal-card add-store-modal bg-[#111111] border border-[#2a2a2a] rounded-[20px] w-full shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={save}
+        noValidate
+      >
+        <header className="modal-head">
+          <div className="modal-icon">
+            <MapPin size={19} />
+          </div>
+          <div className="min-w-0">
+            <h2 id="add-store-title" className="modal-title">
+              Add a store here
+            </h2>
+            <p className="modal-subtitle font-mono">
+              {pin.lat.toFixed(6)}, {pin.lng.toFixed(6)}
+            </p>
+          </div>
+          <button type="button" onClick={onCancel} className="modal-close" title="Close" aria-label="Close">
+            <X size={16} />
           </button>
-        </div>
+        </header>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-              Store Name
-            </label>
+        <div className="modal-body">
+          <label className="field">
+            <span className="field-label">Store name</span>
             <input
               type="text"
-              className="w-full bg-[#1c1c1c] border border-[#333] rounded-lg px-3 py-2.5 text-xs text-white outline-none focus:border-[#fbbf24] transition-colors font-sans"
+              className={`field-input plain ${tried && nameMissing ? "invalid" : ""}`}
               placeholder="e.g. Al Yasmin Express"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              aria-invalid={tried && nameMissing}
               autoFocus
             />
-          </div>
+            {tried && nameMissing && <span className="field-help warn">Enter the store's name.</span>}
+          </label>
 
-          <div>
-            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">City</label>
+          <label className="field">
+            <span className="field-label">City</span>
             <input
               type="text"
-              className="w-full bg-[#1c1c1c] border border-[#333] rounded-lg px-3 py-2.5 text-xs text-white outline-none focus:border-[#fbbf24] transition-colors font-sans"
+              className={`field-input plain ${tried && cityMissing ? "invalid" : ""}`}
               placeholder="e.g. Riyadh"
               value={city}
               onChange={(e) => setCity(e.target.value)}
+              aria-invalid={tried && cityMissing}
             />
-          </div>
+            {tried && cityMissing && <span className="field-help warn">Enter the city it's in.</span>}
+          </label>
 
-          <div>
-            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-              Location Coordinates
-            </label>
-            <div className="font-mono text-xs text-gray-400 bg-white/5 px-3 py-2 rounded-lg border border-white/5">
-              {pin.lat.toFixed(6)}, {pin.lng.toFixed(6)}
-            </div>
+          <p className="field-help">
+            The rest (DS code, contract, rent) stays blank and is listed under Data quality. The store is saved in this
+            browser only.
+          </p>
+
+          <div className="modal-actions">
+            <button type="button" onClick={onCancel} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              Save Store
+            </button>
           </div>
         </div>
-
-        <div className="flex gap-3 mt-6">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-3 bg-[#1c1c1c] border border-[#333] text-gray-300 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-white/5 cursor-pointer"
-            type="button"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={save}
-            className="flex-1 py-3 bg-[#fbbf24] text-black rounded-lg text-xs font-black uppercase tracking-wider hover:opacity-90 active:scale-[0.98] transition-transform cursor-pointer"
-            type="button"
-          >
-            Save Store
-          </button>
-        </div>
-      </div>
+      </form>
     </div>
   );
 }
