@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { CoverageFilter, LayerKind, PolygonRings, SidebarTab, ZoneLayer } from "./types";
 import { hasCoords } from "./lib/checks";
 import { analyseCoverage } from "./lib/coverage";
+import { csvFileName, storesToCsv } from "./lib/csvExport";
 import { download } from "./lib/download";
 import { kmlFileName, layerToKml } from "./lib/kmlExport";
 import { zoneBounds, zoneColor } from "./lib/layers";
@@ -208,6 +209,19 @@ export default function App() {
     showToast(`Deleted "${zoneSelection.zone.name || "Unnamed zone"}"`);
   };
 
+  // The stores that pass the filters, with their renewal dates and zones worked out
+  const exportCsv = () => {
+    if (!filteredStores.length) {
+      showToast("No stores to export. Clear the filters to export all stores");
+      return;
+    }
+    const filtered = filteredStores.length < stores.length;
+    const fileName = csvFileName(filtered, new Date());
+    download(fileName, storesToCsv(filteredStores, settings, coverage), "text/csv;charset=utf-8");
+    const count = `${filteredStores.length} ${filteredStores.length === 1 ? "store" : "stores"}`;
+    showToast(`Saved ${fileName} with ${count}${filtered ? " (the ones that match the filters)" : ""}`);
+  };
+
   const exportLayer = (layer: ZoneLayer) => {
     download(kmlFileName(layer), layerToKml(layer), "application/vnd.google-earth.kml+xml");
     showToast(`Saved ${kmlFileName(layer)}. In My Maps, add a layer and choose Import to bring it in`);
@@ -267,6 +281,7 @@ export default function App() {
           selectedId={selectedId}
           onSelectStore={selectFromList}
           onImportSheet={openUploadModal}
+          onExportCsv={exportCsv}
           onCityFocus={(city) => {
             filters.setCityFilter(city);
             setFocusedCity(city);

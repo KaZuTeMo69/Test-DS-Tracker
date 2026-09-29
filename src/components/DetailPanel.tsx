@@ -7,7 +7,7 @@ import { Coverage, coverageFlags, ZoneHit } from "../lib/coverage";
 import { daysBetween, formatDate, formatDuration, parseDate, pluralDays, RenewalInfo, today } from "../lib/contract";
 import { useSettings } from "../hooks/useSettings";
 import { fmtN } from "../lib/format";
-import { storeRenewal } from "../lib/renewal";
+import { RENEWAL_STATUS_LABEL, storeRenewal } from "../lib/renewal";
 import { rentFactor, shownRent, vatLabel } from "../lib/settings";
 import { RentComparison, rentComparison } from "../lib/rentStats";
 import { isLive, isPaid, liveStatus, paidStatus } from "../lib/status";
@@ -463,14 +463,6 @@ function RentTab({ store, rent }: { store: Store; rent: RentComparison }) {
 
 // ── Contract tab ──
 
-const STATUS_LABEL: Record<RenewalInfo["status"], string> = {
-  ok: "On track",
-  soon: "Renew soon",
-  now: "Renew now",
-  expired: "Expired",
-  unknown: "Unknown",
-};
-
 function Timeline({ start, renewal }: { start: Date; renewal: RenewalInfo }) {
   const { leadDays } = useSettings();
   const end = renewal.endDate!;
@@ -556,7 +548,7 @@ function ContractTab({ store, renewal }: { store: Store; renewal: RenewalInfo })
         <Row label="Start" value={store.startDate || "—"} />
         <Row label="End" value={store.endDate || "—"} />
         <Row label="Renewal starts" value={renewalValue} valueClass={status === "ok" ? "" : toneRow} />
-        <Row label="Status" value={STATUS_LABEL[status]} valueClass={toneRow} />
+        <Row label="Status" value={RENEWAL_STATUS_LABEL[status]} valueClass={toneRow} />
       </div>
     </>
   );
