@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Marker, Popup } from "react-leaflet";
+import { Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { LatLng } from "../../lib/coords";
 import { makeIcon } from "./pinIcon";
@@ -14,15 +14,29 @@ interface SearchPinProps {
 export default function SearchPin({ pin, onAddStore, onRemove }: SearchPinProps) {
   const markerRef = useRef<L.Marker | null>(null);
 
-  // Open the popup as soon as the pin is placed
+  const map = useMap();
+
+  // Open the popup once the map has moved to the pin. The map puts the pin in the middle of what's in view, so
+  // the popup doesn't pan the map to fit (autoPan): that pan stopped the move to the pin halfway, and searching
+  // the same point again after panning away left it off-centre
   useEffect(() => {
-    const timer = setTimeout(() => markerRef.current?.openPopup(), 150);
-    return () => clearTimeout(timer);
-  }, [pin]);
+    const open = () => {
+      clearTimeout(fallback);
+      map.off("moveend", open);
+      markerRef.current?.openPopup();
+    };
+    map.on("moveend", open);
+    // When the map was already there, nothing moves
+    const fallback = setTimeout(open, 450);
+    return () => {
+      clearTimeout(fallback);
+      map.off("moveend", open);
+    };
+  }, [pin, map]);
 
   return (
     <Marker position={[pin.lat, pin.lng]} icon={makeIcon("#FF5722", "round", "m", true)} ref={markerRef}>
-      <Popup closeButton={false} maxWidth={280}>
+      <Popup closeButton={false} maxWidth={280} autoPan={false}>
         <div className="map-popup-container p-4 flex flex-col gap-3 bg-[#111] rounded-xl text-white">
           <div className="text-center">
             <div className="text-xs font-black text-[#FF5722] uppercase tracking-wider mb-1 font-sans">

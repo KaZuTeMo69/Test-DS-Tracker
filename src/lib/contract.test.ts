@@ -4,6 +4,8 @@ import {
   contractEndDate,
   daysBetween,
   formatDate,
+  durationOptionMonths,
+  durationTerm,
   formatDuration,
   fromHijri,
   parseDate,
@@ -117,7 +119,41 @@ describe("parseDurationMonths", () => {
     expect(parseDurationMonths(text)).toBeNull();
   });
 
-  it.todo('flags a duration with an option period such as "2+1 years" instead of reading it as 1 year');
+  // A term with option periods: the contract, and its renewal, run to the end of the term
+  it.each([
+    ["2+1 years", 24],
+    ["2 + 1 Years", 24],
+    ["2+1", 24],
+    ["3+2 yrs", 36],
+    ["6+6 months", 6],
+    ["2 years + 1 year", 24],
+    ["1+1+1 years", 12],
+    ["1 year 6 months + 1 year", 18],
+  ])("reads %j as its term, %i months (not the option)", (text, months) => {
+    expect(parseDurationMonths(text)).toBe(months);
+  });
+
+  it.each(["+1 years", "2+", "TBD+1", "2++1"])("rejects %j", (text) => {
+    expect(parseDurationMonths(text)).toBeNull();
+  });
+});
+
+describe("durationOptionMonths", () => {
+  it("lists the option periods after the term", () => {
+    expect(durationOptionMonths("2+1 years")).toEqual([12]);
+    expect(durationOptionMonths("1+1+1 years")).toEqual([12, 12]);
+    expect(durationOptionMonths("6+6 months")).toEqual([6]);
+    expect(durationOptionMonths("2 years")).toEqual([]);
+    expect(durationOptionMonths("2+abc")).toEqual([]);
+  });
+});
+
+describe("durationTerm", () => {
+  it("is the term without its options", () => {
+    expect(durationTerm("2+1 years")).toBe("2 years");
+    expect(durationTerm("2+1")).toBe("2");
+    expect(durationTerm("3 Years")).toBe("3 Years");
+  });
 });
 
 describe("formatDuration", () => {
@@ -130,6 +166,14 @@ describe("formatDuration", () => {
   it("leaves anything else as written", () => {
     expect(formatDuration("6 Months")).toBe("6 Months");
     expect(formatDuration(" 2 Years ")).toBe("2 Years");
+  });
+
+  it("spells out a term with options", () => {
+    expect(formatDuration("2+1 years")).toBe("2 years + 1-year option");
+    expect(formatDuration("2+1")).toBe("2 years + 1-year option");
+    expect(formatDuration("1+1+1 years")).toBe("1 year + 1-year option + 1-year option");
+    expect(formatDuration("6+6 months")).toBe("6 months + 6-month option");
+    expect(formatDuration("2+abc")).toBe("2+abc");
   });
 });
 

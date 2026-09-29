@@ -127,7 +127,11 @@ export default function MapController({
       lastFitRef.current = { pinsKey, focusedCity, tempPin };
       if (tempPin) {
         try {
-          map.setView([tempPin.lat, tempPin.lng], 14, { animate: true });
+          // In the middle of the part of the map the panel and sheets leave in view
+          const { left, bottom } = insetRef.current;
+          const pin = L.latLng(tempPin.lat, tempPin.lng);
+          const center = left || bottom ? map.unproject(map.project(pin, 14).add([-left / 2, bottom / 2]), 14) : pin;
+          map.setView(center, 14, { animate: true });
         } catch (e) {
           console.warn("setView to tempPin failed", e);
         }
