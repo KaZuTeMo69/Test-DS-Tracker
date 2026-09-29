@@ -95,15 +95,43 @@ body {
   padding: 0;
 }
 
-/* Fills the page inside its margin; sized to the screen, the margin used to push it a few pixels past it */
+/* Fills the page edge to edge: the top bar, then the rail and the map */
 .app-container {
-  padding: var(--token-spacing-hairline) !important;
-  margin: var(--token-spacing-hairline) !important;
+  padding: 0 !important;
+  margin: 0 !important;
   width: auto;
   height: auto;
   flex: 1 1 auto;
   min-height: 0;
-  border-radius: var(--token-spacing-hairline);
+}
+
+.app-main,
+.map-area,
+.map-container,
+.topbar,
+.nav-rail,
+.sidebar,
+.panel-sheet,
+#map,
+#map .leaflet-container {
+  margin: 0 !important;
+}
+
+.app-main,
+.map-area,
+.map-container,
+#map,
+#map .leaflet-container {
+  padding: 0 !important;
+}
+
+/* The map's own buttons: clear of the edges (the base rule above takes the margin utilities' place) */
+.map-controls {
+  margin: 12px 12px 0 0 !important;
+}
+
+.map-zoom-buttons {
+  margin: 0 12px 28px 0 !important;
 }
 
 .app-main {
@@ -112,24 +140,22 @@ body {
   position: relative !important;
 }
 
-/* The sidebar floats over the map at every screen size */
+/* The open panel on a large screen: a column over the left of the map, beside the icon rail */
 .sidebar {
   display: flex;
   flex-direction: column;
   position: absolute !important;
-  left: 14px !important;
-  top: 14px !important;
-  bottom: 14px !important;
-  height: calc(100% - 28px) !important;
-  width: 350px !important;
-  max-width: 360px !important;
-  flex-shrink: 0 !important;
-  z-index: 2000 !important;
-  background: rgba(30, 30, 30, 0.8) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 340px;
+  max-width: 100%;
+  z-index: 1050;
+  background: rgba(17, 17, 17, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid #262626;
+  box-shadow: 12px 0 30px rgba(0, 0, 0, 0.45);
   font-size: 1rem !important;
 }
 
@@ -142,18 +168,86 @@ body {
    HEADER
    ========================================================================== */
 
-.app-header {
-  height: var(--token-size-header-height);
-  background: var(--token-color-bg-surface-s1);
-  border-bottom: 1px solid var(--token-color-border-muted);
-  padding: var(--token-spacing-hairline) var(--token-spacing-lg);
-  display: flex;
-  align-items: center;
+/* One bar: the app and its data source, the main figures in a row, and the actions. A single row of at most
+   56px from tablet width up; on a phone the figures move to a second row that scrolls sideways */
+.topbar {
+  gap: 4px 10px;
+  padding: 6px 12px !important;
+  min-height: 48px;
+}
+
+@media (min-width: 768px) {
+  .topbar {
+    height: 56px;
+    padding: 0 14px !important;
+  }
+}
+
+.topbar-kpis {
+  gap: 2px;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+}
+
+.topbar-kpis::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .topbar-kpis {
+    margin: 0 -12px !important;
+    padding: 0 8px !important;
+    width: calc(100% + 24px);
+  }
+}
+
+.source-badge {
+  padding: 4px 9px !important;
+}
+
+@media (min-width: 640px) {
+  .source-badge {
+    padding: 4px 11px !important;
+  }
+}
+
+.topbar-btn {
+  padding: 0 !important;
+  width: 36px;
+}
+
+.topbar-upload {
+  gap: 6px;
+  padding: 0 10px !important;
+}
+
+.topbar-more {
+  margin-left: 2px !important;
+  padding: 0 !important;
+}
+
+/* The popover with the figures that aren't in the bar */
+.kpi-popover {
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, calc(100vw - 24px));
+  padding: 10px !important;
+  z-index: 10;
+}
+
+.extra-figure {
+  padding: 9px 11px !important;
+  min-width: 0;
+}
+
+.city-figures {
+  margin-bottom: 2px !important;
 }
 
 .logo-text {
   font-family: var(--token-font-family-display);
-  font-size: 1.5rem !important;
+  font-size: 1.15rem !important;
   font-weight: 800;
   color: var(--token-color-noon-yellow);
   letter-spacing: -0.3px;
@@ -163,55 +257,296 @@ body {
    KPI CARDS
    ========================================================================== */
 
-.kpis-container {
-  display: flex;
-  gap: var(--token-spacing-sm);
-  padding: var(--token-spacing-sm) var(--token-spacing-md);
-  background: var(--token-color-bg-main);
-  border-bottom: 1px solid var(--token-color-border-muted);
-  overflow-x: auto;
+/* A figure in the top bar: the number, and its label (and a note) beside it; no box around it */
+.kpi-inline {
+  gap: 7px;
+  padding: 5px 9px !important;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
-.kpi-card {
-  background: var(--token-color-bg-surface-s1) !important;
-  border: 1px solid var(--token-color-border-muted) !important;
-  border-top-width: 2px !important;
-  border-radius: var(--token-border-radius-main);
-  padding: var(--token-spacing-sm) var(--token-spacing-lg) !important;
-  min-width: max-content !important;
-  flex-shrink: 0 !important;
+.kpi-inline:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
-@media (min-width: 768px) {
-  .kpi-card {
-    padding: var(--token-spacing-md) var(--token-spacing-xl) !important;
+.kpi-inline.on {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.kpi-inline .kpi-number {
+  font-family: var(--token-font-family-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+}
+
+@media (min-width: 1280px) {
+  .kpi-inline .kpi-number {
+    font-size: 1.4rem;
   }
 }
 
 .kpi-label {
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--token-color-text-muted);
-  margin-bottom: var(--token-spacing-xs);
+  letter-spacing: 0.07em;
+  color: var(--token-color-text-secondary);
+  white-space: nowrap;
 }
 
-.kpi-value {
-  font-family: var(--token-font-family-display);
+.kpi-note {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   ICON RAIL AND PANELS
+   ========================================================================== */
+
+.nav-rail {
+  width: 48px;
+  padding: 8px 0 !important;
+  gap: 4px;
+  z-index: 1100;
+}
+
+.rail-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0 !important;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  color: var(--token-color-text-secondary);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.rail-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.rail-btn.on {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
+.rail-btn:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 1px;
+}
+
+.rail-icon {
+  position: relative;
+  display: flex;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.rail-badge {
+  position: absolute;
+  top: -9px;
+  left: 11px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px !important;
+  margin: 0 !important;
+  border-radius: 8px;
+  font-size: 11px;
   font-weight: 800;
-  color: var(--token-color-text-primary);
-  letter-spacing: -1px;
+  line-height: 16px;
+  text-align: center;
+  color: #ffffff;
+  border: 2px solid #0d0d0d;
+  box-sizing: content-box;
+  font-family: var(--token-font-family-sans);
 }
 
-.kpi-card .kpi-number {
-  font-size: 1.4rem !important;
-  font-weight: 750;
+.rail-badge.red {
+  background: #dc2626;
 }
 
-@media (min-width: 768px) {
-  .kpi-card .kpi-number {
-    font-size: 2rem !important;
+.rail-badge.orange {
+  background: #c2410c;
+}
+
+/* Tooltips beside the rail icons */
+.nav-rail [data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 5px 9px !important;
+  margin: 0 !important;
+  border-radius: 6px;
+  background: #1e1e1e;
+  border: 1px solid #3a3a3a;
+  color: #efefef;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  z-index: 10;
+}
+
+.nav-rail [data-tip]:hover::after,
+.nav-rail [data-tip]:focus-visible::after {
+  opacity: 1;
+  transition-delay: 0.25s;
+}
+
+/* The panel's header: its name and its actions */
+.panel-head {
+  padding: 2px 0 2px 4px !important;
+}
+
+.panel-title {
+  font-family: var(--token-font-family-display);
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #ffffff;
+}
+
+.panel-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0 !important;
+  border-radius: 999px;
+  color: var(--token-color-text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.panel-action:hover {
+  color: #fbbf24;
+}
+
+.panel-body {
+  padding: 12px 12px 20px !important;
+}
+
+.panel-foot {
+  padding: 9px !important;
+}
+
+/* The panels on smaller screens: a sheet over the bottom of the map, closed to a bar of icons */
+.panel-sheet {
+  z-index: 1050;
+  background: rgba(17, 17, 17, 0.97);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid #333;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+  transition: height 0.25s ease;
+}
+
+.panel-sheet.dragging {
+  transition: none;
+}
+
+.panel-sheet .sheet-handle,
+.panel-sheet [data-sheet-drag] {
+  touch-action: none;
+}
+
+.panel-sheet-bar {
+  padding: 0 8px 6px !important;
+}
+
+.panel-sheet-tabs {
+  gap: 2px;
+}
+
+.rail-btn.with-label {
+  width: 100%;
+  height: auto;
+  gap: 3px;
+  padding: 5px 0 !important;
+}
+
+.rail-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.panel-sheet-summary {
+  height: 36px;
+  padding: 2px 4px 0 !important;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--token-color-text-secondary);
+}
+
+.panel-sheet-summary .panel-title {
+  font-size: 14px;
+}
+
+.panel-sheet-count {
+  font-family: var(--token-font-family-sans);
+  font-size: 11px;
+  letter-spacing: 0;
+  color: var(--token-color-text-secondary);
+}
+
+.panel-sheet .panel-body {
+  border-top: 1px solid #262626;
+}
+
+/* With a panel open over half a phone screen, pinch to zoom; the buttons would crowd the map buttons */
+@media (max-width: 767px) {
+  .panel-sheet-open .map-zoom-buttons {
+    display: none;
   }
+}
+
+.panel-sheet .panel-filters {
+  margin-bottom: 4px !important;
+}
+
+/* Focus mode: only the map, and a button to leave */
+.focus-mode .map-card,
+.focus-mode .map-controls,
+.focus-mode .map-zoom-buttons,
+.focus-mode .coord-search {
+  display: none !important;
+}
+
+.focus-exit {
+  top: 12px;
+  right: 12px;
+  padding: 8px 12px !important;
+  z-index: 1100;
 }
 
 /* ==========================================================================
@@ -220,7 +555,7 @@ body {
 
 .sb-top {
   height: auto !important;
-  padding: 8px 10px !important;
+  padding: 10px 12px !important;
   display: flex;
   flex-direction: column;
   gap: 6px !important;
@@ -1187,11 +1522,10 @@ body {
   padding: 7px 18px;
 }
 
-/* Renewal timeline (Renewals tab). The sidebar is wider for it on large screens */
+/* Renewal timeline (Renewals tab). The panel is wider for it on large screens */
 @media (min-width: 1024px) {
   .sidebar.sidebar-wide {
-    width: min(640px, calc(100% - 28px)) !important;
-    max-width: none !important;
+    width: min(640px, 100%);
   }
 }
 
@@ -1426,45 +1760,50 @@ body {
   padding: 24px 0;
 }
 
-/* Five tabs don't fit with their emoji in the standard sidebar, so the emoji only show when there's room */
-.tab-container {
-  container-type: inline-size;
-}
-
-@container (max-width: 480px) {
-  .tab-emoji {
-    display: none;
-  }
-}
-
-/* Map legend. On a large screen it sits to the right of the open sidebar, which would otherwise cover it */
+/* Map legend: a small chip at the bottom left of the map that opens upwards. It moves right of the open panel,
+   and up above the sheets on smaller screens */
 .map-legend {
-  padding: 7px 10px;
-  max-width: calc(100% - 90px);
-  transition: left 0.25s ease;
+  left: 12px;
+  bottom: calc(var(--sheet-inset, 0px) + 12px);
+  max-width: min(380px, calc(100% - 90px));
+  padding: 0 !important;
+  transition:
+    left 0.2s ease,
+    bottom 0.25s ease;
 }
 
-.map-legend-toggle .fb {
-  padding: 2px 8px !important;
-  font-size: 11px !important;
-  white-space: nowrap;
+.legend-chip {
+  padding: 6px 10px !important;
+  cursor: pointer;
+}
+
+.legend-chip:hover span {
+  color: #ffffff;
 }
 
 .map-legend-items {
-  gap: 4px 12px;
-  margin-top: 6px;
+  gap: 5px 12px;
+  padding: 2px 10px 9px !important;
 }
 
-/* Room kept on the right for the zoom buttons */
 @media (min-width: 1024px) {
-  .with-sidebar .map-legend {
-    left: 380px;
-    max-width: calc(100% - 460px);
+  .panel-open .map-legend {
+    left: 352px;
+    max-width: min(380px, calc(100% - 440px));
   }
 
-  .with-wide-sidebar .map-legend {
-    left: min(670px, calc(100% - 300px));
-    max-width: max(220px, calc(100% - 750px));
+  .panel-wide .map-legend {
+    left: min(652px, calc(100% - 300px));
+    max-width: max(200px, calc(100% - 740px));
+  }
+
+  /* The coordinate search moves over to the middle of the map that's still visible */
+  .panel-open .coord-search {
+    left: calc(50% + 170px);
+  }
+
+  .panel-wide .coord-search {
+    left: calc(50% + 320px);
   }
 }
 
@@ -1511,6 +1850,7 @@ body {
 
 /* Phone: the store and zone cards as a sheet over the bottom of the map */
 .bottom-sheet {
+  margin: 0 !important;
   transition: height 0.25s ease;
 }
 
@@ -1546,6 +1886,12 @@ body {
 
 /* The legend would cover what's left of the map above the sheet, and with the sheet all the way up there's no
    room for the zoom buttons either */
+@media (max-width: 1023px) {
+  .panel-sheet-open .map-legend {
+    display: none;
+  }
+}
+
 @media (max-width: 767px) {
   .sheet-open .map-legend {
     display: none;

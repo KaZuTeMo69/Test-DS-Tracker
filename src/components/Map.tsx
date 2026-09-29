@@ -3,6 +3,7 @@ import { MapContainer, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { PolygonRings, Store, ZoneLayer } from "../types";
 import { LatLng } from "../lib/coords";
+import { PinColors } from "../lib/settings";
 import { RentBenchmarks } from "../lib/rentStats";
 import AddStoreModal from "./map/AddStoreModal";
 import CoordinateSearch from "./map/CoordinateSearch";
@@ -17,7 +18,9 @@ import ZoneLayers, { ZoneRef } from "./map/ZoneLayers";
 interface MapComponentProps {
   stores: Store[];
   benchmarks: RentBenchmarks; // pin colours (rent against the city median) and sizes (annual rent)
-  bottomInset: number; // on a phone, the height of the store or zone sheet over the bottom of the map
+  bottomInset: number; // the height of the sheet (store card or panels) over the bottom of the map
+  leftInset: number; // the width of the open panel over the left of the map, on large screens
+  layoutKey: string; // changes when the panels or bars around the map open or close
   selectedId: number | null;
   onSelectStore: (id: number) => void;
   onMapClick?: () => void;
@@ -28,6 +31,10 @@ interface MapComponentProps {
   selectedZone: ZoneRef | null;
   onSelectZone: (layerId: string, zoneId: string) => void;
   onOpenLayers: () => void;
+  pinColors: PinColors;
+  onPinColors: (pinColors: PinColors) => void;
+  onFocusMode: () => void;
+  searchOpen: boolean; // the coordinate search bar, opened and closed from the top bar
   zoomRequest: ZoomRequest | null;
   cardOpen: boolean; // a store or zone card is open (top right)
   // Drawing or editing a zone
@@ -43,6 +50,8 @@ export default function MapComponent({
   stores,
   benchmarks,
   bottomInset,
+  leftInset,
+  layoutKey,
   selectedId,
   onSelectStore,
   onMapClick,
@@ -53,6 +62,10 @@ export default function MapComponent({
   selectedZone,
   onSelectZone,
   onOpenLayers,
+  pinColors,
+  onPinColors,
+  onFocusMode,
+  searchOpen,
   zoomRequest,
   cardOpen,
   mapMode,
@@ -124,13 +137,16 @@ export default function MapComponent({
           onCancel={onCancelMode}
         />
       ) : (
-        <CoordinateSearch
-          value={searchInput}
-          onChange={setSearchInput}
-          onFound={setTempPin}
-          onClear={removePin}
-          stepAside={cardOpen}
-        />
+        searchOpen && (
+          <CoordinateSearch
+            value={searchInput}
+            onChange={setSearchInput}
+            onFound={setTempPin}
+            onClear={removePin}
+            stepAside={cardOpen}
+            autoFocus={!tempPin}
+          />
+        )
       )}
 
       {showAddModal && tempPin && (
@@ -154,6 +170,8 @@ export default function MapComponent({
           routePanelRef={routePanelRef}
           zoomRequest={zoomRequest}
           bottomInset={bottomInset}
+          leftInset={leftInset}
+          layoutKey={layoutKey}
         />
 
         <TileLayer
@@ -185,6 +203,9 @@ export default function MapComponent({
           setIsNightMode={setIsNightMode}
           hasLayers={layers.some((l) => l.visible)}
           onOpenLayers={onOpenLayers}
+          pinColors={pinColors}
+          onPinColors={onPinColors}
+          onFocusMode={onFocusMode}
           panelRef={routePanelRef}
         />
 

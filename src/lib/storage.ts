@@ -5,6 +5,7 @@ import { Settings, toSettings } from "./settings";
 const SHEET_ID_KEY = "dst.sheetId";
 const MANUAL_STORES_KEY = "dst.manualStores";
 const SETTINGS_KEY = "dst.settings";
+const PANEL_OPEN_KEY = "dst.panelOpen";
 
 export type ManualStore = Omit<Store, "id">;
 
@@ -96,3 +97,13 @@ export function loadSettings(): Settings {
 }
 
 export const saveSettings = (settings: Settings) => write(SETTINGS_KEY, JSON.stringify(settings));
+
+// ── Layout ──
+
+/** Whether the side panel was left open, or null if it was never opened or closed here. */
+export function loadPanelOpen(): boolean | null {
+  const saved = read(PANEL_OPEN_KEY);
+  return saved === "1" ? true : saved === "0" ? false : null;
+}
+
+export const savePanelOpen = (open: boolean) => write(PANEL_OPEN_KEY, open ? "1" : "0");

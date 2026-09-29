@@ -115,6 +115,7 @@ export default function UploadModal({
 
   return (
     <div
+      data-modal
       className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9000] backdrop-blur-md p-4 sm:p-6"
       onClick={onClose}
       onDragOver={handleDragOver}

@@ -10,10 +10,18 @@ interface CoordinateSearchProps {
   // From 768 to 1280px the bar would sit on top of the open store card, so it steps aside while one is open (on a
   // phone the card is a sheet at the bottom, out of its way)
   stepAside: boolean;
+  autoFocus?: boolean; // just opened from the top bar
 }
 
 /** The floating search bar that drops a pin at a typed coordinate. */
-export default function CoordinateSearch({ value, onChange, onFound, onClear, stepAside }: CoordinateSearchProps) {
+export default function CoordinateSearch({
+  value,
+  onChange,
+  onFound,
+  onClear,
+  stepAside,
+  autoFocus,
+}: CoordinateSearchProps) {
   const [error, setError] = useState("");
 
   const submit = (e: FormEvent) => {
@@ -27,7 +35,7 @@ export default function CoordinateSearch({ value, onChange, onFound, onClear, st
 
   return (
     <div
-      className={`absolute top-4 left-1/2 -translate-x-1/2 sm:w-[340px] w-[220px] max-w-[90vw] z-[1000] pointer-events-auto transition-all duration-300 ${stepAside ? "md:max-xl:hidden" : ""}`}
+      className={`coord-search absolute top-4 left-1/2 -translate-x-1/2 sm:w-[340px] w-[220px] max-w-[90vw] z-[1000] pointer-events-auto transition-all duration-300 ${stepAside ? "md:max-xl:hidden" : ""}`}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
@@ -38,6 +46,7 @@ export default function CoordinateSearch({ value, onChange, onFound, onClear, st
           <input
             type="text"
             placeholder="Search coordinates..."
+            autoFocus={autoFocus}
             value={value}
             onChange={(e) => {
               onChange(e.target.value);

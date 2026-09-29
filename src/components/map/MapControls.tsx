@@ -1,27 +1,35 @@
 import { RefObject } from "react";
 import { useMap } from "react-leaflet";
-import { Layers, Moon, Sun } from "lucide-react";
+import { Layers, Maximize2, Moon, Palette, Sun } from "lucide-react";
+import { PinColors } from "../../lib/settings";
 
 interface MapControlsProps {
   isNightMode: boolean;
   setIsNightMode: (night: boolean) => void;
   hasLayers: boolean; // any map layer showing
   onOpenLayers: () => void;
+  pinColors: PinColors;
+  onPinColors: (pinColors: PinColors) => void;
+  onFocusMode: () => void;
   // The route's directions panel is placed here, under the map buttons
   panelRef: RefObject<HTMLDivElement | null>;
 }
 
-/** The buttons down the right of the map: day/night tiles, map layers, route directions. */
+/** The buttons down the right of the map: day/night tiles, pin colours, map layers, focus mode, route directions. */
 export default function MapControls({
   isNightMode,
   setIsNightMode,
   hasLayers,
   onOpenLayers,
+  pinColors,
+  onPinColors,
+  onFocusMode,
   panelRef,
 }: MapControlsProps) {
+  const byRent = pinColors === "rent";
   return (
     <>
-      <div className="leaflet-top leaflet-right mt-4 mr-4 !z-[1000] pointer-events-none">
+      <div className="map-controls leaflet-top leaflet-right mt-4 mr-4 !z-[1000] pointer-events-none">
         <div className="flex flex-col gap-2 items-end pointer-events-auto">
           <button
             onClick={(e) => {
@@ -37,12 +45,40 @@ export default function MapControls({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              onPinColors(byRent ? "status" : "rent");
+            }}
+            data-pin-colors={pinColors}
+            aria-pressed={byRent}
+            className={`flex items-center justify-center w-10 h-10 bg-[#111]/90 backdrop-blur-md border border-[#333] rounded-lg shadow-2xl transition-all cursor-pointer ${byRent ? "border-[#fbbf24] text-[#fbbf24]" : "text-[#EFEFEF] hover:bg-[#222]"}`}
+            title={
+              byRent
+                ? "Pins coloured by rent per m² against the city median. Click to colour by Live / Paid status"
+                : "Pins coloured by Live / Paid status. Click to colour by rent per m² against the city median"
+            }
+          >
+            <Palette size={18} />
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
               onOpenLayers();
             }}
             className={`flex items-center justify-center w-10 h-10 bg-[#111]/90 backdrop-blur-md border border-[#333] rounded-lg shadow-2xl transition-all cursor-pointer ${hasLayers ? "border-[#4ade80] text-[#4ade80]" : "text-[#EFEFEF] hover:bg-[#222]"}`}
             title="Map layers (KML / KMZ)"
           >
             <Layers size={18} />
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onFocusMode();
+            }}
+            className="focus-btn flex items-center justify-center w-10 h-10 bg-[#111]/90 backdrop-blur-md border border-[#333] rounded-lg shadow-2xl transition-all cursor-pointer text-[#EFEFEF] hover:bg-[#222]"
+            title="Focus mode: only the map (F)"
+          >
+            <Maximize2 size={17} />
           </button>
 
           {/* Clicks in the directions panel mustn't reach the map area, which would deselect the store */}

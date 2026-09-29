@@ -51,7 +51,10 @@ export default function ZoneEditor({ mode, controlsRef, onDrawn, onEdited, onCan
       else handlers.current.onProblem("That shape needs at least 3 corners");
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handlers.current.onCancel();
+      if (e.key === "Escape") {
+        e.preventDefault(); // used up here: the panel stays open
+        handlers.current.onCancel();
+      }
       if (e.key === "Enter") controlsRef.current?.finish();
     };
     document.addEventListener("keydown", onKey);
