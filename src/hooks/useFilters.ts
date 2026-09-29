@@ -4,6 +4,7 @@ import { RenewalDays } from "../lib/contract";
 import { Coverage, matchesCoverage } from "../lib/coverage";
 import { storeRenewal } from "../lib/renewal";
 import { rentFactor, Settings } from "../lib/settings";
+import { DEFAULT_URL_STATE, UrlState } from "../lib/urlState";
 import { hasUnclearStatus, isLive, isPaid, liveStatus, paidStatus } from "../lib/status";
 
 /**
@@ -57,14 +58,22 @@ export interface Filters {
 }
 
 /** Filter state, and the stores and city totals that pass the filters. */
-export function useFilters(stores: Store[], coverage: Coverage, settings: Settings) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [liveFilter, setLiveFilter] = useState<LiveFilter>("all");
-  const [paidFilter, setPaidFilter] = useState<PaidFilter>("all");
-  const [renewalFilter, setRenewalFilter] = useState<RenewalFilter>("all");
-  const [cityFilter, setCityFilter] = useState("");
-  const [unclearOnly, setUnclearOnly] = useState(false);
-  const [coverageFilter, setCoverageOnly] = useState<CoverageFilter | null>(null);
+// The filters start from the page's link, so a shared or bookmarked view opens as it was
+export function useFilters(
+  stores: Store[],
+  coverage: Coverage,
+  settings: Settings,
+  start: UrlState = DEFAULT_URL_STATE,
+) {
+  const [searchQuery, setSearchQuery] = useState(start.q);
+  const [liveFilter, setLiveFilter] = useState<LiveFilter>(start.live);
+  const [paidFilter, setPaidFilter] = useState<PaidFilter>(start.paid);
+  const [renewalFilter, setRenewalFilter] = useState<RenewalFilter>(start.renewal);
+  const [cityFilter, setCityFilter] = useState(start.city);
+  const [unclearOnly, setUnclearOnly] = useState(start.only === "unclear");
+  const [coverageFilter, setCoverageOnly] = useState<CoverageFilter | null>(
+    start.only === "outside" || start.only === "whitespace" ? start.only : null,
+  );
 
   // The search box updates as you type; the list follows a moment later, so typing stays smooth with many stores
   const query = useDeferredValue(searchQuery);

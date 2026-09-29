@@ -14,6 +14,7 @@ import { useLayers } from "./hooks/useLayers";
 import { SettingsContext, useSettingsState } from "./hooks/useSettings";
 import { isManualStore, useStores } from "./hooks/useStores";
 import { useToast } from "./hooks/useToast";
+import { linkedView, useUrlState } from "./hooks/useUrlState";
 import CoverageSummary from "./components/CoverageSummary";
 import DetailPanel from "./components/DetailPanel";
 import Header from "./components/Header";
@@ -53,10 +54,11 @@ export default function App() {
     stores,
     coverage,
     settings,
+    linkedView,
   );
 
   // Sidebar, map and selection
-  const [currentTab, setCurrentTab] = useState<SidebarTab>("stores");
+  const [currentTab, setCurrentTab] = useState<SidebarTab>(linkedView.tab);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isNightMode, setIsNightMode] = useState(true);
@@ -132,6 +134,17 @@ export default function App() {
     },
     [selectStore],
   );
+
+  // The view (filters, tab, selected store) in the page's link, and the linked store selected once loaded
+  useUrlState({
+    filters,
+    currentTab,
+    selectedStore,
+    stores,
+    storesReady: !data.awaitingSheet && stores.length > 0,
+    onSelectStore: selectFromList,
+    showToast,
+  });
 
   const zoomTo = (bounds: ReturnType<typeof zoneBounds>, { sidebar, card }: { sidebar: boolean; card: boolean }) => {
     if (!bounds) return;
