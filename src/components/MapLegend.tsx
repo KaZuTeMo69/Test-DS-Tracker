@@ -18,7 +18,7 @@ function Glyph({ shape, color }: { shape: PinShape; color: string }) {
 function Item({ children, title }: { children: ReactNode; title?: string }) {
   return (
     <div
-      className="flex items-center gap-1.5 text-[10px] text-gray-300 font-bold uppercase tracking-tight"
+      className="flex items-center gap-1.5 text-[11px] text-gray-300 font-bold uppercase tracking-tight"
       title={title}
     >
       {children}
@@ -48,7 +48,7 @@ export default function MapLegend({
   return (
     <div className="map-legend absolute bottom-4 left-4 bg-[#111111]/90 backdrop-blur border border-[#333] rounded-lg shadow-2xl z-[500]">
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">Colour</span>
+        <span className="text-[11px] text-gray-400 font-bold uppercase tracking-tight">Colour</span>
         <div className="frow grid grid-cols-2 gap-1 map-legend-toggle">
           {(
             [
@@ -102,7 +102,7 @@ export default function MapLegend({
         </Item>
         {notOnMap > 0 && (
           <div
-            className="flex items-center gap-2 text-[10px] text-[#FB923C] font-bold uppercase tracking-tight"
+            className="flex items-center gap-2 text-[11px] text-[#FB923C] font-bold uppercase tracking-tight"
             title="Stores with missing or implausible coordinates. See the NO LOCATION tag in the list."
           >
             <span>{notOnMap} not on map</span>

@@ -86,14 +86,14 @@ export default function ZoneCard({
           </button>
         </div>
         <div className="flex flex-wrap gap-1.5 store-card-chips">
-          <span className={`text-[10px] font-bold store-card-chip rounded-full border ${KIND_CHIP[layer.kind]}`}>
+          <span className={`text-[11px] font-bold store-card-chip rounded-full border ${KIND_CHIP[layer.kind]}`}>
             {LAYER_KIND_LABEL[layer.kind].toUpperCase()}
           </span>
-          <span className="text-[10px] font-bold store-card-chip rounded-full border border-white/15 text-gray-300">
+          <span className="text-[11px] font-bold store-card-chip rounded-full border border-white/15 text-gray-300">
             {formatArea(zoneAreaKm2(zone))}
           </span>
           {chip && (
-            <span className={`text-[10px] font-bold store-card-chip rounded-full border ${chip.className}`}>
+            <span className={`text-[11px] font-bold store-card-chip rounded-full border ${chip.className}`}>
               {chip.text}
             </span>
           )}
@@ -102,7 +102,7 @@ export default function ZoneCard({
 
       <div className="store-card-body flex flex-col gap-3 overflow-y-auto flex-1 min-h-0">
         <label className="flex flex-col gap-1">
-          <span className="detail-panel-row-label text-[9.5px]">Name</span>
+          <span className="detail-panel-row-label text-[11px]">Name</span>
           <input
             className="zone-input"
             value={zone.name}
@@ -112,7 +112,7 @@ export default function ZoneCard({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="detail-panel-row-label text-[9.5px]">Description</span>
+          <span className="detail-panel-row-label text-[11px]">Description</span>
           <textarea
             className="zone-input resize-none"
             rows={3}
@@ -123,7 +123,7 @@ export default function ZoneCard({
         </label>
 
         <div className="flex flex-col gap-1">
-          <span className="detail-panel-row-label text-[9.5px]">Stores inside ({storesInside.length})</span>
+          <span className="detail-panel-row-label text-[11px]">Stores inside ({storesInside.length})</span>
           {storesInside.length === 0 ? (
             <div className="text-[11.5px] text-gray-400">
               {layer.kind === "coverage" ? "No store is inside this zone." : "No stores inside."}
@@ -154,7 +154,7 @@ export default function ZoneCard({
                       title={isLive(store) ? "Live" : "Not live"}
                     />
                     <span className="text-[12px] font-bold truncate">{store.name}</span>
-                    <span className="text-[10.5px] text-gray-400 font-mono ml-auto shrink-0">
+                    <span className="text-[11px] text-gray-400 font-mono ml-auto shrink-0">
                       {store.dsCode || "No DS code"}
                     </span>
                   </button>
@@ -170,7 +170,7 @@ export default function ZoneCard({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="detail-panel-row-label text-[9.5px]">Colour</span>
+          <span className="detail-panel-row-label text-[11px]">Colour</span>
           <div className="flex flex-wrap items-center gap-1.5">
             {ZONE_COLORS.map((c) => (
               <button
@@ -201,15 +201,15 @@ export default function ZoneCard({
 
         <div>
           <div className="flex justify-between gap-3 border-b border-white/5 store-card-row items-baseline">
-            <span className="detail-panel-row-label text-[10px] shrink-0">Area</span>
+            <span className="detail-panel-row-label text-[11px] shrink-0">Area</span>
             <span className="detail-panel-row-value text-[12.5px] text-right">{formatArea(zoneAreaKm2(zone))}</span>
           </div>
           <div className="flex justify-between gap-3 border-b border-white/5 store-card-row items-baseline">
-            <span className="detail-panel-row-label text-[10px] shrink-0">Shape</span>
+            <span className="detail-panel-row-label text-[11px] shrink-0">Shape</span>
             <span className="detail-panel-row-value text-[12.5px] text-right">{shapeText(zone)}</span>
           </div>
           <div className="flex justify-between gap-3 store-card-row items-baseline">
-            <span className="detail-panel-row-label text-[10px] shrink-0">Layer</span>
+            <span className="detail-panel-row-label text-[11px] shrink-0">Layer</span>
             <span className="detail-panel-row-value text-[12.5px] text-right truncate">
               {layer.name} · {LAYER_KIND_LABEL[layer.kind]}
             </span>

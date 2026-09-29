@@ -21,7 +21,7 @@ export default function LoadMore({
     return () => observer.disconnect();
   }, [onVisible]);
   return (
-    <div ref={ref} className="text-center py-3 text-[11px] text-gray-500">
+    <div ref={ref} className="text-center py-3 text-[11px] text-gray-400">
       {text}
     </div>
   );

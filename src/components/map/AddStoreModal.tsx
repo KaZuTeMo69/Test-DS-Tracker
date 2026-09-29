@@ -42,7 +42,7 @@ export default function AddStoreModal({ pin, onCancel, onSave }: AddStoreModalPr
 
         <div className="space-y-4">
           <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
               Store Name
             </label>
             <input
@@ -56,7 +56,7 @@ export default function AddStoreModal({ pin, onCancel, onSave }: AddStoreModalPr
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">City</label>
+            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">City</label>
             <input
               type="text"
               className="w-full bg-[#1c1c1c] border border-[#333] rounded-lg px-3 py-2.5 text-xs text-white outline-none focus:border-[#fbbf24] transition-colors font-sans"
@@ -67,7 +67,7 @@ export default function AddStoreModal({ pin, onCancel, onSave }: AddStoreModalPr
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
               Location Coordinates
             </label>
             <div className="font-mono text-xs text-gray-400 bg-white/5 px-3 py-2 rounded-lg border border-white/5">

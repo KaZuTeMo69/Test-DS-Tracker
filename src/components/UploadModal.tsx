@@ -181,7 +181,7 @@ export default function UploadModal({
                 <Upload size={24} />
               </div>
               <p className="text-sm font-bold text-white mb-1">Click or Drag & Drop File</p>
-              <p className="text-xs text-gray-500">Supports .csv and .json store datasets</p>
+              <p className="text-xs text-gray-400">Supports .csv and .json store datasets</p>
             </div>
 
             <input
@@ -198,18 +198,18 @@ export default function UploadModal({
         {activeTab === "sheet" && (
           <div className="space-y-4">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">
+              <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">
                 Google Sheets Public Link
               </label>
               <input
                 type="url"
                 placeholder="https://docs.google.com/spreadsheets/d/..."
-                className="w-full bg-[#161616] border border-[#262626] hover:border-[#333] focus:border-[#fbbf24] text-white text-xs font-mono outline-none transition-all placeholder:text-gray-600 rounded-xl px-4 py-3"
+                className="w-full bg-[#161616] border border-[#262626] hover:border-[#333] focus:border-[#fbbf24] text-white text-xs font-mono outline-none transition-all placeholder:text-gray-400 rounded-xl px-4 py-3"
                 value={sheetUrl}
                 onChange={(e) => setSheetUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSheetSubmit()}
               />
-              <p className="text-[11px] text-gray-500 mt-2">
+              <p className="text-[11px] text-gray-400 mt-2">
                 Ensure sheet sharing is set to{" "}
                 <span className="text-gray-300 font-bold">"Anyone with link → Viewer"</span>.
               </p>
@@ -236,13 +236,13 @@ export default function UploadModal({
         {activeTab === "paste" && (
           <div className="space-y-4">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">
+              <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">
                 Paste Raw CSV / TSV Content
               </label>
               <textarea
                 rows={6}
                 placeholder="Store Name, City, DS Code, Area, Rent, Lat, Lng..."
-                className="w-full bg-[#161616] border border-[#262626] focus:border-[#fbbf24] text-white text-xs font-mono outline-none transition-all placeholder:text-gray-600 rounded-xl p-3 resize-none scrollbar-thin"
+                className="w-full bg-[#161616] border border-[#262626] focus:border-[#fbbf24] text-white text-xs font-mono outline-none transition-all placeholder:text-gray-400 rounded-xl p-3 resize-none scrollbar-thin"
                 value={pastedText}
                 onChange={(e) => setPastedText(e.target.value)}
               />
@@ -268,10 +268,10 @@ export default function UploadModal({
 
         {/* Schema hint */}
         <div className="mt-6 pt-5 border-t border-white/5">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">
             Recommended Header Fields
           </p>
-          <p className="text-[10px] font-mono text-gray-400 leading-relaxed">
+          <p className="text-[11px] font-mono text-gray-400 leading-relaxed">
             Store Name · City · DS Code · Contract Duration · Paid/Unpaid · Live Status · Area (sqm) · Annual Rent · Lat
             · Lng
           </p>

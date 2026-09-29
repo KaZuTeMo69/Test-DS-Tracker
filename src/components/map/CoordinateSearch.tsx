@@ -43,7 +43,7 @@ export default function CoordinateSearch({ value, onChange, onFound, onClear, st
               onChange(e.target.value);
               if (error) setError("");
             }}
-            className="flex-1 bg-transparent text-[11px] sm:text-xs text-white border-none outline-none font-sans placeholder:text-gray-600 pr-1.5 sm:pr-2 h-7 sm:h-8 min-w-0"
+            className="flex-1 bg-transparent text-[11px] sm:text-xs text-white border-none outline-none font-sans placeholder:text-gray-400 pr-1.5 sm:pr-2 h-7 sm:h-8 min-w-0"
             title="Enter Lat, Lng coordinates, e.g., 24.7136, 46.6753"
           />
           {value && (
@@ -53,20 +53,20 @@ export default function CoordinateSearch({ value, onChange, onFound, onClear, st
                 setError("");
                 onClear();
               }}
-              className="p-1 text-gray-500 hover:text-white transition-colors cursor-pointer shrink-0"
+              className="p-1 text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
             >
               <X size={13} />
             </button>
           )}
           <button
             type="submit"
-            className="bg-[#fbbf24] hover:opacity-90 text-black text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-lg ml-0.5 sm:ml-1 shrink-0 cursor-pointer active:scale-95 transition-transform"
+            className="bg-[#fbbf24] hover:opacity-90 text-black text-[11px] font-black uppercase tracking-wider px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-lg ml-0.5 sm:ml-1 shrink-0 cursor-pointer active:scale-95 transition-transform"
           >
             Go
           </button>
         </div>
         {error && (
-          <div className="text-[10px] font-bold text-red-500 whitespace-nowrap bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg text-center shadow-lg duration-200">
+          <div className="text-[11px] font-bold text-red-500 whitespace-nowrap bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg text-center shadow-lg duration-200">
             {error}
           </div>
         )}

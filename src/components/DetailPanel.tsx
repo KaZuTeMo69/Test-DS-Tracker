@@ -97,12 +97,12 @@ function Tile({
 }) {
   return (
     <div className="bg-white/[0.03] border border-white/10 rounded-lg store-card-box min-w-0">
-      <div className="detail-panel-row-label text-[9px]">{label}</div>
+      <div className="detail-panel-row-label text-[11px]">{label}</div>
       <div className="detail-panel-figure text-[20px] leading-tight store-card-gap-top">
         {value}
         {unit && <span className="text-[11px] text-gray-400 font-semibold store-card-unit">{unit}</span>}
       </div>
-      {note && <div className={`text-[10px] store-card-gap-top ${noteClass}`}>{note}</div>}
+      {note && <div className={`text-[11px] store-card-gap-top ${noteClass}`}>{note}</div>}
     </div>
   );
 }
@@ -110,21 +110,23 @@ function Tile({
 function Row({ label, value, valueClass = "" }: { label: string; value: ReactNode; valueClass?: string }) {
   return (
     <div className="flex justify-between gap-3 border-b border-white/5 store-card-row items-baseline">
-      <span className="detail-panel-row-label text-[10px] shrink-0">{label}</span>
+      <span className="detail-panel-row-label text-[11px] shrink-0">{label}</span>
       <span className={`detail-panel-row-value text-[12.5px] text-right ${valueClass}`}>{value}</span>
     </div>
   );
 }
 
 const SectionLabel = ({ children }: { children: ReactNode }) => (
-  <div className="detail-panel-row-label text-[9.5px] text-gray-500 store-card-section">{children}</div>
+  <div className="detail-panel-row-label text-[11px] text-gray-400 store-card-section">{children}</div>
 );
 
 // A check that didn't pass: a coloured mark and a line of text
 function Problem({ tone, children }: { tone: Tone; children: ReactNode }) {
   return (
     <div className="flex gap-2 items-start text-[11.5px] text-gray-200 leading-snug">
-      <span className={`w-4 h-4 shrink-0 rounded-full grid place-items-center text-[9px] font-black ${TONE[tone].dot}`}>
+      <span
+        className={`w-4 h-4 shrink-0 rounded-full grid place-items-center text-[11px] font-black ${TONE[tone].dot}`}
+      >
         {TONE[tone].mark}
       </span>
       <span className="min-w-0">{children}</span>
@@ -309,7 +311,7 @@ function SummaryTab({
             .map((check, i) => (
               <span
                 key={i}
-                className="store-card-chip rounded-full border border-green-500/25 bg-green-500/10 text-green-400 text-[10.5px] font-semibold"
+                className="store-card-chip rounded-full border border-green-500/25 bg-green-500/10 text-green-400 text-[11px] font-semibold"
               >
                 ✓ {check.text}
               </span>
@@ -332,7 +334,7 @@ function ZoneLink({ hit, onSelect }: { hit: ZoneHit; onSelect: (layerId: string,
     >
       <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: hit.color }} />
       <span className="text-[12px] font-bold text-white truncate">{hit.zoneName}</span>
-      <span className="text-[10.5px] text-gray-400 truncate ml-auto shrink-0 max-w-[45%]">{hit.layerName}</span>
+      <span className="text-[11px] text-gray-400 truncate ml-auto shrink-0 max-w-[45%]">{hit.layerName}</span>
     </button>
   );
 }
@@ -442,13 +444,13 @@ function RentTab({ store, rent, benchmark }: { store: Store; rent: RentCompariso
     <>
       <div className="flex justify-between items-end gap-3 bg-white/[0.03] border border-white/10 rounded-lg store-card-box">
         <div className="min-w-0">
-          <div className="detail-panel-row-label text-[9px]">Annual rent {vat}</div>
+          <div className="detail-panel-row-label text-[11px]">Annual rent {vat}</div>
           <div className="detail-panel-figure text-[25px] leading-tight text-[#f3e008]">
             {sar(shownRent(store.rentSARAnnual, settings))}
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="detail-panel-row-label text-[9px]">Monthly</div>
+          <div className="detail-panel-row-label text-[11px]">Monthly</div>
           <div className="detail-panel-figure text-[15px] store-card-gap-top">
             {sar(shownRent(store.rentSARMonthly, settings))}
           </div>
@@ -516,7 +518,7 @@ function Timeline({ start, renewal }: { start: Date; renewal: RenewalInfo }) {
     <div>
       <div className="relative store-card-timeline">
         <div
-          className={`absolute -top-6 text-[10px] font-extrabold text-[#38BDF8] whitespace-nowrap ${labelOnLeft ? "-translate-x-full store-card-label-left" : "store-card-label-right"}`}
+          className={`absolute -top-6 text-[11px] font-extrabold text-[#38BDF8] whitespace-nowrap ${labelOnLeft ? "-translate-x-full store-card-label-left" : "store-card-label-right"}`}
           style={{ left: `${todayPct}%` }}
         >
           {label}
@@ -532,12 +534,12 @@ function Timeline({ start, renewal }: { start: Date; renewal: RenewalInfo }) {
           />
           <div className="absolute inset-y-0 right-0 bg-[#fbbf24]/60" style={{ left: `${windowPct}%` }} />
         </div>
-        <div className="flex justify-between text-[10.5px] text-gray-400 store-card-gap-top">
+        <div className="flex justify-between text-[11px] text-gray-400 store-card-gap-top">
           <span>{formatDate(start)}</span>
           <span>{formatDate(end)}</span>
         </div>
       </div>
-      <div className="flex gap-3 text-[10.5px] text-gray-400 store-card-legend">
+      <div className="flex gap-3 text-[11px] text-gray-400 store-card-legend">
         <span className="flex items-center gap-1.5">
           <i className="w-2.5 h-2.5 rounded-sm bg-[#6b6b6b]" /> Time passed
         </span>
@@ -635,25 +637,25 @@ function StoreCard({
         </div>
         <div className="flex flex-wrap gap-1.5 store-card-chips">
           <span
-            className={`detail-panel-tag-live text-[10px] store-card-chip rounded-full border ${isLive(store) ? "bg-green-500/10 text-green-400 border-green-500/30" : "bg-red-500/10 text-red-400 border-red-500/30"}`}
+            className={`detail-panel-tag-live text-[11px] store-card-chip rounded-full border ${isLive(store) ? "bg-green-500/10 text-green-400 border-green-500/30" : "bg-red-500/10 text-red-400 border-red-500/30"}`}
           >
             {isLive(store) ? "LIVE" : "NOT LIVE"}
           </span>
           <span
-            className={`detail-panel-tag-paid text-[10px] store-card-chip rounded-full border ${isPaid(store) ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" : "bg-orange-500/10 text-orange-400 border-orange-500/30"}`}
+            className={`detail-panel-tag-paid text-[11px] store-card-chip rounded-full border ${isPaid(store) ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" : "bg-orange-500/10 text-orange-400 border-orange-500/30"}`}
           >
             {isPaid(store) ? "PAID" : "UNPAID"}
           </span>
           {renewalTag && (
             <span
-              className={`detail-panel-tag-live text-[10px] store-card-chip rounded-full border ${RENEWAL_STYLE[renewal.status as "soon" | "now" | "expired"].className}`}
+              className={`detail-panel-tag-live text-[11px] store-card-chip rounded-full border ${RENEWAL_STYLE[renewal.status as "soon" | "now" | "expired"].className}`}
             >
               {RENEWAL_STYLE[renewal.status as "soon" | "now" | "expired"].tag}
             </span>
           )}
           {benchmark?.level === "high" && (
             <span
-              className={`detail-panel-tag-live text-[10px] store-card-chip rounded-full border ${HIGH_RENT_TAG.className}`}
+              className={`detail-panel-tag-live text-[11px] store-card-chip rounded-full border ${HIGH_RENT_TAG.className}`}
               title={`Rent per m² ${benchmark.diff}% above the ${store.city} median`}
             >
               {HIGH_RENT_TAG.tag}
@@ -661,14 +663,14 @@ function StoreCard({
           )}
           {flags.outside && (
             <span
-              className={`detail-panel-tag-live text-[10px] store-card-chip rounded-full border ${COVERAGE_TAG.outside.className}`}
+              className={`detail-panel-tag-live text-[11px] store-card-chip rounded-full border ${COVERAGE_TAG.outside.className}`}
             >
               {COVERAGE_TAG.outside.tag}
             </span>
           )}
           {flags.inWhiteSpace && (
             <span
-              className={`detail-panel-tag-live text-[10px] store-card-chip rounded-full border ${COVERAGE_TAG.whitespace.className}`}
+              className={`detail-panel-tag-live text-[11px] store-card-chip rounded-full border ${COVERAGE_TAG.whitespace.className}`}
             >
               {COVERAGE_TAG.whitespace.tag}
             </span>
@@ -712,7 +714,7 @@ function StoreCard({
         ) : (
           <button
             disabled
-            className="detail-panel-maps-btn text-[12px] block w-full store-card-button bg-[#1a1a1a] text-gray-600 font-extrabold text-center rounded-lg cursor-not-allowed border border-[#333]"
+            className="detail-panel-maps-btn text-[12px] block w-full store-card-button bg-[#1a1a1a] text-gray-400 font-extrabold text-center rounded-lg cursor-not-allowed border border-[#333]"
           >
             No Maps link
           </button>

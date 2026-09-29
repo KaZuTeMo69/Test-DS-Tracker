@@ -41,7 +41,7 @@ function Group({
           >
             <span className="flex items-baseline gap-2 w-full min-w-0">
               <span className="text-[12px] font-bold truncate">{store.name}</span>
-              <span className="text-[10.5px] text-gray-500 font-mono ml-auto shrink-0">
+              <span className="text-[11px] text-gray-400 font-mono ml-auto shrink-0">
                 {store.dsCode || "No DS code"} · {store.city || "No city"}
               </span>
             </span>
@@ -71,7 +71,7 @@ export default function DataQualityPanel({
     <div className="flex flex-col quality">
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-[#fbbf24] text-[10px] font-black uppercase hover:opacity-80 transition-all cursor-pointer w-fit"
+        className="flex items-center gap-2 text-[#fbbf24] text-[11px] font-black uppercase hover:opacity-80 transition-all cursor-pointer w-fit"
       >
         <ChevronLeft size={14} /> Back to stores
       </button>
@@ -86,7 +86,7 @@ export default function DataQualityPanel({
           <span className="text-green-400 font-bold">✓ No problems found in your {totalStores} stores.</span>
         )}
       </div>
-      <div className="text-[11px] text-gray-500 leading-relaxed">
+      <div className="text-[11px] text-gray-400 leading-relaxed">
         Checks all stores, whatever the filters. Fix them in your Google Sheet or file: the app picks up a sheet's
         changes at the next sync.
       </div>

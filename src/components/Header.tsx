@@ -54,7 +54,7 @@ function SourceBadge({
 
   return (
     <div
-      className={`flex items-center gap-2 min-w-0 px-3 py-1.5 border rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap ${BADGE_TONE[tone].pill}`}
+      className={`flex items-center gap-2 min-w-0 px-3 py-1.5 border rounded-full text-[11px] font-bold uppercase tracking-widest whitespace-nowrap ${BADGE_TONE[tone].pill}`}
       title={title}
     >
       <span
