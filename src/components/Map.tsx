@@ -17,6 +17,7 @@ import ZoneLayers, { ZoneRef } from "./map/ZoneLayers";
 interface MapComponentProps {
   stores: Store[];
   benchmarks: RentBenchmarks; // pin colours (rent against the city median) and sizes (annual rent)
+  bottomInset: number; // on a phone, the height of the store or zone sheet over the bottom of the map
   selectedId: number | null;
   onSelectStore: (id: number) => void;
   onMapClick?: () => void;
@@ -41,6 +42,7 @@ interface MapComponentProps {
 export default function MapComponent({
   stores,
   benchmarks,
+  bottomInset,
   selectedId,
   onSelectStore,
   onMapClick,
@@ -151,6 +153,7 @@ export default function MapComponent({
           isNightMode={isNightMode}
           routePanelRef={routePanelRef}
           zoomRequest={zoomRequest}
+          bottomInset={bottomInset}
         />
 
         <TileLayer
@@ -185,7 +188,7 @@ export default function MapComponent({
           panelRef={routePanelRef}
         />
 
-        <div className="leaflet-bottom leaflet-right mb-6 mr-6 !z-[1000] pointer-events-none">
+        <div className="leaflet-bottom leaflet-right mb-6 mr-6 !z-[1000] pointer-events-none map-zoom-buttons">
           <div className="flex flex-col gap-2 items-end pointer-events-auto">
             <ZoomButtons />
           </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Filter } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { CoverageFilter, LayerKind, PolygonRings, SidebarTab, ZoneLayer } from "./types";
@@ -15,6 +15,7 @@ import { SettingsContext, useSettingsState } from "./hooks/useSettings";
 import { isManualStore, useStores } from "./hooks/useStores";
 import { useToast } from "./hooks/useToast";
 import { linkedView, useUrlState } from "./hooks/useUrlState";
+import { openingSheetHeight } from "./components/CardFrame";
 import CoverageSummary from "./components/CoverageSummary";
 import DetailPanel from "./components/DetailPanel";
 import Header from "./components/Header";
@@ -36,6 +37,8 @@ const NARROW_SCREEN = 1024;
 // Room kept free when zooming to an area: the sidebar on the left, a store or zone card on the right
 const SIDEBAR_ROOM = 390;
 const CARD_ROOM = 420;
+// On a phone the card is a sheet over the bottom of the map instead, about half its height when it opens
+const PHONE_SCREEN = 768;
 
 export default function App() {
   const { message: toastMsg, showToast } = useToast();
@@ -70,6 +73,9 @@ export default function App() {
   const [mapMode, setMapMode] = useState<MapMode | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // On a phone: how much of the bottom of the map the store or zone sheet covers
+  const [sheetInset, setSheetInset] = useState(0);
+  const mapRef = useRef<HTMLDivElement>(null);
   const closeSettings = useCallback(() => setIsSettingsOpen(false), []);
 
   const selectedStore = useMemo(() => stores.find((s) => s.id === selectedId) || null, [stores, selectedId]);
@@ -149,11 +155,13 @@ export default function App() {
   const zoomTo = (bounds: ReturnType<typeof zoneBounds>, { sidebar, card }: { sidebar: boolean; card: boolean }) => {
     if (!bounds) return;
     const wide = window.innerWidth >= NARROW_SCREEN;
+    const phone = window.innerWidth < PHONE_SCREEN;
     setZoomRequest({
       id: Date.now(),
       bounds,
       padLeft: sidebar && wide ? SIDEBAR_ROOM : 40,
       padRight: card && wide ? CARD_ROOM : 40,
+      padBottom: card && phone ? openingSheetHeight(mapRef.current?.clientHeight ?? window.innerHeight) + 20 : 60,
     });
   };
 
@@ -351,7 +359,9 @@ export default function App() {
         />
 
         <div
-          className={`map-container flex-1 relative min-w-0 ${isSidebarOpen ? (currentTab === "renewals" ? "with-wide-sidebar" : "with-sidebar") : ""}`}
+          ref={mapRef}
+          className={`map-container flex-1 relative min-w-0 ${isSidebarOpen ? (currentTab === "renewals" ? "with-wide-sidebar" : "with-sidebar") : ""} ${sheetInset ? "sheet-open" : ""}`}
+          style={{ "--sheet-inset": `${sheetInset}px` } as CSSProperties}
           onClick={() => {
             if (selectedId !== null) setSelectedId(null);
           }}
@@ -378,6 +388,7 @@ export default function App() {
             <MapComponent
               stores={filteredStores}
               benchmarks={benchmarks}
+              bottomInset={sheetInset}
               selectedId={selectedId}
               onSelectStore={selectStore}
               onMapClick={() => {
@@ -410,6 +421,7 @@ export default function App() {
             benchmark={selectedStore ? (benchmarks.of.get(selectedStore.id) ?? null) : null}
             onSelectZone={openZone}
             onClose={closeStore}
+            onInset={setSheetInset}
             onRemove={
               selectedStore && isManualStore(selectedStore)
                 ? () => handleRemoveManualStore(selectedStore.id)
@@ -430,6 +442,7 @@ export default function App() {
               onClose={() => setSelectedZone(null)}
               onEditShape={startEditingShape}
               onDelete={deleteSelectedZone}
+              onInset={setSheetInset}
             />
           )}
 

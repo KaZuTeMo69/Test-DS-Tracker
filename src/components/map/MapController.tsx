@@ -14,6 +14,7 @@ export interface ZoomRequest {
   bounds: [[number, number], [number, number]];
   padLeft: number;
   padRight: number;
+  padBottom?: number; // on a phone, the sheet over the bottom of the map
 }
 
 // Leaflet ignores a new view while it's still animating a zoom (such as the first fit just after the page
@@ -40,6 +41,7 @@ export default function MapController({
   isNightMode,
   routePanelRef,
   zoomRequest,
+  bottomInset = 0,
 }: {
   stores: Store[];
   selectedId: number | null;
@@ -49,6 +51,7 @@ export default function MapController({
   isNightMode: boolean;
   routePanelRef: RefObject<HTMLDivElement | null>;
   zoomRequest: ZoomRequest | null;
+  bottomInset?: number; // on a phone, the height of the sheet over the bottom of the map
 }) {
   const map = useMap();
 
@@ -125,12 +128,16 @@ export default function MapController({
     if (!map || !map.getContainer() || selectedLat === null || selectedLng === null) return;
     return whenZoomEnds(map, () => {
       try {
-        map.setView([selectedLat, selectedLng], Math.max(map.getZoom(), 14), { animate: true });
+        // With a sheet over the bottom of the map (phones), the store goes in the middle of the part above it
+        const zoom = Math.max(map.getZoom(), 14);
+        const store = L.latLng(selectedLat, selectedLng);
+        const center = bottomInset ? map.unproject(map.project(store, zoom).add([0, bottomInset / 2]), zoom) : store;
+        map.setView(center, zoom, { animate: true });
       } catch (e) {
         console.warn("setView failed", e);
       }
     });
-  }, [selectedId, map, selectedLat, selectedLng]);
+  }, [selectedId, map, selectedLat, selectedLng, bottomInset]);
 
   // Route from the searched coordinate to the selected store. It depends on the store's position, not the
   // store list, so a background refresh doesn't request the same route again
@@ -150,7 +157,7 @@ export default function MapController({
       try {
         map.fitBounds(zoomRequest.bounds, {
           paddingTopLeft: [zoomRequest.padLeft, 60],
-          paddingBottomRight: [zoomRequest.padRight, 60],
+          paddingBottomRight: [zoomRequest.padRight, zoomRequest.padBottom ?? 60],
           maxZoom: 15,
         });
       } catch (e) {

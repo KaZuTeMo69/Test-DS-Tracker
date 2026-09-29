@@ -2,6 +2,7 @@ import { PenLine, Trash2, X } from "lucide-react";
 import { Store, Zone, ZoneLayer } from "../types";
 import { LAYER_KIND_LABEL, ZONE_COLORS, zoneAreaKm2, zoneColor } from "../lib/layers";
 import { isLive } from "../lib/status";
+import CardFrame from "./CardFrame";
 import ConfirmButton from "./ConfirmButton";
 
 interface ZoneCardProps {
@@ -14,6 +15,7 @@ interface ZoneCardProps {
   onClose: () => void;
   onEditShape: () => void;
   onDelete: () => void;
+  onInset?: (px: number) => void; // on a phone: how much of the map the card covers
 }
 
 const TYPING_DELAY = 400;
@@ -57,16 +59,14 @@ export default function ZoneCard({
   onClose,
   onEditShape,
   onDelete,
+  onInset,
 }: ZoneCardProps & { key?: string }) {
   const color = zoneColor(zone, layer);
   const chip = storesChip(layer.kind, storesInside.length);
 
   return (
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className="absolute top-[12px] right-[52px] max-h-[calc(100%-32px)] w-[340px] max-w-[calc(100%-64px)] bg-[#111111]/95 backdrop-blur-md border border-[#333] rounded-xl shadow-2xl overflow-hidden flex flex-col z-[600]"
-    >
-      <div className="store-card-header border-b border-[#262626]">
+    <CardFrame width={340} label={`Zone: ${zone.name || "Unnamed zone"}`} onClose={onClose} onInset={onInset}>
+      <div className="store-card-header border-b border-[#262626]" data-sheet-header data-sheet-drag>
         <div className="flex justify-between items-start gap-2">
           <div className="flex-1 min-w-0 flex items-start gap-2">
             <span className="w-3 h-3 rounded-sm shrink-0 zone-title-swatch" style={{ background: color }} />
@@ -232,6 +232,6 @@ export default function ZoneCard({
           className="zone-card-btn danger flex-1"
         />
       </div>
-    </div>
+    </CardFrame>
   );
 }

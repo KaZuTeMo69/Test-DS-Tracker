@@ -1,5 +1,6 @@
 import { memo, ReactNode, useState } from "react";
 import { X } from "lucide-react";
+import CardFrame from "./CardFrame";
 import { Store } from "../types";
 import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, RENEWAL_STYLE } from "../constants";
 import { contractDateIssues, dataIssues, hasCoords } from "../lib/checks";
@@ -20,6 +21,7 @@ interface DetailPanelProps {
   onSelectZone: (layerId: string, zoneId: string) => void;
   onClose: () => void;
   onRemove?: () => void; // only for manually added stores
+  onInset?: (px: number) => void; // on a phone: how much of the map the card covers
 }
 
 type Tab = "summary" | "rent" | "contract";
@@ -602,6 +604,7 @@ function StoreCard({
   onSelectZone,
   onClose,
   onRemove,
+  onInset,
 }: DetailPanelProps & { store: Store; key?: number }) {
   const [tab, setTab] = useState<Tab>("summary");
   // Removing takes a second click, so a stray tap can't delete a store
@@ -613,11 +616,8 @@ function StoreCard({
   const flags = coverageFlags(coverage, store);
 
   return (
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className="absolute top-[12px] right-[52px] max-h-[calc(100%-32px)] w-[360px] max-w-[calc(100%-64px)] bg-[#111111]/95 backdrop-blur-md border border-[#333] rounded-xl shadow-2xl overflow-hidden flex flex-col z-[600]"
-    >
-      <div className="store-card-header border-b border-[#262626]">
+    <CardFrame width={360} label={`Store: ${store.name}`} onClose={onClose} onInset={onInset}>
+      <div className="store-card-header border-b border-[#262626]" data-sheet-header data-sheet-drag>
         <div className="flex justify-between items-start gap-2">
           <div className="flex-1 min-w-0">
             <h3 className="detail-panel-title text-[18px] text-white leading-tight truncate">{store.name}</h3>
@@ -726,7 +726,7 @@ function StoreCard({
           </button>
         )}
       </div>
-    </div>
+    </CardFrame>
   );
 }
 

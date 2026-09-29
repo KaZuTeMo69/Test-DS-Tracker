@@ -1487,3 +1487,56 @@ body {
 .quality-row {
   gap: 2px;
 }
+
+/* Phone: the store and zone cards as a sheet over the bottom of the map */
+.bottom-sheet {
+  transition: height 0.25s ease;
+}
+
+.bottom-sheet.dragging {
+  transition: none;
+}
+
+/* The handle and the header drag the sheet; the browser mustn't scroll or zoom the page meanwhile */
+.bottom-sheet .sheet-handle,
+.bottom-sheet [data-sheet-drag] {
+  touch-action: none;
+}
+
+.sheet-handle {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 8px 0 4px;
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.sheet-handle span {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: #555;
+}
+
+.sheet-handle:focus-visible span {
+  background: var(--token-color-noon-yellow);
+}
+
+/* The legend would cover what's left of the map above the sheet, and with the sheet all the way up there's no
+   room for the zoom buttons either */
+@media (max-width: 767px) {
+  .sheet-open .map-legend {
+    display: none;
+  }
+
+  .map-container:has(.bottom-sheet[data-snap="full"]) .map-zoom-buttons {
+    display: none;
+  }
+}
+
+/* The zoom buttons and the map credits stay above the phone sheet */
+.map-container .leaflet-bottom {
+  bottom: var(--sheet-inset, 0px) !important;
+  transition: bottom 0.25s ease;
+}

@@ -7,7 +7,8 @@ interface CoordinateSearchProps {
   onChange: (value: string) => void;
   onFound: (point: LatLng) => void;
   onClear: () => void;
-  // Below 1280px the bar would sit on top of the open store card, so it steps aside while a store is selected
+  // From 768 to 1280px the bar would sit on top of the open store card, so it steps aside while one is open (on a
+  // phone the card is a sheet at the bottom, out of its way)
   stepAside: boolean;
 }
 
@@ -26,7 +27,7 @@ export default function CoordinateSearch({ value, onChange, onFound, onClear, st
 
   return (
     <div
-      className={`absolute top-4 left-1/2 -translate-x-1/2 sm:w-[340px] w-[220px] max-w-[90vw] z-[1000] pointer-events-auto transition-all duration-300 ${stepAside ? "max-xl:hidden" : ""}`}
+      className={`absolute top-4 left-1/2 -translate-x-1/2 sm:w-[340px] w-[220px] max-w-[90vw] z-[1000] pointer-events-auto transition-all duration-300 ${stepAside ? "md:max-xl:hidden" : ""}`}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
