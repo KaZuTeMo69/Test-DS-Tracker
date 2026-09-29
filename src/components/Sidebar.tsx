@@ -7,11 +7,13 @@ import { Filters } from "../hooks/useFilters";
 import { useSettings } from "../hooks/useSettings";
 import { dataIssues, hasCoords } from "../lib/checks";
 import { Coverage, coverageFlags } from "../lib/coverage";
+import { IssueGroup } from "../lib/checks";
 import { RentBenchmarks } from "../lib/rentStats";
 import { fmtN, fmtR } from "../lib/format";
 import { storeRenewal } from "../lib/renewal";
 import { shownRent, vatLabel } from "../lib/settings";
 import { isLive } from "../lib/status";
+import DataQualityPanel from "./DataQualityPanel";
 import LoadMore from "./LoadMore";
 import RenewalTimeline from "./RenewalTimeline";
 
@@ -36,6 +38,7 @@ interface SidebarProps {
   emptyMessage: string; // shown when the list is empty
   coverage: Coverage; // for the coverage tags in the list
   benchmarks: RentBenchmarks; // for the HIGH RENT tag
+  quality: { groups: IssueGroup[]; storesWithIssues: number }; // the Data Quality panel
   insightsExtra: ReactNode; // shown above the charts in the Growth tab
   layersPanel: ReactNode; // the Layers tab
   layersSummary: string; // its footer
@@ -195,6 +198,7 @@ export default function Sidebar({
   emptyMessage,
   coverage,
   benchmarks,
+  quality,
   insightsExtra,
   layersPanel,
   layersSummary,
@@ -477,6 +481,15 @@ export default function Sidebar({
               </div>
             ) : currentTab === "layers" ? (
               layersPanel
+            ) : currentTab === "quality" ? (
+              <DataQualityPanel
+                groups={quality.groups}
+                storesWithIssues={quality.storesWithIssues}
+                totalStores={totalStores}
+                selectedId={selectedId}
+                onSelectStore={onSelectStore}
+                onBack={() => setCurrentTab("stores")}
+              />
             ) : currentTab === "renewals" ? (
               <RenewalTimeline
                 stores={stores}
@@ -502,7 +515,9 @@ export default function Sidebar({
                   ? layersSummary
                   : currentTab === "renewals"
                     ? `Next 12 months · ${settings.leadDays}-day lead`
-                    : `${citySummaries.length} Cities Tracked`}
+                    : currentTab === "quality"
+                      ? `${quality.storesWithIssues} of ${totalStores} stores to check`
+                      : `${citySummaries.length} Cities Tracked`}
             </span>
           </div>
         </motion.div>

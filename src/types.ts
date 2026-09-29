@@ -29,7 +29,8 @@ export type RenewalFilter = "all" | "renew" | "expired";
 // Only the stores the coverage checks flag: outside every coverage zone, or inside white space
 export type CoverageFilter = "outside" | "whitespace";
 
-export type SidebarTab = "stores" | "cities" | "insights" | "renewals" | "layers";
+// "quality" is the Data Quality panel, opened from the Data issues card or the settings menu rather than a tab
+export type SidebarTab = "stores" | "cities" | "insights" | "renewals" | "layers" | "quality";
 
 export interface CitySummary {
   city: string;

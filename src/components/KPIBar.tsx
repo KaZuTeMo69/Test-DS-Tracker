@@ -13,12 +13,22 @@ interface KPIBarProps {
   unclear: { total: number; live: number; paid: number };
   unclearOnly: boolean;
   onShowUnclear: () => void;
+  // Stores (out of all stores) with something to fix in their data, and opening the Data Quality panel
+  issueCount: number;
+  onShowIssues: () => void;
 }
 
 // Totals leave out stores with no value, so say how many were left out
 const missing = (n: number, what: string) => (n > 0 ? `${n} without ${what}` : undefined);
 
-const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclear }: KPIBarProps) {
+const KPIBar = memo(function KPIBar({
+  stores,
+  unclear,
+  unclearOnly,
+  onShowUnclear,
+  issueCount,
+  onShowIssues,
+}: KPIBarProps) {
   const { leadDays, warningDays, includeVat } = useSettings();
   const stats = useMemo(() => {
     const days = { leadDays, warningDays };
@@ -156,6 +166,27 @@ const KPIBar = memo(function KPIBar({ stores, unclear, unclearOnly, onShowUnclea
             <p className="text-[10px] text-[#FB923C] mt-0.5">
               {unclearOnly ? "Showing these stores" : "View stores →"}
             </p>
+          </div>
+        </button>
+      )}
+      {issueCount > 0 && (
+        <button
+          onClick={onShowIssues}
+          className="kpi-card shrink-0 bg-[#111] border border-[#222] border-t-2 p-[10px_16px] sm:p-[13px_20px] rounded-xl shadow-sm transform transition-transform hover:scale-[1.02] text-center w-auto min-w-max cursor-pointer"
+          style={{ borderTopColor: "#FB923C" }}
+          title="Stores with missing or unreadable data, grouped by problem"
+        >
+          <p className="kpi-label text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1">
+            Data Issues
+          </p>
+          <div className="flex flex-col items-center justify-center">
+            <p className="kpi-value kpi-number text-2xl font-bold tracking-tight" style={{ color: "#FB923C" }}>
+              {issueCount}
+            </p>
+            <p className="text-[10px] text-gray-500 uppercase mt-0.5">
+              {issueCount === 1 ? "store" : "stores"} to check
+            </p>
+            <p className="text-[10px] text-[#FB923C] mt-0.5">View by problem →</p>
           </div>
         </button>
       )}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ChevronDown,
+  ClipboardCheck,
   FileEdit,
   RefreshCw,
   Settings,
@@ -79,6 +80,7 @@ interface HeaderProps {
   onSync: () => void;
   onResetSample: () => void;
   onOpenSettings: () => void;
+  onOpenDataQuality: () => void;
 }
 
 export default function Header({
@@ -91,6 +93,7 @@ export default function Header({
   onSync,
   onResetSample,
   onOpenSettings,
+  onOpenDataQuality,
 }: HeaderProps) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
@@ -164,6 +167,17 @@ export default function Header({
                     >
                       <SlidersHorizontal size={14} />
                       <span>Settings</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onOpenDataQuality();
+                        setShowSettingsMenu(false);
+                      }}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 text-[11px] font-black uppercase text-gray-300 hover:text-[#fbbf24] hover:bg-white/5 rounded-lg transition-all text-left"
+                    >
+                      <ClipboardCheck size={14} />
+                      <span>Data quality</span>
                     </button>
 
                     <button

@@ -1446,3 +1446,44 @@ body {
     max-width: max(220px, calc(100% - 750px));
   }
 }
+
+/* Data Quality panel */
+.quality {
+  gap: 10px;
+}
+
+.quality-group {
+  padding: 8px 10px;
+}
+
+.quality-group summary {
+  list-style: none;
+}
+
+.quality-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.quality-group summary::before {
+  content: "▸";
+  color: #fb923c;
+  font-size: 11px;
+}
+
+.quality-group[open] summary::before {
+  content: "▾";
+}
+
+.quality-count {
+  padding: 1px 8px;
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.12);
+}
+
+.quality-fix {
+  margin: 6px 0 4px;
+}
+
+.quality-row {
+  gap: 2px;
+}

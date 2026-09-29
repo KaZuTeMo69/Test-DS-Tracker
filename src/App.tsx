@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Filter } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { CoverageFilter, LayerKind, PolygonRings, SidebarTab, ZoneLayer } from "./types";
-import { hasCoords } from "./lib/checks";
+import { dataQuality, hasCoords } from "./lib/checks";
 import { analyseCoverage } from "./lib/coverage";
 import { csvFileName, storesToCsv } from "./lib/csvExport";
 import { download } from "./lib/download";
@@ -78,6 +78,8 @@ export default function App() {
     return layer && zone ? { layer, zone } : null;
   }, [selectedZone, mapLayers.layers]);
   const notOnMap = useMemo(() => filteredStores.filter((s) => !hasCoords(s)).length, [filteredStores]);
+  // Every problem in the data, for the Data Quality panel (all stores, whatever the filters)
+  const quality = useMemo(() => dataQuality(stores), [stores]);
 
   const openUploadModal = () => {
     data.clearError();
@@ -105,6 +107,11 @@ export default function App() {
     setCurrentTab("stores");
     setIsSidebarOpen(true);
   };
+
+  const openDataQuality = useCallback(() => {
+    setCurrentTab("quality");
+    setIsSidebarOpen(true);
+  }, []);
 
   const showCoverageStores = (filter: CoverageFilter) => {
     showCoverageOnly(filter);
@@ -264,6 +271,7 @@ export default function App() {
         onSync={data.syncSheet}
         onResetSample={handleResetSample}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenDataQuality={openDataQuality}
       />
 
       <SettingsModal isOpen={isSettingsOpen} settings={settings} onChange={updateSettings} onClose={closeSettings} />
@@ -273,6 +281,8 @@ export default function App() {
         unclear={unclear}
         unclearOnly={filters.unclearOnly}
         onShowUnclear={showUnclearStores}
+        issueCount={quality.storesWithIssues}
+        onShowIssues={openDataQuality}
       />
 
       <main className="app-main flex flex-row flex-1 overflow-hidden min-h-0 relative bg-[#0a0a0a] rounded-xl border border-[#222] shadow-2xl">
@@ -298,6 +308,7 @@ export default function App() {
           emptyMessage={listEmptyMessage}
           coverage={coverage}
           benchmarks={benchmarks}
+          quality={quality}
           insightsExtra={
             <CoverageSummary
               coverage={coverage}
