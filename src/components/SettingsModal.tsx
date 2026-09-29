@@ -8,6 +8,62 @@ interface SettingsModalProps {
   settings: Settings;
   onChange: (patch: Partial<Settings>) => void;
   onClose: () => void;
+  orsKey: string; // kept apart from the other settings: Reset to defaults leaves it
+  onOrsKey: (key: string) => void;
+}
+
+/**
+ * The OpenRouteService key: typed or pasted, and saved when the field is left (or Enter), not on every keystroke,
+ * so routes on the map aren't asked for again while it's being typed. Hidden like a password unless shown.
+ */
+function OrsKeyField({ value, onSave }: { value: string; onSave: (key: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  const [shown, setShown] = useState(false);
+  useEffect(() => setDraft(value), [value]);
+  const save = () => {
+    if (draft.trim() !== value) onSave(draft);
+  };
+  return (
+    <div className="settings-key">
+      <label className="settings-key-label" htmlFor="ors-key">
+        OpenRouteService API key
+      </label>
+      <div className="settings-key-row">
+        <input
+          id="ors-key"
+          type={shown ? "text" : "password"}
+          className="zone-input settings-key-input"
+          placeholder="Optional: paste your free key"
+          autoComplete="off"
+          spellCheck={false}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+        />
+        <button type="button" className="layer-action" onClick={() => setShown(!shown)} aria-pressed={shown}>
+          {shown ? "Hide" : "Show"}
+        </button>
+        {value && (
+          <button
+            type="button"
+            className="layer-action"
+            onClick={() => {
+              setDraft("");
+              onSave("");
+            }}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      <p className="settings-key-status" aria-live="polite">
+        {value
+          ? "Saved: routes and road distances use OpenRouteService first."
+          : "No key: routes use the public OSRM server."}
+      </p>
+    </div>
+  );
 }
 
 const DAY_MS = 86_400_000;
@@ -51,7 +107,7 @@ function NumberInput({
 }
 
 /** Renewal lead and warning days, and whether rent is shown with VAT. Changes apply at once. */
-export default function SettingsModal({ isOpen, settings, onChange, onClose }: SettingsModalProps) {
+export default function SettingsModal({ isOpen, settings, onChange, onClose, orsKey, onOrsKey }: SettingsModalProps) {
   useEffect(() => {
     if (!isOpen) return;
     // Esc closes just this window (preventDefault tells the page's own Esc handling it's been used)
@@ -167,6 +223,21 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose }: S
           <p className="settings-note">
             Stores over this get a HIGH RENT tag, and a red pin when the map colours pins by rent per m². A city needs 3
             stores with rent and area to have a median. Whole numbers from 0 to {MAX_PERCENT}.
+          </p>
+        </section>
+
+        <section className="settings-section">
+          <h3 className="detail-panel-row-label text-[11px]">Road routing</h3>
+          <OrsKeyField value={orsKey} onSave={onOrsKey} />
+          <p className="settings-note">
+            Free and optional: sign up at{" "}
+            <a href="https://openrouteservice.org/dev/#/signup" target="_blank" rel="noopener noreferrer">
+              openrouteservice.org
+            </a>{" "}
+            and copy your key from the dashboard (about 2,000 routes and 500 distance lookups a day). Without one, or
+            when it runs out, routes come from the public OSRM server. The key stays in this browser: it isn't in the
+            page's address or the app's code, and only OpenRouteService receives it. Routing sends just the points'
+            coordinates.
           </p>
         </section>
 

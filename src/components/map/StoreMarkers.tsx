@@ -26,6 +26,7 @@ const StoreMarker = memo(function StoreMarker({
   color,
   shape,
   size,
+  popup,
   onSelect,
 }: {
   store: Store;
@@ -33,6 +34,7 @@ const StoreMarker = memo(function StoreMarker({
   color: string;
   shape: PinShape;
   size: PinSize;
+  popup: boolean; // off while measuring: a click then snaps a measuring point to the store
   onSelect: (id: number) => void;
   key?: number;
 }) {
@@ -44,34 +46,36 @@ const StoreMarker = memo(function StoreMarker({
       eventHandlers={eventHandlers}
       zIndexOffset={selected ? 1000 : 0}
     >
-      <Popup closeButton={false} maxWidth={220}>
-        <div className="map-popup-container p-4 flex flex-col gap-3 bg-[#111] rounded-xl">
-          <div className="flex gap-2 text-center justify-center">
-            <span
-              className={`map-popup-tag-live px-2 py-0.5 rounded-md ${isLive(s) ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}
-            >
-              {isLive(s) ? "LIVE" : "NOT LIVE"}
-            </span>
-            <span
-              className={`map-popup-tag-paid px-2 py-0.5 rounded-md ${isPaid(s) ? "bg-yellow-500/10 text-yellow-400" : "bg-orange-500/10 text-orange-400"}`}
-            >
-              {isPaid(s) ? "PAID" : "UNPAID"}
-            </span>
-          </div>
-          <div className="text-center">
-            <div className="map-popup-title text-sm font-extrabold text-white mb-0.5">{s.name}</div>
-            <div className="map-popup-subtext text-[11px] text-gray-400 mt-1">
-              {s.dsCode || "No DS code"} · {s.city}
+      {popup && (
+        <Popup closeButton={false} maxWidth={220}>
+          <div className="map-popup-container p-4 flex flex-col gap-3 bg-[#111] rounded-xl">
+            <div className="flex gap-2 text-center justify-center">
+              <span
+                className={`map-popup-tag-live px-2 py-0.5 rounded-md ${isLive(s) ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}
+              >
+                {isLive(s) ? "LIVE" : "NOT LIVE"}
+              </span>
+              <span
+                className={`map-popup-tag-paid px-2 py-0.5 rounded-md ${isPaid(s) ? "bg-yellow-500/10 text-yellow-400" : "bg-orange-500/10 text-orange-400"}`}
+              >
+                {isPaid(s) ? "PAID" : "UNPAID"}
+              </span>
             </div>
+            <div className="text-center">
+              <div className="map-popup-title text-sm font-extrabold text-white mb-0.5">{s.name}</div>
+              <div className="map-popup-subtext text-[11px] text-gray-400 mt-1">
+                {s.dsCode || "No DS code"} · {s.city}
+              </div>
+            </div>
+            <button
+              onClick={() => onSelect(s.id)}
+              className="map-popup-btn w-full bg-[#fbbf24] text-black border-none rounded-lg py-2.5 font-extrabold cursor-pointer hover:opacity-90 shadow-md transform active:scale-95 transition-all"
+            >
+              View Details →
+            </button>
           </div>
-          <button
-            onClick={() => onSelect(s.id)}
-            className="map-popup-btn w-full bg-[#fbbf24] text-black border-none rounded-lg py-2.5 font-extrabold cursor-pointer hover:opacity-90 shadow-md transform active:scale-95 transition-all"
-          >
-            View Details →
-          </button>
-        </div>
-      </Popup>
+        </Popup>
+      )}
     </Marker>
   );
 });
@@ -85,11 +89,13 @@ export default function StoreMarkers({
   benchmarks,
   selectedId,
   onSelectStore,
+  measuring = false,
 }: {
   stores: Store[];
   benchmarks: RentBenchmarks;
   selectedId: number | null;
   onSelectStore: (id: number) => void;
+  measuring?: boolean;
 }) {
   const { pinColors } = useSettings();
   return (
@@ -110,6 +116,7 @@ export default function StoreMarkers({
             color={pinColors === "rent" ? RENT_COLOR[level] : STATUS_COLOR[shape]}
             shape={shape}
             size={benchmarks.sizeOf.get(s.id) ?? "s"}
+            popup={!measuring}
             onSelect={onSelectStore}
           />
         );

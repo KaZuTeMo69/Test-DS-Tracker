@@ -1,14 +1,19 @@
-import { useRef, useState } from "react";
-import { MapContainer, TileLayer } from "react-leaflet";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { MapContainer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { PolygonRings, Store, ZoneLayer } from "../types";
 import { LatLng } from "../lib/coords";
+import { BaseMapId } from "../lib/baseMaps";
+import { hasCoords } from "../lib/checks";
+import { RouteInfo } from "../lib/routing";
 import { PinColors } from "../lib/settings";
 import { RentBenchmarks } from "../lib/rentStats";
 import AddStoreModal from "./map/AddStoreModal";
 import CoordinateSearch from "./map/CoordinateSearch";
 import EditBanner from "./map/EditBanner";
+import BaseMapTiles from "./map/BaseMapTiles";
 import MapControls, { ZoomButtons } from "./map/MapControls";
+import { MeasureBar, MeasureLayer, useMeasure } from "./map/MeasureTool";
 import MapController, { ZoomRequest } from "./map/MapController";
 import SearchPin from "./map/SearchPin";
 import StoreMarkers from "./map/StoreMarkers";
@@ -24,8 +29,14 @@ interface MapComponentProps {
   selectedId: number | null;
   onSelectStore: (id: number) => void;
   onMapClick?: () => void;
-  isNightMode: boolean;
-  setIsNightMode: (night: boolean) => void;
+  allStores: Store[]; // whatever the filters: the nearest stores to the searched point
+  baseMap: BaseMapId;
+  onChooseBase: (base: BaseMapId) => void;
+  onToggleNight: () => void;
+  // The coordinate search's pin: a candidate site
+  searchPin: LatLng | null;
+  onSearchPin: (pin: LatLng | null) => void;
+  onRoute: (info: RouteInfo | null) => void; // the route from the searched point to the selected store
   focusedCity?: string | null;
   layers: ZoneLayer[];
   selectedZone: ZoneRef | null;
@@ -55,8 +66,13 @@ export default function MapComponent({
   selectedId,
   onSelectStore,
   onMapClick,
-  isNightMode,
-  setIsNightMode,
+  allStores,
+  baseMap,
+  onChooseBase,
+  onToggleNight,
+  searchPin: tempPin,
+  onSearchPin: setTempPin,
+  onRoute,
   focusedCity,
   layers,
   selectedZone,
@@ -82,8 +98,25 @@ export default function MapComponent({
   const modeZone = mapMode?.kind === "edit" ? modeLayer?.zones.find((z) => z.id === mapMode.zoneId) : undefined;
 
   // Coordinate search and manual store adding
-  const [tempPin, setTempPin] = useState<LatLng | null>(null);
   const [searchInput, setSearchInput] = useState("");
+
+  // Measuring road distances between two points
+  const measure = useMeasure();
+  // While measuring, a store's pin is a point to measure from or to, not a store to open
+  const { active: measuring, add: addMeasurePoint } = measure;
+  const clickStore = useCallback(
+    (id: number) => {
+      const store = allStores.find((s) => s.id === id);
+      if (!measuring) onSelectStore(id);
+      else if (store && hasCoords(store)) addMeasurePoint({ lat: store.lat!, lng: store.lng!, label: store.name });
+    },
+    [measuring, addMeasurePoint, allStores, onSelectStore],
+  );
+  // Drawing a zone and measuring don't mix: starting one stops the other
+  const { stop: stopMeasuring } = measure;
+  useEffect(() => {
+    if (mapMode) stopMeasuring();
+  }, [mapMode, stopMeasuring]);
   const [showAddModal, setShowAddModal] = useState(false);
 
   const removePin = () => {
@@ -126,8 +159,10 @@ export default function MapComponent({
   };
 
   return (
-    <div id="map" className="w-full h-full relative cursor-default">
-      {mapMode ? (
+    <div id="map" className={`w-full h-full relative cursor-default ${measuring ? "measuring" : ""}`}>
+      {measuring ? (
+        <MeasureBar measure={measure} />
+      ) : mapMode ? (
         <EditBanner
           mode={mapMode}
           layerName={modeLayer?.name ?? ""}
@@ -164,22 +199,21 @@ export default function MapComponent({
           stores={stores}
           selectedId={selectedId}
           focusedCity={focusedCity}
-          onMapClick={onMapClick}
+          onMapClick={measuring ? undefined : onMapClick}
           tempPin={tempPin}
-          isNightMode={isNightMode}
           routePanelRef={routePanelRef}
+          onRoute={onRoute}
           zoomRequest={zoomRequest}
           bottomInset={bottomInset}
           leftInset={leftInset}
           layoutKey={layoutKey}
         />
 
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <BaseMapTiles base={baseMap} />
 
         <ZoneLayers
+          key={measuring ? "measuring" : "selecting"}
+          interactive={!measuring}
           layers={layers}
           selected={selectedZone}
           onSelect={onSelectZone}
@@ -194,13 +228,36 @@ export default function MapComponent({
           onProblem={(msg) => showToast?.(msg)}
         />
 
-        {tempPin && <SearchPin pin={tempPin} onAddStore={() => setShowAddModal(true)} onRemove={removePin} />}
+        {tempPin && (
+          <SearchPin
+            pin={tempPin}
+            stores={allStores}
+            measuring={measuring}
+            onMeasurePoint={addMeasurePoint}
+            onSelectStore={onSelectStore}
+            selectedId={selectedId}
+            onAddStore={() => setShowAddModal(true)}
+            onRemove={removePin}
+          />
+        )}
 
-        <StoreMarkers stores={stores} benchmarks={benchmarks} selectedId={selectedId} onSelectStore={onSelectStore} />
+        <StoreMarkers
+          stores={stores}
+          benchmarks={benchmarks}
+          selectedId={selectedId}
+          onSelectStore={clickStore}
+          measuring={measuring}
+        />
+
+        <MeasureLayer measure={measure} />
 
         <MapControls
-          isNightMode={isNightMode}
-          setIsNightMode={setIsNightMode}
+          base={baseMap}
+          onChooseBase={onChooseBase}
+          onToggleNight={onToggleNight}
+          measuring={measuring}
+          onMeasure={measure.toggle}
+          measureDisabled={mapMode !== null}
           hasLayers={layers.some((l) => l.visible)}
           onOpenLayers={onOpenLayers}
           pinColors={pinColors}
