@@ -100,8 +100,14 @@ const GROUPS: Record<IssueKind | "duplicateCode", { title: string; fix: string }
   liveStatus: { title: "Live status blank or not recognised", fix: 'Use "Live" / "Not Live" (or Yes / No).' },
   paidStatus: { title: "Payment status blank or not recognised", fix: 'Use "Paid" / "Not Paid" (or Yes / No).' },
   startMissing: { title: "Contract start date missing", fix: "Fill in the Contract Start Date column." },
-  startUnreadable: { title: "Contract start date not recognised", fix: "Write dates like 01/02/2025 or 1 Feb 2025." },
-  endUnreadable: { title: "Contract end date not recognised", fix: "Write dates like 31/01/2027 or 31 Jan 2027." },
+  startUnreadable: {
+    title: "Contract start date not recognised",
+    fix: "Write dates like 01/02/2025, 1 Feb 2025 or, in Hijri, 1446/08/02 هـ.",
+  },
+  endUnreadable: {
+    title: "Contract end date not recognised",
+    fix: "Write dates like 31/01/2027, 31 Jan 2027 or, in Hijri, 1448/08/23 هـ.",
+  },
   durationMissing: {
     title: "Contract duration missing",
     fix: "Fill in Contract Duration (such as 2 or 2 Years) or the end date.",

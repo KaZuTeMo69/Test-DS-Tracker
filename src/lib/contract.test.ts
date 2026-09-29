@@ -5,6 +5,7 @@ import {
   daysBetween,
   formatDate,
   formatDuration,
+  fromHijri,
   parseDate,
   parseDurationMonths,
   pluralDays,
@@ -70,7 +71,6 @@ describe("parseDate", () => {
     "32/01/2024",
     "15/01/24", // two-digit year
     "45306", // spreadsheet serial number
-    "1446/03/15", // Hijri, not read yet
     "15 Foo 2024",
   ])("rejects %j", (text) => {
     expect(parseDate(text)).toBeNull();
@@ -219,5 +219,51 @@ describe("renewalInfo", () => {
     const none = renewalInfo(store(formatDate(addDays(today, 5))), today, { leadDays: 0, warningDays: 30 });
     expect(none.status).toBe("soon");
     expect(iso(none.renewalStart)).toBe(iso(addDays(today, 5)));
+  });
+});
+
+describe("Hijri (Umm al-Qura) dates", () => {
+  const read = (text: string) => iso(parseDate(text));
+
+  it("turns Hijri dates into their Gregorian day", () => {
+    expect(read("1445/09/01")).toBe("2024-03-11"); // 1 Ramadan 1445
+    expect(read("1445/10/01")).toBe("2024-04-10"); // Eid al-Fitr
+    expect(read("10/12/1445")).toBe("2024-06-16"); // Eid al-Adha, day first
+    expect(read("1447-01-01")).toBe("2025-06-26"); // 1 Muharram 1447
+    expect(read("1448.04.18")).toBe("2026-09-29");
+    expect(read("1446/03/15")).toBe("2024-09-18");
+  });
+
+  it("reads the Hijri marks and Arabic digits", () => {
+    expect(read("01/09/1445 هـ")).toBe("2024-03-11");
+    expect(read("1445/9/1هـ")).toBe("2024-03-11");
+    expect(read("1445/09/01 AH")).toBe("2024-03-11");
+    expect(read("1445/09/01 H")).toBe("2024-03-11");
+    expect(read("١٤٤٥/٠٩/٠١")).toBe("2024-03-11");
+    expect(read("\u200f١٤٤٥/٠٩/٠١ هـ\u200f")).toBe("2024-03-11");
+    expect(read("۱۴۴۵/۰۹/۰۱")).toBe("2024-03-11"); // Persian digits
+  });
+
+  it("still reads Gregorian dates, including Arabic digits and the م mark", () => {
+    expect(read("11/03/2024")).toBe("2024-03-11");
+    expect(read("١١/٠٣/٢٠٢٤")).toBe("2024-03-11");
+    expect(read("11/03/2024 م")).toBe("2024-03-11");
+    expect(read("2024-03-11 CE")).toBe("2024-03-11");
+    expect(read("15 Jan 2024")).toBe("2024-01-15");
+  });
+
+  it("rejects days that don't exist", () => {
+    expect(read("1445/13/01")).toBeNull();
+    expect(read("1445/09/31")).toBeNull();
+    expect(read("1445/08/30")).toBeNull(); // Sha'ban 1445 had 29 days
+    expect(read("1445/09/30")).toBe("2024-04-09"); // Ramadan 1445 had 30
+    expect(read("2024/03/11 هـ")).toBeNull(); // marked Hijri, but not a Hijri year
+    expect(fromHijri(1250, 1, 1)).toBeNull(); // outside the Umm al-Qura range
+  });
+
+  it("keeps contract terms in Gregorian years from a Hijri start date", () => {
+    // Started 1 Ramadan 1445 (11 Mar 2024) for 2 years: ends 10 Mar 2026
+    expect(iso(contractEndDate(parseDate("1445/09/01")!, 24))).toBe("2026-03-10");
+    expect(formatDate(parseDate("1445/09/01")!)).toBe("11 Mar 2024");
   });
 });
