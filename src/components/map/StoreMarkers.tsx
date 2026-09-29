@@ -60,7 +60,7 @@ const StoreMarker = memo(function StoreMarker({
           </div>
           <div className="text-center">
             <div className="map-popup-title text-sm font-extrabold text-white mb-0.5">{s.name}</div>
-            <div className="map-popup-subtext text-[10px] text-gray-400 mt-1">
+            <div className="map-popup-subtext text-[11px] text-gray-400 mt-1">
               {s.dsCode || "No DS code"} · {s.city}
             </div>
           </div>

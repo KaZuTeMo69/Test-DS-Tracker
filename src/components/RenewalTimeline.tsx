@@ -85,7 +85,7 @@ function ExpiredList({
             className="layer-zone flex items-center gap-2 text-left text-[12px] rounded-md"
           >
             <span className="truncate font-bold">{store.name}</span>
-            <span className="text-[10.5px] text-gray-400 ml-auto shrink-0">
+            <span className="text-[11px] text-gray-400 ml-auto shrink-0">
               ended {formatDate(info.endDate!)} · {pluralDays(-info.daysToEnd!)} ago
             </span>
           </button>
@@ -129,7 +129,7 @@ export default function RenewalTimeline({ stores, totalStores, selectedId, onSel
         </div>
       )}
 
-      <div className="timeline-legend flex flex-wrap items-center text-[10.5px] text-gray-400">
+      <div className="timeline-legend flex flex-wrap items-center text-[11px] text-gray-400">
         <span>
           <i className="timeline-key contract" /> Contract
         </span>
@@ -151,7 +151,7 @@ export default function RenewalTimeline({ stores, totalStores, selectedId, onSel
       {expired.length > 0 && <ExpiredList expired={expired} onSelect={onSelectStore} />}
 
       {rows.length === 0 ? (
-        <div className="text-center text-[12px] text-gray-500 timeline-empty">
+        <div className="text-center text-[12px] text-gray-400 timeline-empty">
           No renewal starts in the next {TIMELINE_MONTHS} months.
         </div>
       ) : (
@@ -183,7 +183,7 @@ export default function RenewalTimeline({ stores, totalStores, selectedId, onSel
         </div>
       )}
 
-      <div className="text-[10.5px] text-gray-500 leading-relaxed">
+      <div className="text-[11px] text-gray-400 leading-relaxed">
         Renewal starts {pluralDays(leadDays)} before the contract ends and shows as Renew soon {pluralDays(warningDays)}{" "}
         before that (change these in Settings).
         {noEndDate > 0 &&

@@ -16,6 +16,7 @@ import { isLive } from "../lib/status";
 import DataQualityPanel from "./DataQualityPanel";
 import LoadMore from "./LoadMore";
 import RenewalTimeline from "./RenewalTimeline";
+import { ChartSkeleton, ListSkeleton } from "./Skeleton";
 
 // The charts library is large and only the Growth tab uses it, so it loads when that tab first opens
 const CityInsights = lazy(() => import("./CityInsights"));
@@ -36,6 +37,7 @@ interface SidebarProps {
   filters: Filters;
   allCities: string[];
   emptyMessage: string; // shown when the list is empty
+  loading: boolean; // a saved Google Sheet is loading: placeholders instead of empty lists
   coverage: Coverage; // for the coverage tags in the list
   benchmarks: RentBenchmarks; // for the HIGH RENT tag
   quality: { groups: IssueGroup[]; storesWithIssues: number }; // the Data Quality panel
@@ -70,26 +72,26 @@ const StoreListItem = memo(function StoreListItem({
   return (
     <div
       onClick={() => onSelect(s.id)}
-      className={`store-list-item store-list-card bg-[#111] border border-[#222] p-[20px_21px] rounded-lg cursor-pointer transition-all hover:border-[#333] shadow-sm duration-300 ${selected ? "border-[#fbbf24]/50 bg-[#161616] ring-1 ring-[#fbbf24]/20 shadow-lg" : "opacity-80 hover:opacity-100"}`}
+      className={`store-list-item store-list-card bg-[#111] border border-[#222] p-[20px_21px] rounded-lg cursor-pointer transition-all hover:border-[#333] shadow-sm duration-300 ${selected ? "border-[#fbbf24]/50 bg-[#161616] ring-1 ring-[#fbbf24]/20 shadow-lg" : ""}`}
     >
       <div className="flex justify-between items-start gap-2">
         <div className="flex-1 min-w-0">
           <div className="store-title store-card-name text-sm font-bold text-white leading-snug mb-1 truncate">
             {s.name}
           </div>
-          <div className="store-card-subtext text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+          <div className="store-card-subtext text-[11px] font-mono text-gray-400 uppercase tracking-widest">
             {s.dsCode || "No DS code"} · {s.city}
           </div>
         </div>
         <div className="flex flex-col gap-1 items-end pt-0.5">
           <span
-            className={`px-2 py-0.5 text-[9px] font-bold rounded-full ${isLive(s) ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}
+            className={`px-2 py-0.5 text-[11px] font-bold rounded-full ${isLive(s) ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}
           >
             {isLive(s) ? "LIVE" : "NOT LIVE"}
           </span>
           {renewal.status !== "unknown" && renewal.status !== "ok" && (
             <span
-              className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${RENEWAL_STYLE[renewal.status].className}`}
+              className={`px-2 py-0.5 text-[11px] font-bold rounded-full border ${RENEWAL_STYLE[renewal.status].className}`}
               title={`Contract ends ${s.endDate}`}
             >
               {RENEWAL_STYLE[renewal.status].tag}
@@ -97,7 +99,7 @@ const StoreListItem = memo(function StoreListItem({
           )}
           {!hasCoords(s) && (
             <span
-              className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]"
+              className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]"
               title={s.locationIssue || "No coordinates"}
             >
               NO LOCATION
@@ -105,7 +107,7 @@ const StoreListItem = memo(function StoreListItem({
           )}
           {highRentBy !== null && (
             <span
-              className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${HIGH_RENT_TAG.className}`}
+              className={`px-2 py-0.5 text-[11px] font-bold rounded-full border ${HIGH_RENT_TAG.className}`}
               title={`Rent per m² ${highRentBy}% above the ${s.city} median`}
             >
               {HIGH_RENT_TAG.tag}
@@ -113,7 +115,7 @@ const StoreListItem = memo(function StoreListItem({
           )}
           {outside && (
             <span
-              className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${COVERAGE_TAG.outside.className}`}
+              className={`px-2 py-0.5 text-[11px] font-bold rounded-full border ${COVERAGE_TAG.outside.className}`}
               title="Not in any coverage zone on the map"
             >
               {COVERAGE_TAG.outside.short}
@@ -121,7 +123,7 @@ const StoreListItem = memo(function StoreListItem({
           )}
           {inWhiteSpace && (
             <span
-              className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${COVERAGE_TAG.whitespace.className}`}
+              className={`px-2 py-0.5 text-[11px] font-bold rounded-full border ${COVERAGE_TAG.whitespace.className}`}
               title="Inside a white-space zone on the map"
             >
               {COVERAGE_TAG.whitespace.short}
@@ -129,7 +131,7 @@ const StoreListItem = memo(function StoreListItem({
           )}
           {hasCoords(s) && issues.length > 0 && (
             <span
-              className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]"
+              className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-[#FB923C]/10 text-[#FB923C]"
               title={issues.join("\n")}
             >
               CHECK DATA
@@ -163,7 +165,7 @@ function FilterRow<T extends string>({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <label className="w-16 shrink-0 text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</label>
+      <label className="w-16 shrink-0 text-[11px] font-bold text-gray-400 uppercase tracking-widest">{label}</label>
       <div className="frow flex-1 grid grid-cols-3 gap-1 bg-black/20 p-0.5 rounded-lg">
         {options.map(([option, text]) => (
           <button
@@ -196,6 +198,7 @@ export default function Sidebar({
   filters,
   allCities,
   emptyMessage,
+  loading,
   coverage,
   benchmarks,
   quality,
@@ -234,25 +237,25 @@ export default function Sidebar({
         >
           <div className="sb-top p-3 border-b border-[#262626] flex flex-col gap-2.5 ml-0 pl-[15px] pr-[15px]">
             <div className="flex items-center justify-between pl-[15px] pr-0">
-              <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Navigation</div>
+              <div className="text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">Navigation</div>
               <div className="flex gap-2">
                 <button
                   onClick={onExportCsv}
-                  className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#fbbf24] bg-white/5 rounded-full transition-colors"
+                  className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-[#fbbf24] bg-white/5 rounded-full transition-colors"
                   title="Export to CSV"
                 >
                   <FileUp size={16} />
                 </button>
                 <button
                   onClick={onImportSheet}
-                  className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#fbbf24] bg-white/5 rounded-full transition-colors"
+                  className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-[#fbbf24] bg-white/5 rounded-full transition-colors"
                   title="Import / Upload Data"
                 >
                   <FileDown size={16} />
                 </button>
                 <button
                   onClick={onClose}
-                  className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-white bg-white/5 rounded-full transition-colors"
+                  className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white bg-white/5 rounded-full transition-colors"
                 >
                   <ChevronLeft size={18} />
                 </button>
@@ -296,7 +299,7 @@ export default function Sidebar({
                 {unclearOnly && (
                   <button
                     onClick={() => setUnclearOnly(false)}
-                    className="flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg border border-[#FB923C]/40 bg-[#FB923C]/10 text-[#FB923C] text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-[#FB923C]/15 transition-colors"
+                    className="flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg border border-[#FB923C]/40 bg-[#FB923C]/10 text-[#FB923C] text-[11px] font-bold uppercase tracking-widest cursor-pointer hover:bg-[#FB923C]/15 transition-colors"
                     title="Show all stores again"
                   >
                     <span>Only stores with unclear status</span>
@@ -306,7 +309,7 @@ export default function Sidebar({
                 {coverageOnly && (
                   <button
                     onClick={() => setCoverageOnly(null)}
-                    className={`flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg border text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-colors ${COVERAGE_TAG[coverageOnly].className}`}
+                    className={`flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg border text-[11px] font-bold uppercase tracking-widest cursor-pointer transition-colors ${COVERAGE_TAG[coverageOnly].className}`}
                     title="Show all stores again"
                   >
                     <span>
@@ -350,7 +353,7 @@ export default function Sidebar({
                     }}
                   />
                   <div className="flex items-center gap-2">
-                    <label className="w-16 shrink-0 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                    <label className="w-16 shrink-0 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                       City
                     </label>
                     <div className="sidebar-select-wrapper min-w-0">
@@ -387,7 +390,16 @@ export default function Sidebar({
           <div
             className={`flex-1 overflow-y-auto pl-[15px] pr-[12px] pt-[15px] pb-5 space-y-3 scrollbar-thin scrollbar-thumb-[#262626] ${currentTab === "stores" ? "sb-list" : "city-list"}`}
           >
-            {currentTab === "stores" ? (
+            {loading && currentTab !== "layers" ? (
+              currentTab === "insights" ? (
+                <ChartSkeleton label="Loading your stores from the Google Sheet" />
+              ) : (
+                <ListSkeleton
+                  rows={currentTab === "cities" ? 4 : 6}
+                  label="Loading your stores from the Google Sheet"
+                />
+              )
+            ) : currentTab === "stores" ? (
               stores.length > 0 ? (
                 <>
                   {stores.slice(0, shown).map((s) => {
@@ -408,7 +420,7 @@ export default function Sidebar({
                   {stores.length > shown && <LoadMore key={shown} onVisible={showMore} />}
                 </>
               ) : (
-                <div className="text-center py-10 text-[13px] text-gray-600 uppercase font-bold tracking-widest opacity-50">
+                <div className="text-center py-10 text-[13px] text-gray-400 uppercase font-bold tracking-widest">
                   {emptyMessage}
                 </div>
               )
@@ -420,7 +432,7 @@ export default function Sidebar({
                       setCityFilter("");
                       onCityFocus("");
                     }}
-                    className="flex items-center gap-2 text-[#fbbf24] text-[10px] font-black uppercase mb-1 hover:opacity-80 transition-all cursor-pointer w-fit"
+                    className="flex items-center gap-2 text-[#fbbf24] text-[11px] font-black uppercase mb-1 hover:opacity-80 transition-all cursor-pointer w-fit"
                   >
                     <ChevronLeft size={14} /> Back to All Cities
                   </button>
@@ -440,14 +452,14 @@ export default function Sidebar({
                           {c.city}
                         </div>
                         <div
-                          className={`city-card-count text-[10px] uppercase tracking-widest transition-all ${cityFilter === c.city ? "text-[#fbbf24]" : "text-gray-500 group-hover:text-[#fbbf24]"}`}
+                          className={`city-card-count text-[11px] uppercase tracking-widest transition-all ${cityFilter === c.city ? "text-[#fbbf24]" : "text-gray-400 group-hover:text-[#fbbf24]"}`}
                         >
                           {c.count} {c.count !== 1 ? "STORES" : "STORE"}
                         </div>
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between items-baseline text-[11px]">
-                          <span className="city-card-label text-[10px] text-gray-500 uppercase font-bold">
+                          <span className="city-card-label text-[11px] text-gray-400 uppercase font-bold">
                             Monthly Rent {vatLabel(settings)}
                           </span>
                           <span className="city-card-value text-[#fbbf24] font-bold">
@@ -455,7 +467,7 @@ export default function Sidebar({
                           </span>
                         </div>
                         <div className="flex justify-between items-baseline text-[11px]">
-                          <span className="city-card-label text-[10px] text-gray-500 uppercase font-bold">
+                          <span className="city-card-label text-[11px] text-gray-400 uppercase font-bold">
                             Annual Rent {vatLabel(settings)}
                           </span>
                           <span className="city-card-value text-white font-bold">
@@ -463,7 +475,7 @@ export default function Sidebar({
                           </span>
                         </div>
                         <div className="flex justify-between items-baseline text-[11px]">
-                          <span className="city-card-label text-[10px] text-gray-500 uppercase font-bold">
+                          <span className="city-card-label text-[11px] text-gray-400 uppercase font-bold">
                             Live Status
                           </span>
                           <span className="city-card-value text-white font-bold">
@@ -474,7 +486,7 @@ export default function Sidebar({
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-10 text-[13px] text-gray-600 uppercase font-bold tracking-widest opacity-50">
+                  <div className="text-center py-10 text-[13px] text-gray-400 uppercase font-bold tracking-widest">
                     No city data
                   </div>
                 )}
@@ -500,7 +512,7 @@ export default function Sidebar({
             ) : (
               <>
                 {insightsExtra}
-                <Suspense fallback={<div className="text-center py-10 text-[11px] text-gray-500">Loading charts…</div>}>
+                <Suspense fallback={<ChartSkeleton />}>
                   <CityInsights citySummaries={citySummaries} />
                 </Suspense>
               </>
@@ -508,16 +520,18 @@ export default function Sidebar({
           </div>
 
           <div className="p-2.5 text-center border-t border-[#262626] bg-[#0a0a0a]">
-            <span className="text-[10px] text-gray-600 font-bold tracking-tight uppercase">
-              {currentTab === "stores"
-                ? `Showing ${stores.length} of ${totalStores} Stores`
-                : currentTab === "layers"
-                  ? layersSummary
-                  : currentTab === "renewals"
-                    ? `Next 12 months · ${settings.leadDays}-day lead`
-                    : currentTab === "quality"
-                      ? `${quality.storesWithIssues} of ${totalStores} stores to check`
-                      : `${citySummaries.length} Cities Tracked`}
+            <span className="text-[11px] text-gray-400 font-bold tracking-tight uppercase">
+              {loading && currentTab !== "layers"
+                ? "Loading your stores…"
+                : currentTab === "stores"
+                  ? `Showing ${stores.length} of ${totalStores} Stores`
+                  : currentTab === "layers"
+                    ? layersSummary
+                    : currentTab === "renewals"
+                      ? `Next 12 months · ${settings.leadDays}-day lead`
+                      : currentTab === "quality"
+                        ? `${quality.storesWithIssues} of ${totalStores} stores to check`
+                        : `${citySummaries.length} Cities Tracked`}
             </span>
           </div>
         </motion.div>

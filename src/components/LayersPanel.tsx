@@ -84,7 +84,7 @@ function LayerCard({
       </div>
 
       <div className="flex items-center gap-2 layer-row">
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest w-14 shrink-0">Fill</span>
+        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest w-14 shrink-0">Fill</span>
         <input
           type="range"
           min={0}
@@ -135,7 +135,7 @@ function LayerCard({
       </div>
 
       <div className="flex items-center justify-between gap-2 layer-row">
-        <span className="text-[10px] text-gray-400 truncate" title={layer.source || undefined}>
+        <span className="text-[11px] text-gray-400 truncate" title={layer.source || undefined}>
           {layer.source ? `From ${layer.source}` : "Made in the app"}
         </span>
         <ConfirmButton
@@ -211,7 +211,7 @@ export default function LayersPanel({
       )}
 
       {layers.length === 0 ? (
-        <div className="text-center py-8 text-[12px] text-gray-500">No map layers yet.</div>
+        <div className="text-center py-8 text-[12px] text-gray-400">No map layers yet.</div>
       ) : (
         <>
           {layers.map((layer) => (

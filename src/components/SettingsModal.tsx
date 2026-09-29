@@ -107,7 +107,7 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose }: S
         </div>
 
         <section className="settings-section">
-          <h3 className="detail-panel-row-label text-[10px]">Renewal</h3>
+          <h3 className="detail-panel-row-label text-[11px]">Renewal</h3>
           <label className="settings-row">
             <span>Start renewal</span>
             <NumberInput
@@ -133,7 +133,7 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose }: S
         </section>
 
         <section className="settings-section">
-          <h3 className="detail-panel-row-label text-[10px]">Rent</h3>
+          <h3 className="detail-panel-row-label text-[11px]">Rent</h3>
           <label className="settings-row settings-toggle-row">
             <input
               type="checkbox"
@@ -165,7 +165,7 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose }: S
         </section>
 
         <div className="settings-footer flex items-center gap-3">
-          <span className="text-[11px] text-gray-500 flex-1">Saved in this browser only.</span>
+          <span className="text-[11px] text-gray-400 flex-1">Saved in this browser only.</span>
           <button
             onClick={() => onChange({ ...DEFAULT_SETTINGS, pinColors: settings.pinColors })}
             disabled={isDefault}

@@ -30,9 +30,9 @@ function Tile({
 }) {
   return (
     <div className="bg-white/[0.03] border border-white/10 rounded-lg store-card-box min-w-0">
-      <div className="detail-panel-row-label text-[9px]">{label}</div>
+      <div className="detail-panel-row-label text-[11px]">{label}</div>
       <div className={`detail-panel-figure text-[20px] leading-tight store-card-gap-top ${valueClass}`}>{value}</div>
-      {note && <div className="text-[10px] text-gray-400 store-card-gap-top">{note}</div>}
+      {note && <div className="text-[11px] text-gray-400 store-card-gap-top">{note}</div>}
     </div>
   );
 }
@@ -91,7 +91,7 @@ function ZoneList({
           >
             <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: hit.color }} />
             <span className="truncate">{hit.zoneName}</span>
-            {detail && <span className="text-[10.5px] text-gray-400 ml-auto shrink-0">{detail(hit)}</span>}
+            {detail && <span className="text-[11px] text-gray-400 ml-auto shrink-0">{detail(hit)}</span>}
           </button>
         ))}
       </div>
@@ -188,7 +188,7 @@ export default function CoverageSummary({
             onSelect={onSelectZone}
           />
 
-          <div className="text-[10.5px] text-gray-500 leading-relaxed coverage-note">
+          <div className="text-[11px] text-gray-400 leading-relaxed coverage-note">
             Checks all {plural(storeCount, "store", "stores")}, live or not, against the layers shown on the map.
             {coverage.unchecked.length > 0 &&
               ` ${plural(coverage.unchecked.length, "store has", "stores have")} no location and ${coverage.unchecked.length === 1 ? "wasn't" : "weren't"} checked.`}

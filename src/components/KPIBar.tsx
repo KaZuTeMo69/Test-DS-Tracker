@@ -6,6 +6,7 @@ import { fmtN } from "../lib/format";
 import { storeRenewal } from "../lib/renewal";
 import { rentFactor } from "../lib/settings";
 import { isLive, isPaid } from "../lib/status";
+import { Bone } from "./Skeleton";
 
 interface KPIBarProps {
   stores: Store[];
@@ -16,6 +17,7 @@ interface KPIBarProps {
   // Stores (out of all stores) with something to fix in their data, and opening the Data Quality panel
   issueCount: number;
   onShowIssues: () => void;
+  loading: boolean; // a saved Google Sheet is loading: placeholders instead of zeros
 }
 
 // Totals leave out stores with no value, so say how many were left out
@@ -28,6 +30,7 @@ const KPIBar = memo(function KPIBar({
   onShowUnclear,
   issueCount,
   onShowIssues,
+  loading,
 }: KPIBarProps) {
   const { leadDays, warningDays, includeVat } = useSettings();
   const stats = useMemo(() => {
@@ -142,7 +145,7 @@ const KPIBar = memo(function KPIBar({
 
   return (
     <div className="kpis-container flex gap-3 p-1.5 bg-[#0a0a0a] border border-[#222] rounded-xl shrink-0 overflow-x-auto">
-      {unclear.total > 0 && (
+      {!loading && unclear.total > 0 && (
         <button
           onClick={onShowUnclear}
           className={`kpi-card shrink-0 bg-[#111] border border-[#222] border-t-2 p-[10px_16px] sm:p-[13px_20px] rounded-xl shadow-sm transform transition-transform hover:scale-[1.02] text-center w-auto min-w-max cursor-pointer ${unclearOnly ? "ring-1 ring-[#FB923C]/60" : ""}`}
@@ -155,38 +158,36 @@ const KPIBar = memo(function KPIBar({
             .filter(Boolean)
             .join("\n")}
         >
-          <p className="kpi-label text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1">
+          <p className="kpi-label text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">
             ⚠ Unclear Status
           </p>
           <div className="flex flex-col items-center justify-center">
             <p className="kpi-value kpi-number text-2xl font-bold tracking-tight" style={{ color: "#FB923C" }}>
               {unclear.total}
             </p>
-            <p className="text-[10px] text-gray-500 uppercase mt-0.5">counted not live / unpaid</p>
-            <p className="text-[10px] text-[#FB923C] mt-0.5">
+            <p className="text-[11px] text-gray-400 uppercase mt-0.5">counted not live / unpaid</p>
+            <p className="text-[11px] text-[#FB923C] mt-0.5">
               {unclearOnly ? "Showing these stores" : "View stores →"}
             </p>
           </div>
         </button>
       )}
-      {issueCount > 0 && (
+      {!loading && issueCount > 0 && (
         <button
           onClick={onShowIssues}
           className="kpi-card shrink-0 bg-[#111] border border-[#222] border-t-2 p-[10px_16px] sm:p-[13px_20px] rounded-xl shadow-sm transform transition-transform hover:scale-[1.02] text-center w-auto min-w-max cursor-pointer"
           style={{ borderTopColor: "#FB923C" }}
           title="Stores with missing or unreadable data, grouped by problem"
         >
-          <p className="kpi-label text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1">
-            Data Issues
-          </p>
+          <p className="kpi-label text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Data Issues</p>
           <div className="flex flex-col items-center justify-center">
             <p className="kpi-value kpi-number text-2xl font-bold tracking-tight" style={{ color: "#FB923C" }}>
               {issueCount}
             </p>
-            <p className="text-[10px] text-gray-500 uppercase mt-0.5">
+            <p className="text-[11px] text-gray-400 uppercase mt-0.5">
               {issueCount === 1 ? "store" : "stores"} to check
             </p>
-            <p className="text-[10px] text-[#FB923C] mt-0.5">View by problem →</p>
+            <p className="text-[11px] text-[#FB923C] mt-0.5">View by problem →</p>
           </div>
         </button>
       )}
@@ -196,22 +197,20 @@ const KPIBar = memo(function KPIBar({
           className="kpi-card shrink-0 bg-[#111] border border-[#222] border-t-2 p-[10px_16px] sm:p-[13px_20px] rounded-xl shadow-sm transform transition-transform hover:scale-[1.02] text-center w-auto min-w-max"
           style={{ borderTopColor: kpi.color }}
         >
-          <p className="kpi-label text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1">
-            {kpi.label}
-          </p>
+          <p className="kpi-label text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{kpi.label}</p>
           <div className="flex flex-col items-center justify-center">
             <p
               className="kpi-value kpi-number text-2xl font-bold tracking-tight"
               style={{ color: kpi.valueColor || kpi.color }}
             >
-              {kpi.value}
+              {loading ? <Bone w={56} h={26} className="kpi-bone" /> : kpi.value}
             </p>
-            {kpi.unit ? (
-              <p className="text-[10px] text-gray-500 uppercase mt-0.5">{kpi.unit}</p>
+            {kpi.unit && !loading ? (
+              <p className="text-[11px] text-gray-400 uppercase mt-0.5">{kpi.unit}</p>
             ) : (
-              <p className="text-[10px] opacity-0 select-none mt-0.5">—</p>
+              <p className="text-[11px] opacity-0 select-none mt-0.5">—</p>
             )}
-            {kpi.note && <p className="text-[10px] text-[#FB923C] mt-0.5">{kpi.note}</p>}
+            {kpi.note && !loading && <p className="text-[11px] text-[#FB923C] mt-0.5">{kpi.note}</p>}
           </div>
         </div>
       ))}

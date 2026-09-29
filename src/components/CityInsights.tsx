@@ -54,7 +54,7 @@ export default function CityInsights({ citySummaries }: CityInsightsProps) {
                 dataKey="city"
                 type="category"
                 width={70}
-                tick={{ fill: "#666", fontSize: 10, fontWeight: 700 }}
+                tick={{ fill: "#a3a3a3", fontSize: 11, fontWeight: 700 }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -84,7 +84,7 @@ export default function CityInsights({ citySummaries }: CityInsightsProps) {
                 dataKey="city"
                 type="category"
                 width={70}
-                tick={{ fill: "#666", fontSize: 10, fontWeight: 700 }}
+                tick={{ fill: "#a3a3a3", fontSize: 11, fontWeight: 700 }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -101,7 +101,7 @@ export default function CityInsights({ citySummaries }: CityInsightsProps) {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-[#111] border border-[#222] p-4 rounded-xl">
-          <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Avg Rent/Store {vat}</div>
+          <div className="text-[11px] font-bold text-gray-400 uppercase mb-1">Avg Rent/Store {vat}</div>
           <div className="text-sm font-bold text-white font-mono">
             {CURRENCY}{" "}
             {citySummaries.length > 0
@@ -112,7 +112,7 @@ export default function CityInsights({ citySummaries }: CityInsightsProps) {
           </div>
         </div>
         <div className="bg-[#111] border border-[#222] p-4 rounded-xl">
-          <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Expansion Health</div>
+          <div className="text-[11px] font-bold text-gray-400 uppercase mb-1">Expansion Health</div>
           <div className="text-sm font-bold text-green-500 font-mono">
             {citySummaries.length > 0
               ? Math.round(

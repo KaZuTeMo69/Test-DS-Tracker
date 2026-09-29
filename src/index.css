@@ -23,8 +23,8 @@
 
   /* Text */
   --token-color-text-primary: #efefef;
-  --token-color-text-secondary: #9a9a9a;
-  --token-color-text-muted: #666666;
+  --token-color-text-secondary: #a3a3a3;
+  --token-color-text-muted: #8f8f8f;
 
   /* Fonts (loaded in index.html) */
   --token-font-family-display: "Oswald", sans-serif;
@@ -62,12 +62,20 @@
   box-sizing: border-box;
 }
 
+/* The page is exactly the screen: no margin of its own, and the visible height on phones (dvh) */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
 body {
   font-family: var(--token-font-family-sans);
   background: var(--token-color-bg-main);
   color: var(--token-color-text-primary);
   height: 100vh;
-  width: 100vw;
+  height: 100dvh;
+  width: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -77,11 +85,24 @@ body {
    PAGE LAYOUT
    ========================================================================== */
 
+/* React's root element fills the page, and the app fills it */
+#root {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+}
+
+/* Fills the page inside its margin; sized to the screen, the margin used to push it a few pixels past it */
 .app-container {
   padding: var(--token-spacing-hairline) !important;
   margin: var(--token-spacing-hairline) !important;
-  width: 100vw;
-  height: 100vh;
+  width: auto;
+  height: auto;
+  flex: 1 1 auto;
+  min-height: 0;
   border-radius: var(--token-spacing-hairline);
 }
 
@@ -209,7 +230,7 @@ body {
 }
 
 .sb-top label {
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700;
   letter-spacing: 0.05em;
   margin-bottom: 2px !important;
@@ -1250,7 +1271,7 @@ body {
   position: absolute;
   top: 4px;
   padding-left: 3px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--token-color-text-secondary);
   white-space: nowrap;
@@ -1258,9 +1279,9 @@ body {
 
 .timeline-year {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
-  color: #6b6b6b;
+  color: #8f8f8f;
 }
 
 /* Month names: short ones when the chart is narrow */
@@ -1345,9 +1366,9 @@ body {
 }
 
 .timeline-sub {
-  font-size: 10px;
+  font-size: 11px;
   font-family: var(--token-font-family-mono, "DM Mono", monospace);
-  color: #8a8a8a;
+  color: #a3a3a3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1425,7 +1446,7 @@ body {
 
 .map-legend-toggle .fb {
   padding: 2px 8px !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   white-space: nowrap;
 }
 
@@ -1486,4 +1507,99 @@ body {
 
 .quality-row {
   gap: 2px;
+}
+
+/* Phone: the store and zone cards as a sheet over the bottom of the map */
+.bottom-sheet {
+  transition: height 0.25s ease;
+}
+
+.bottom-sheet.dragging {
+  transition: none;
+}
+
+/* The handle and the header drag the sheet; the browser mustn't scroll or zoom the page meanwhile */
+.bottom-sheet .sheet-handle,
+.bottom-sheet [data-sheet-drag] {
+  touch-action: none;
+}
+
+.sheet-handle {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 8px 0 4px;
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.sheet-handle span {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: #555;
+}
+
+.sheet-handle:focus-visible span {
+  background: var(--token-color-noon-yellow);
+}
+
+/* The legend would cover what's left of the map above the sheet, and with the sheet all the way up there's no
+   room for the zoom buttons either */
+@media (max-width: 767px) {
+  .sheet-open .map-legend {
+    display: none;
+  }
+
+  .map-container:has(.bottom-sheet[data-snap="full"]) .map-zoom-buttons {
+    display: none;
+  }
+}
+
+/* The zoom buttons and the map credits stay above the phone sheet */
+.map-container .leaflet-bottom {
+  bottom: var(--sheet-inset, 0px) !important;
+  transition: bottom 0.25s ease;
+}
+
+/* Loading placeholders */
+.skeleton {
+  background: linear-gradient(90deg, #1b1b1b 25%, #2b2b2b 37%, #1b1b1b 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+.skeleton-card {
+  padding: 16px 18px;
+}
+
+.skeleton-gap {
+  margin-top: 14px;
+}
+
+.skeleton-chart {
+  height: 200px;
+  margin-top: 14px;
+  padding: 16px;
+}
+
+.kpi-bone {
+  display: inline-block;
+  vertical-align: middle;
 }
