@@ -1,6 +1,7 @@
 /**
  * The base maps: all free, no keys. Each carries the attribution its provider asks for, shown in the map's
- * credits corner. CARTO's are free for light use; Esri's imagery comes with a labels layer on top.
+ * credits corner. The light and dark maps are Esri's grey Canvas maps (CARTO's now ask for a key); each Esri base
+ * comes with a labels layer on top.
  */
 
 export type BaseMapId = "osm" | "positron" | "dark" | "satellite";
@@ -22,7 +23,9 @@ export interface BaseMap extends Tiles {
 }
 
 const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-const CARTO = `${OSM} &copy; <a href="https://carto.com/attributions">CARTO</a>`;
+const ESRI_CANVAS =
+  "Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community";
+const ESRI_SERVER = "https://server.arcgisonline.com/ArcGIS/rest/services";
 const ESRI = "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community";
 
 export const BASE_MAPS: Record<BaseMapId, BaseMap> = {
@@ -38,33 +41,43 @@ export const BASE_MAPS: Record<BaseMapId, BaseMap> = {
   positron: {
     id: "positron",
     name: "Light",
-    hint: "CARTO Positron: pale, quiet streets",
-    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    subdomains: "abcd",
-    attribution: CARTO,
+    hint: "Esri Light Gray: pale, quiet streets",
+    url: `${ESRI_SERVER}/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}`,
+    attribution: ESRI_CANVAS,
+    maxNativeZoom: 16,
     dark: false,
+    labels: {
+      url: `${ESRI_SERVER}/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}`,
+      attribution: "",
+      maxNativeZoom: 16,
+    },
     swatch: "linear-gradient(135deg, #fafaf8 50%, #d4dadc 50%)",
   },
   dark: {
     id: "dark",
     name: "Dark",
-    hint: "CARTO Dark Matter: the night map",
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    subdomains: "abcd",
-    attribution: CARTO,
+    hint: "Esri Dark Gray: the night map",
+    url: `${ESRI_SERVER}/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`,
+    attribution: ESRI_CANVAS,
+    maxNativeZoom: 16,
     dark: true,
+    labels: {
+      url: `${ESRI_SERVER}/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}`,
+      attribution: "",
+      maxNativeZoom: 16,
+    },
     swatch: "linear-gradient(135deg, #2c2c2c 50%, #111 50%)",
   },
   satellite: {
     id: "satellite",
     name: "Satellite",
     hint: "Esri World Imagery, with place names",
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    url: `${ESRI_SERVER}/World_Imagery/MapServer/tile/{z}/{y}/{x}`,
     attribution: ESRI,
     maxNativeZoom: 18,
     dark: true,
     labels: {
-      url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+      url: `${ESRI_SERVER}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`,
       attribution: "Labels &copy; Esri",
       maxNativeZoom: 18,
     },
