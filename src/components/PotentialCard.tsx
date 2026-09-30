@@ -1,5 +1,5 @@
 import { CSSProperties, KeyboardEvent, ReactNode, useMemo, useState } from "react";
-import { Check, Copy, ExternalLink, MapPin, Pencil, X } from "lucide-react";
+import { Check, ClipboardCopy, Copy, ExternalLink, MapPin, Pencil, X } from "lucide-react";
 import CardFrame from "./CardFrame";
 import ConfirmButton from "./ConfirmButton";
 import NearbyStores from "./NearbyStores";
@@ -26,6 +26,8 @@ import { CityMedian, compareToMedian } from "../lib/rentStats";
 import { rentFactor, shownRent, vatLabel } from "../lib/settings";
 import { potentialTargets } from "../lib/cpo";
 import { ZoneHit } from "../lib/coverage";
+import { potentialSheetRow } from "../lib/sheetPotentials";
+import { PotentialsTab } from "../hooks/usePotentials";
 
 interface PotentialCardProps {
   potential: Potential;
@@ -33,6 +35,12 @@ interface PotentialCardProps {
   layers: ZoneLayer[];
   cityMedian: CityMedian | undefined; // the city's median store rent per m²
   storeHeaders: string[] | null; // the loaded sheet's columns, for Copy as store row
+  // A draft was added in the app and can be edited here; the others are rows of the sheet's Potentials tab,
+  // edited in Google Sheets (sheetLink opens the spreadsheet)
+  draft: boolean;
+  sheetLink: string | null;
+  tab: PotentialsTab; // whether the spreadsheet has a Potentials tab
+  tabHeaders: string[] | null; // its header row, for Copy for sheet
   onEdit: (patch: Partial<PotentialDraft>) => void;
   onStatus: (status: PotentialStatus, dropReason?: string) => void;
   onMove: () => void; // opens the form, to move the pin
@@ -45,6 +53,14 @@ interface PotentialCardProps {
 }
 
 type Tab = "study" | "details";
+
+// Where a draft's copied row goes, by whether the spreadsheet has a Potentials tab
+const DRAFT_NOTE: Record<PotentialsTab, string> = {
+  found: "Paste it into the Potentials tab. The draft goes once the sheet has its row.",
+  unknown: "Paste it into the Potentials tab. The draft goes once the sheet has its row.",
+  missing: "Your spreadsheet has no Potentials tab yet: get the template in Settings.",
+  none: "For the Potentials tab of your spreadsheet (the template is in Settings).",
+};
 
 const sar = (n: number | null) => (n === null ? "—" : `${CURRENCY} ${Math.round(n).toLocaleString()}`);
 
@@ -61,6 +77,7 @@ function EditableRow({
   placeholder = "Add",
   onSave,
   check,
+  readOnly = false,
 }: {
   label: string;
   value: string;
@@ -70,6 +87,7 @@ function EditableRow({
   placeholder?: string;
   onSave: (text: string) => void;
   check?: (text: string) => string | null; // an error to show, or null
+  readOnly?: boolean; // a row of the sheet: shown, not edited
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +120,16 @@ function EditableRow({
       save();
     }
   };
+
+  if (readOnly)
+    return (
+      <div className="pc-row">
+        <span className="detail-panel-row-label text-[11px] pc-row-label">{label}</span>
+        <span id={id} className={`pc-value readonly ${value ? "" : "empty"}`}>
+          <span className="pc-value-text">{value ? (display ?? value) : "—"}</span>
+        </span>
+      </div>
+    );
 
   return (
     <div className={`pc-row ${editing ? "editing" : ""}`}>
@@ -364,16 +392,26 @@ function StudyTab({
   );
 }
 
-function DetailsTab({ potential: p, onEdit }: Pick<PotentialCardProps, "potential" | "onEdit">) {
+function DetailsTab({
+  potential: p,
+  onEdit,
+  readOnly,
+}: Pick<PotentialCardProps, "potential" | "onEdit"> & { readOnly: boolean }) {
   const settings = useSettings();
   const now = useMemo(() => new Date(), []);
-  const days = daysSince(p.createdAt, now);
+  const days = p.createdAt ? daysSince(p.createdAt, now) : null;
   return (
     <>
-      <EditableRow label="Name" value={p.name} required onSave={(name) => onEdit({ name })} />
-      <EditableRow label="City" value={p.city} required onSave={(city) => onEdit({ city })} />
-      <EditableRow label="District" value={p.district} onSave={(district) => onEdit({ district })} />
+      <EditableRow readOnly={readOnly} label="Name" value={p.name} required onSave={(name) => onEdit({ name })} />
+      <EditableRow readOnly={readOnly} label="City" value={p.city} required onSave={(city) => onEdit({ city })} />
       <EditableRow
+        readOnly={readOnly}
+        label="District"
+        value={p.district}
+        onSave={(district) => onEdit({ district })}
+      />
+      <EditableRow
+        readOnly={readOnly}
         label="Size (m²)"
         value={numberText(p.size)}
         kind="number"
@@ -382,6 +420,7 @@ function DetailsTab({ potential: p, onEdit }: Pick<PotentialCardProps, "potentia
         onSave={(t) => onEdit({ size: toNumber(t) })}
       />
       <EditableRow
+        readOnly={readOnly}
         label={`Asking rent / yr ${vatLabel(settings)}`.trim()}
         value={numberText(p.askingRentAnnual)}
         kind="number"
@@ -390,6 +429,7 @@ function DetailsTab({ potential: p, onEdit }: Pick<PotentialCardProps, "potentia
         onSave={(t) => onEdit({ askingRentAnnual: toNumber(t) })}
       />
       <EditableRow
+        readOnly={readOnly}
         label="Expected OPD"
         value={numberText(p.expectedOpd)}
         kind="number"
@@ -397,9 +437,16 @@ function DetailsTab({ potential: p, onEdit }: Pick<PotentialCardProps, "potentia
         check={numberCheck}
         onSave={(t) => onEdit({ expectedOpd: toNumber(t) })}
       />
-      <EditableRow label="Contact" value={p.contact} onSave={(contact) => onEdit({ contact })} />
-      <EditableRow label="Notes" value={p.notes} kind="multiline" onSave={(notes) => onEdit({ notes })} />
+      <EditableRow readOnly={readOnly} label="Contact" value={p.contact} onSave={(contact) => onEdit({ contact })} />
       <EditableRow
+        readOnly={readOnly}
+        label="Notes"
+        value={p.notes}
+        kind="multiline"
+        onSave={(notes) => onEdit({ notes })}
+      />
+      <EditableRow
+        readOnly={readOnly}
         label="Feasibility link"
         value={p.feasibilityLink}
         kind="url"
@@ -421,20 +468,25 @@ function DetailsTab({ potential: p, onEdit }: Pick<PotentialCardProps, "potentia
       />
       {p.status === "dropped" && (
         <EditableRow
+          readOnly={readOnly}
           label="Drop reason"
           value={p.dropReason}
           required
           onSave={(dropReason) => onEdit({ dropReason })}
         />
       )}
-      <EditableRow label="Added by" value={p.addedBy} onSave={(addedBy) => onEdit({ addedBy })} />
+      <EditableRow readOnly={readOnly} label="Added by" value={p.addedBy} onSave={(addedBy) => onEdit({ addedBy })} />
       <div className="pc-meta">
         <span>
-          Added {new Date(p.createdAt).toLocaleDateString()} ({days === 0 ? "today" : `${days} days ago`})
+          {days === null
+            ? "No Date Added in the sheet"
+            : `Added ${new Date(p.createdAt).toLocaleDateString()} (${days === 0 ? "today" : `${days} days ago`})`}
         </span>
-        <span>
-          {POTENTIAL_STATUS_LABEL[p.status]} since {new Date(p.statusChangedAt).toLocaleDateString()}
-        </span>
+        {p.statusChangedAt && (
+          <span>
+            {POTENTIAL_STATUS_LABEL[p.status]} since {new Date(p.statusChangedAt).toLocaleDateString()}
+          </span>
+        )}
         <span className="font-mono">
           {p.lat.toFixed(6)}, {p.lng.toFixed(6)}
         </span>
@@ -445,13 +497,31 @@ function DetailsTab({ potential: p, onEdit }: Pick<PotentialCardProps, "potentia
 
 /** A Potential's card: its status, the study worked out for it, its details (edited in place) and actions. */
 export default function PotentialCard(props: PotentialCardProps) {
-  const { potential: p, storeHeaders, onStatus, onMove, onDelete, onCopied, onClose, onInset } = props;
+  const {
+    potential: p,
+    storeHeaders,
+    draft,
+    sheetLink,
+    onStatus,
+    onMove,
+    onDelete,
+    onCopied,
+    onClose,
+    onInset,
+  } = props;
   const [tab, setTab] = useState<Tab>("study");
 
   const copyRow = async () => {
     if (await copyText(storeRowTsv(p, storeHeaders))) onCopied("Store row copied. Paste it into the store sheet");
     else onCopied("Couldn't copy. Your browser blocked the clipboard");
   };
+  // The draft as a row of the Potentials tab, in the tab's column order once it's been read
+  const copyForSheet = async () => {
+    if (await copyText(potentialSheetRow(p, props.tabHeaders)))
+      onCopied("Copied a row for the Potentials tab. Paste into the first empty row of the tab");
+    else onCopied("Couldn't copy. Your browser blocked the clipboard");
+  };
+  const rowLabel = p.id.startsWith("ROW-") ? `No ID (row ${p.id.slice(4)})` : p.id;
 
   return (
     <CardFrame width={360} label={`Potential: ${p.name}`} onClose={onClose} onInset={onInset}>
@@ -462,7 +532,7 @@ export default function PotentialCard(props: PotentialCardProps) {
               {p.name}
             </h3>
             <p className="detail-panel-subtext text-[11px] store-card-gap-top">
-              {p.id} · {[p.district, p.city].filter(Boolean).join(", ") || "No city"}
+              {rowLabel} · {[p.district, p.city].filter(Boolean).join(", ") || "No city"}
             </p>
           </div>
           <button
@@ -476,8 +546,41 @@ export default function PotentialCard(props: PotentialCardProps) {
         <div className="flex flex-wrap gap-1.5 store-card-chips items-center">
           <span className="potential-kind">Potential</span>
           <StatusBadge status={p.status} />
+          {draft && <span className="potential-draft">Draft — not in sheet yet</span>}
         </div>
-        <StatusControl key={p.status} status={p.status} onStatus={onStatus} />
+        {draft ? (
+          <>
+            <StatusControl key={p.status} status={p.status} onStatus={onStatus} />
+            <div className="pc-sheet" data-pc-sheet="draft">
+              <button
+                className="pc-action"
+                onClick={copyForSheet}
+                title="One tab-separated row, in the Potentials tab's column order"
+              >
+                <ClipboardCopy size={13} /> Copy for sheet
+              </button>
+              <span className="pc-sheet-note">{DRAFT_NOTE[props.tab]}</span>
+            </div>
+          </>
+        ) : (
+          <div className="pc-sheet" data-pc-sheet="sheet">
+            {sheetLink && (
+              <a className="pc-action" href={sheetLink} target="_blank" rel="noopener noreferrer">
+                <ExternalLink size={13} /> Edit in sheet
+              </a>
+            )}
+            <span className="pc-sheet-note">
+              {p.id.startsWith("ROW-") ? (
+                `From row ${p.id.slice(4)} of the Potentials tab.`
+              ) : (
+                <>
+                  From the Potentials tab: find <span className="whitespace-nowrap">{p.id}</span> there.
+                </>
+              )}{" "}
+              Changes show at the next sync.
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="tab-container store-card-tabs pc-tabs">
@@ -498,19 +601,21 @@ export default function PotentialCard(props: PotentialCardProps) {
           <StudyTab {...props} />
         ) : (
           <>
-            <DetailsTab potential={p} onEdit={props.onEdit} />
-            <div className="pc-actions">
-              <button className="pc-action" onClick={onMove} title="Edit every field, or move the pin">
-                <MapPin size={13} /> Edit / move pin
-              </button>
-              <ConfirmButton
-                label="Delete"
-                confirmLabel="Click again to delete"
-                onConfirm={onDelete}
-                className="pc-action danger"
-                title="Delete this potential"
-              />
-            </div>
+            <DetailsTab potential={p} onEdit={props.onEdit} readOnly={!draft} />
+            {draft && (
+              <div className="pc-actions">
+                <button className="pc-action" onClick={onMove} title="Edit every field, or move the pin">
+                  <MapPin size={13} /> Edit / move pin
+                </button>
+                <ConfirmButton
+                  label="Delete"
+                  confirmLabel="Click again to delete"
+                  onConfirm={onDelete}
+                  className="pc-action danger"
+                  title="Delete this draft"
+                />
+              </div>
+            )}
           </>
         )}
       </div>

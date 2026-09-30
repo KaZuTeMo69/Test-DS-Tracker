@@ -55,6 +55,7 @@ interface SidebarProps {
   coverage: Coverage; // for the coverage tags in the list
   benchmarks: RentBenchmarks; // for the HIGH RENT tag
   quality: { groups: IssueGroup[]; storesWithIssues: number }; // the Data Quality panel
+  potentialsQuality: ReactNode; // its section for the sheet's Potentials tab
   insightsExtra: ReactNode; // shown above the charts in the Growth tab
   cityFigures: ReactNode; // shown above the city cards
   layersPanel: ReactNode; // the Layers tab
@@ -228,6 +229,7 @@ function usePanelParts(props: SidebarProps) {
     coverage,
     benchmarks,
     quality,
+    potentialsQuality,
     insightsExtra,
     cityFigures,
     layersPanel,
@@ -476,6 +478,7 @@ function usePanelParts(props: SidebarProps) {
         selectedId={selectedId}
         onSelectStore={onSelectStore}
         onBack={() => setCurrentTab("stores")}
+        potentialsSection={potentialsQuality}
       />
     ) : currentTab === "renewals" ? (
       <RenewalsTab stores={stores} totalStores={totalStores} selectedId={selectedId} onSelectStore={onSelectStore} />

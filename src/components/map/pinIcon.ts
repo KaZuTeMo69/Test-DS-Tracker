@@ -106,19 +106,21 @@ const potentialIconCache = new Map<string, L.DivIcon>();
 /**
  * A Potential's pin: a diamond in its status colour with a small white diamond inside. The dark grey of dropped
  * ones gets a light outline so it shows on the night map. Selected: bigger, with a white halo (not the selected
- * stores' sky blue, which is close to the backup blue). The form's pin (moving) has a dashed white outline.
+ * stores' sky blue, which is close to the backup blue). The form's pin (moving) has a dashed white outline, and a
+ * draft (added in the app, not in the sheet yet) a finer dashed one.
  */
-export function potentialIcon(color: string, { selected = false, moving = false, light = false } = {}) {
-  const key = `${color}|${selected}|${moving}|${light}`;
+export function potentialIcon(color: string, { selected = false, moving = false, light = false, draft = false } = {}) {
+  const key = `${color}|${selected}|${moving}|${light}|${draft}`;
   const cached = potentialIconCache.get(key);
   if (cached) return cached;
   const sz = POTENTIAL_WIDTH + (selected || moving ? 8 : 0);
   const h = Math.round(sz * 1.35);
-  const stroke = moving ? "#ffffff" : light ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.45)";
+  const stroke = moving || draft ? "#ffffff" : light ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.45)";
+  const dashes = moving ? 'stroke-dasharray="2.4 1.8"' : draft ? 'stroke-dasharray="1.8 1.4"' : "";
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${h}" viewBox="0 0 24 32" data-shape="potential" ${moving ? 'data-moving="1"' : ""}>
+    <svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${h}" viewBox="0 0 24 32" data-shape="potential" ${moving ? 'data-moving="1"' : ""} ${draft ? 'data-draft="1"' : ""}>
       ${selected ? `<path d="${DIAMOND_PATH}" fill="none" stroke="#ffffff" stroke-width="3.2" opacity="0.9" transform="translate(12 16) scale(1.12) translate(-12 -16)"/>` : ""}
-      <path d="${DIAMOND_PATH}" fill="${color}" stroke="${stroke}" stroke-width="${moving ? 1.6 : 1.1}" ${moving ? 'stroke-dasharray="2.4 1.8"' : ""}/>
+      <path d="${DIAMOND_PATH}" fill="${color}" stroke="${stroke}" stroke-width="${moving ? 1.6 : draft ? 1.4 : 1.1}" ${dashes}/>
       <path d="M12 7.5L16.6 12.5L12 18.8L7.4 12.5z" fill="white"/>
     </svg>
   `;

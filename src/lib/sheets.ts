@@ -36,11 +36,20 @@ export function cellText(cell: GvizCell | null | undefined): string {
   return String(cell.v);
 }
 
-/** A sheet tab's header row and data rows, read through Google's public gviz endpoint. */
-export async function fetchSheetTable(
-  sheetId: string,
-  sheetName?: string,
-): Promise<{ headers: string[]; rows: string[][] }> {
+interface GvizTable {
+  cols?: GvizCol[];
+  rows?: GvizRow[];
+  parsedNumHeaders?: number;
+}
+
+interface GvizResponse {
+  status?: string;
+  errors?: Array<{ message?: string; detailed_message?: string }>;
+  table?: GvizTable;
+}
+
+// One request to Google's public gviz endpoint; throws when there's no answer or it can't be read
+async function requestGviz(sheetId: string, sheetName?: string): Promise<GvizResponse> {
   let url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&t=${Date.now()}`;
   if (sheetName) {
     url += `&sheet=${encodeURIComponent(sheetName)}`;
@@ -53,8 +62,31 @@ export async function fetchSheetTable(
   if (!jsonMatch) {
     throw new Error("Failed to parse Google Sheets response");
   }
+  return JSON.parse(jsonMatch[1]);
+}
 
-  const data = JSON.parse(jsonMatch[1]);
+// Columns are found by their header text (Store Name, City, DS Code, Contract Duration,
+// Paid / Not Paid, Live / Not Live, Contract Start Date, Area (sqm.), Rent/sqm. (SAR),
+// Annual Rent W/O VAT, Lat, Lng), so inserting or reordering columns in the sheet is safe.
+function tableText(table: GvizTable): { headers: string[]; rows: string[][] } {
+  const cols: GvizCol[] = table.cols || [];
+  const rows = (table.rows || []).map((row) => (row.c || []).map(cellText));
+
+  // When Google recognises the header row it reports it in parsedNumHeaders, moves its text
+  // into the column labels and leaves it out of the rows. Otherwise the header is the first row.
+  const headerCount = typeof table.parsedNumHeaders === "number" ? table.parsedNumHeaders : 0;
+  const headers = headerCount > 0 ? cols.map((c) => c.label || "") : rows[0] || [];
+  const dataRows = headerCount > 0 ? rows : rows.slice(1);
+
+  return { headers, rows: dataRows };
+}
+
+/** A sheet tab's header row and data rows, read through Google's public gviz endpoint. */
+export async function fetchSheetTable(
+  sheetId: string,
+  sheetName?: string,
+): Promise<{ headers: string[]; rows: string[][] }> {
+  const data = await requestGviz(sheetId, sheetName);
   if (data.status === "error") {
     const errorDetails = data.errors?.[0]?.detailed_message || data.errors?.[0]?.message || "Unknown error";
     throw new Error(`Google Sheets error: ${errorDetails}`);
@@ -64,20 +96,21 @@ export async function fetchSheetTable(
   if (!table || !table.rows || table.rows.length === 0) {
     throw new Error("Empty sheet or invalid structure");
   }
+  return tableText(table);
+}
 
-  // Columns are found by their header text (Store Name, City, DS Code, Contract Duration,
-  // Paid / Not Paid, Live / Not Live, Contract Start Date, Area (sqm.), Rent/sqm. (SAR),
-  // Annual Rent W/O VAT, Lat, Lng), so inserting or reordering columns in the sheet is safe.
-  const cols: GvizCol[] = table.cols || [];
-  const rows = (table.rows as GvizRow[]).map((row) => (row.c || []).map(cellText));
-
-  // When Google recognises the header row it reports it in parsedNumHeaders, moves its text
-  // into the column labels and leaves it out of the rows. Otherwise the header is the first row.
-  const headerCount = typeof table.parsedNumHeaders === "number" ? table.parsedNumHeaders : 0;
-  const headers = headerCount > 0 ? cols.map((c) => c.label || "") : rows[0] || [];
-  const dataRows = headerCount > 0 ? rows : rows.slice(1);
-
-  return { headers, rows: dataRows };
+/**
+ * A tab that may not be there: its header row and rows (none when it only has its header), or null when Google
+ * answers with an error. Google may also answer with the first tab, so the caller checks the headers. Throws when
+ * there's no answer or it can't be read, as for a dropped connection.
+ */
+export async function fetchOptionalTab(
+  sheetId: string,
+  sheetName: string,
+): Promise<{ headers: string[]; rows: string[][] } | null> {
+  const data = await requestGviz(sheetId, sheetName);
+  if (data.status === "error" || !data.table) return null;
+  return tableText(data.table);
 }
 
 /** The stores in a sheet tab. */
