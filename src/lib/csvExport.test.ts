@@ -43,8 +43,8 @@ describe("storesToCsv", () => {
     expect(rows(csv)[0]).toBe(
       "Store Name,City,DS Code,Contract Duration,Paid / Not Paid,Live / Not Live,Contract Start Date," +
         "Contract End Date,Area (sqm.),Rent/sqm. (SAR),Annual Rent W/O VAT,Lat,Lng," +
-        "Contract No,Contract Status,Next Payment,Contract Total Value,Region," +
-        "Contract Value,Annualised Rent,Days to End,Renewal Starts,Days to Renewal,Renewal Status",
+        "Contract No,Contract Status,Next Payment,Contract Total Value,Region,OPD,OPD As Of," +
+        "Contract Value,Annualised Rent,CPO (SAR),Days to End,Renewal Starts,Days to Renewal,Renewal Status",
     );
   });
 

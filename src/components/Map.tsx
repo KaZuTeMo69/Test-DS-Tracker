@@ -18,13 +18,14 @@ import PlaceBanner from "./map/PlaceBanner";
 import PotentialMarkers, { PotentialFormPin } from "./map/PotentialMarkers";
 import { Potential } from "../lib/potentials";
 import SearchPin from "./map/SearchPin";
-import StoreMarkers from "./map/StoreMarkers";
+import StoreMarkers, { OrderColours } from "./map/StoreMarkers";
 import ZoneEditor, { EditorControls, MapMode } from "./map/ZoneEditor";
 import ZoneLayers, { ZoneRef } from "./map/ZoneLayers";
 
 interface MapComponentProps {
   stores: Store[];
   benchmarks: RentBenchmarks; // pin colours (rent against the city median) and sizes (annual rent)
+  orders: OrderColours; // pin colours by OPD quartile or CPO against the city median
   bottomInset: number; // the height of the sheet (store card or panels) over the bottom of the map
   leftInset: number; // the width of the open panel over the left of the map, on large screens
   layoutKey: string; // changes when the panels or bars around the map open or close
@@ -70,6 +71,7 @@ interface MapComponentProps {
 export default function MapComponent({
   stores,
   benchmarks,
+  orders,
   bottomInset,
   leftInset,
   layoutKey,
@@ -247,6 +249,7 @@ export default function MapComponent({
         <StoreMarkers
           stores={stores}
           benchmarks={benchmarks}
+          orders={orders}
           selectedId={selectedId}
           onSelectStore={clickStore}
           measuring={measuring}

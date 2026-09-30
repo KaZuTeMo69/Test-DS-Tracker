@@ -9,6 +9,7 @@ import { RouteInfo } from "../lib/routing";
 import { Store } from "../types";
 import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, PAYMENT_TAG, RENEWAL_STYLE } from "../constants";
 import { PaymentInfo, paymentInfo } from "../lib/payments";
+import { storeCpo } from "../lib/cpo";
 import { contractDateIssues, dataIssues, hasCoords } from "../lib/checks";
 import { Coverage, coverageFlags, ZoneHit } from "../lib/coverage";
 import {
@@ -36,6 +37,7 @@ interface DetailPanelProps {
   stores: Store[]; // all stores, for the rent comparisons
   coverage: Coverage;
   benchmark: RentBenchmark | null; // rent per m² against the city median
+  cpoBenchmark: RentBenchmark | null; // CPO against the city median
   onSelectZone: (layerId: string, zoneId: string) => void;
   onSelectStore: (id: number) => void; // one of the nearby stores
   searchPin: LatLng | null; // the searched point: directions start there when there is one
@@ -235,6 +237,7 @@ function SummaryTab({
   renewal,
   rent,
   benchmark,
+  cpoBenchmark,
   coverage,
   onSelectZone,
 }: {
@@ -242,6 +245,7 @@ function SummaryTab({
   renewal: RenewalInfo;
   rent: RentComparison;
   benchmark: RentBenchmark | null;
+  cpoBenchmark: RentBenchmark | null;
   coverage: Coverage;
   onSelectZone: (layerId: string, zoneId: string) => void;
 }) {
@@ -325,6 +329,7 @@ function SummaryTab({
           noteClass={rateNoteClass}
         />
         <DaysLeftTile renewal={renewal} term={store.contractDuration} />
+        <OrderTiles store={store} cpoBenchmark={cpoBenchmark} />
       </div>
 
       <SectionLabel>Status check</SectionLabel>
@@ -352,6 +357,48 @@ function SummaryTab({
       </div>
 
       <CoverageSection store={store} coverage={coverage} onSelectZone={onSelectZone} />
+    </>
+  );
+}
+
+// OPD (as measured, with its "as of") and CPO (rent cost per order, against the city median)
+function OrderTiles({ store, cpoBenchmark }: { store: Store; cpoBenchmark: RentBenchmark | null }) {
+  const settings = useSettings();
+  const cpo = shownRent(storeCpo(store), settings);
+  const vs = cpoBenchmark?.diff ?? null;
+  return (
+    <>
+      <Tile
+        label="OPD"
+        value={store.opd ? store.opd.toLocaleString() : "—"}
+        unit={store.opd ? "orders/day" : undefined}
+        note={store.opd ? (store.opdAsOf ? `as of ${store.opdAsOf}` : undefined) : "No OPD in the data"}
+      />
+      <Tile
+        label={`CPO ${vatLabel(settings)}`}
+        value={cpo === null ? "—" : cpo.toFixed(2)}
+        unit={cpo === null ? undefined : CURRENCY}
+        note={
+          cpo === null
+            ? store.opd
+              ? "Needs the annual rent"
+              : "Needs an OPD"
+            : vs === null
+              ? "rent per order"
+              : vs === 0
+                ? `Same as ${store.city} median`
+                : `${Math.abs(vs)}% ${vs > 0 ? "above" : "below"} ${store.city} median`
+        }
+        noteClass={
+          cpoBenchmark?.level === "high"
+            ? "text-red-400"
+            : cpoBenchmark?.level === "above"
+              ? "text-[#fbbf24]"
+              : cpoBenchmark?.level === "below"
+                ? "text-green-400"
+                : "text-gray-400"
+        }
+      />
     </>
   );
 }
@@ -507,6 +554,14 @@ function RentTab({ store, rent, benchmark }: { store: Store; rent: RentCompariso
 
       <div>
         <Row label={`Rent per m² ${vat}`} value={sar(shownRent(store.rentSARsqm, settings))} />
+        <Row
+          label={`Cost per order ${vat}`.trim()}
+          value={
+            storeCpo(store) === null
+              ? "—"
+              : `${CURRENCY} ${shownRent(storeCpo(store), settings)!.toFixed(2)} at ${store.opd!.toLocaleString()} OPD`
+          }
+        />
         <MedianRow store={store} benchmark={benchmark} />
         <Row label="Area" value={store.size ? `${store.size} m²` : "—"} />
         <Row
@@ -698,6 +753,7 @@ function StoreCard({
   stores,
   coverage,
   benchmark,
+  cpoBenchmark,
   onSelectZone,
   onSelectStore,
   searchPin,
@@ -797,6 +853,7 @@ function StoreCard({
             renewal={renewal}
             rent={rent}
             benchmark={benchmark}
+            cpoBenchmark={cpoBenchmark}
             coverage={coverage}
             onSelectZone={onSelectZone}
           />

@@ -1,6 +1,7 @@
 import L from "leaflet";
 import { Store } from "../../types";
 import { PinSize, RentLevel } from "../../lib/rentStats";
+import { OpdLevel } from "../../lib/cpo";
 import { isLive, isPaid } from "../../lib/status";
 
 // Fix for default marker icons in Leaflet
@@ -31,6 +32,17 @@ export const RENT_COLOR: Record<RentLevel, string> = {
   above: "#fbbf24",
   high: "#f87171",
   none: "#9ca3af",
+};
+
+// Colours when the pins show OPD by quartile: one hue (violet), brighter for busier stores, so it reads as an order
+// on the dark map (checked as an ordinal ramp: monotone lightness, the dimmest step clears 2:1 on the dark surface).
+// Violet, not blue, so it isn't taken for the selected pin (sky blue) or a Backup Potential (blue)
+export const OPD_COLOR: Record<OpdLevel, string> = {
+  q1: "#6d28d9",
+  q2: "#8b5cf6",
+  q3: "#a78bfa",
+  q4: "#ddd6fe",
+  none: "#6b7280",
 };
 
 // Drawn in a 24 × 32 box with the point at the bottom middle; the white mark sits at MARK_Y

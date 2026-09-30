@@ -1,7 +1,8 @@
 import { RENEWAL_LEAD_DAYS, RENEWAL_WARNING_DAYS, RenewalDays } from "./contract";
 
-/** What the pin colours show: Live / Paid status, or rent per m² against the city median. */
-export type PinColors = "status" | "rent";
+/** What the pin colours show: Live / Paid status, rent per m² or CPO against the city median, or OPD by quartile. */
+export type PinColors = "status" | "rent" | "opd" | "cpo";
+export const PIN_COLOR_MODES: PinColors[] = ["status", "rent", "opd", "cpo"];
 
 /** How renewals are worked out and how rent is shown. Saved in this browser. */
 export interface Settings extends RenewalDays {
@@ -12,6 +13,7 @@ export interface Settings extends RenewalDays {
   showPotentials: boolean;
   showDroppedPotentials: boolean;
   addedBy: string; // your name, put on the Potentials you add
+  targetCpo: number | null; // SAR per order a store should cost at most; the Potentials are measured against it
 }
 
 export const VAT_RATE = 0.15;
@@ -27,6 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showPotentials: true,
   showDroppedPotentials: false,
   addedBy: "",
+  targetCpo: null,
 };
 
 /** A whole number from 0 to max, typed or saved, or null. */
@@ -46,11 +49,17 @@ export function toSettings(v: unknown): Settings {
     warningDays: toDays(o.warningDays) ?? DEFAULT_SETTINGS.warningDays,
     includeVat: typeof o.includeVat === "boolean" ? o.includeVat : DEFAULT_SETTINGS.includeVat,
     rentFlagPercent: toWholeNumber(o.rentFlagPercent, MAX_PERCENT) ?? DEFAULT_SETTINGS.rentFlagPercent,
-    pinColors: o.pinColors === "rent" || o.pinColors === "status" ? o.pinColors : DEFAULT_SETTINGS.pinColors,
+    pinColors: (PIN_COLOR_MODES as unknown[]).includes(o.pinColors)
+      ? (o.pinColors as PinColors)
+      : DEFAULT_SETTINGS.pinColors,
     showPotentials: typeof o.showPotentials === "boolean" ? o.showPotentials : DEFAULT_SETTINGS.showPotentials,
     showDroppedPotentials:
       typeof o.showDroppedPotentials === "boolean" ? o.showDroppedPotentials : DEFAULT_SETTINGS.showDroppedPotentials,
     addedBy: typeof o.addedBy === "string" ? o.addedBy.slice(0, 80) : DEFAULT_SETTINGS.addedBy,
+    targetCpo:
+      typeof o.targetCpo === "number" && Number.isFinite(o.targetCpo) && o.targetCpo > 0 && o.targetCpo < 10000
+        ? o.targetCpo
+        : DEFAULT_SETTINGS.targetCpo,
   };
 }
 

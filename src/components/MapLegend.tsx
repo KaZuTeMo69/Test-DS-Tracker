@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { ChevronUp } from "lucide-react";
 import { PIN_SEL } from "../constants";
 import { useSettings } from "../hooks/useSettings";
-import { DIAMOND_PATH, PIN_PATH, PinShape, RENT_COLOR, STATUS_COLOR } from "./map/pinIcon";
+import { DIAMOND_PATH, OPD_COLOR, PIN_PATH, PinShape, RENT_COLOR, STATUS_COLOR } from "./map/pinIcon";
 import { POTENTIAL_COLOR, POTENTIAL_STATUS_LABEL, POTENTIAL_STATUSES } from "../lib/potentials";
 
 const SHAPE_LABEL: Record<PinShape, string> = { round: "Live · Paid", square: "Live · Unpaid", triangle: "Not live" };
@@ -37,18 +37,23 @@ const Dot = ({ color }: { color: string }) => (
 );
 
 /**
- * What the pins mean: the shape is the status and the size the annual rent; the colour is the status or rent per
- * m² against the city median (switched with the palette button in the map controls). Also how many of the listed
+ * What the pins mean: the shape is the status and the size the annual rent; the colour is the status, rent per m²
+ * or CPO against the city median, or OPD by quartile (chosen with the palette button in the map controls). Also how many of the listed
  * stores have no pin, and the Potentials' diamonds when any are on the map. Folded into a small chip until opened.
  */
 export default function MapLegend({ notOnMap, potentials = 0 }: { notOnMap: number; potentials?: number }) {
   const { pinColors, rentFlagPercent } = useSettings();
   const [open, setOpen] = useState(false);
-  const byRent = pinColors === "rent";
+  // Colours other than status: the shapes still say the status, in grey
+  const byValue = pinColors !== "status";
   const shapes: PinShape[] = ["round", "square", "triangle"];
-  const swatches = byRent
-    ? [RENT_COLOR.below, RENT_COLOR.above, RENT_COLOR.high]
-    : [STATUS_COLOR.round, STATUS_COLOR.square, STATUS_COLOR.triangle];
+  const swatches =
+    pinColors === "opd"
+      ? [OPD_COLOR.q1, OPD_COLOR.q2, OPD_COLOR.q3, OPD_COLOR.q4]
+      : byValue
+        ? [RENT_COLOR.below, RENT_COLOR.above, RENT_COLOR.high]
+        : [STATUS_COLOR.round, STATUS_COLOR.square, STATUS_COLOR.triangle];
+  const measure = pinColors === "cpo" ? "CPO" : "Rent per m²";
 
   return (
     <div
@@ -67,7 +72,7 @@ export default function MapLegend({ notOnMap, potentials = 0 }: { notOnMap: numb
           ))}
         </span>
         <span className="text-[11px] text-gray-200 font-bold uppercase tracking-tight whitespace-nowrap">
-          Legend · {byRent ? "Rent / m²" : "Status"}
+          Legend · {{ status: "Status", rent: "Rent / m²", opd: "OPD", cpo: "CPO" }[pinColors]}
         </span>
         {notOnMap > 0 && !open && (
           <span className="text-[11px] text-[#FB923C] font-bold whitespace-nowrap" title="Stores without a pin">
@@ -79,25 +84,38 @@ export default function MapLegend({ notOnMap, potentials = 0 }: { notOnMap: numb
 
       {open && (
         <div className="flex flex-wrap items-center map-legend-items">
-          {byRent ? (
+          {pinColors === "opd" ? (
             <>
-              <Item title="Rent per m² at or below the city median">
+              {(["q1", "q2", "q3", "q4"] as const).map((q, i) => (
+                <Item key={q} title="Orders per day, by quarter of the stores with an OPD">
+                  <Dot color={OPD_COLOR[q]} /> {["Lowest", "Lower", "Higher", "Highest"][i]} OPD
+                </Item>
+              ))}
+              <Item title="No OPD in the data">
+                <Dot color={OPD_COLOR.none} /> No OPD
+              </Item>
+            </>
+          ) : byValue ? (
+            <>
+              <Item title={`${measure} at or below the city median`}>
                 <Dot color={RENT_COLOR.below} /> At or below median
               </Item>
-              <Item title={`Up to ${rentFlagPercent}% above the city median`}>
+              <Item title={`${measure} up to ${rentFlagPercent}% above the city median`}>
                 <Dot color={RENT_COLOR.above} /> Up to {rentFlagPercent}% above
               </Item>
-              <Item title={`More than ${rentFlagPercent}% above the city median (HIGH RENT)`}>
+              <Item title={`${measure} more than ${rentFlagPercent}% above the city median`}>
                 <Dot color={RENT_COLOR.high} /> Over {rentFlagPercent}% above
               </Item>
-              <Item title="No rent per m², or fewer than 3 stores with one in the city">
+              <Item
+                title={`No ${measure === "CPO" ? "CPO (OPD or rent missing)" : "rent per m²"}, or fewer than 3 stores with one in the city`}
+              >
                 <Dot color={RENT_COLOR.none} /> Not compared
               </Item>
             </>
           ) : null}
           {shapes.map((shape) => (
             <Item key={shape}>
-              <Glyph shape={shape} color={byRent ? "#d4d4d4" : STATUS_COLOR[shape]} /> {SHAPE_LABEL[shape]}
+              <Glyph shape={shape} color={byValue ? "#d4d4d4" : STATUS_COLOR[shape]} /> {SHAPE_LABEL[shape]}
             </Item>
           ))}
           <Item>

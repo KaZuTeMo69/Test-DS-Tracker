@@ -2,6 +2,7 @@ import { CURRENCY } from "../constants";
 import { useSettings } from "../hooks/useSettings";
 import { fmtN } from "../lib/format";
 import { KpiStats, missing } from "../lib/kpis";
+import { rentFactor } from "../lib/settings";
 
 /**
  * Monthly rent, total area and average rent per m²: kept out of the top bar to leave room for the map, and shown
@@ -36,6 +37,8 @@ export function ExtraFigures({ stats, className = "" }: { stats: KpiStats; class
     },
   ];
   const { due, overdue } = stats.payments;
+  const { network } = stats;
+  const factor = rentFactor(includeVat);
   return (
     <div className={`extra-figures grid grid-cols-3 gap-2 ${className}`}>
       {figures.map((f) => (
@@ -48,6 +51,34 @@ export function ExtraFigures({ stats, className = "" }: { stats: KpiStats; class
           {f.note && <div className="text-[11px] text-[#FB923C]">{f.note}</div>}
         </div>
       ))}
+      {/* Orders: the total OPD, and the CPO weighted by orders (all the rent over all the orders) */}
+      <div data-figure="opd" className="extra-figure bg-white/[0.03] border border-white/10 rounded-lg">
+        <div className="detail-panel-row-label text-[11px]">Network OPD</div>
+        <div className="kpi-number text-[20px] font-bold leading-tight text-white">
+          {/* Exact up to 100K (it's compared with the ops reports), shortened above */}
+          {!network.withOpd ? "—" : network.opd < 1e5 ? Math.round(network.opd).toLocaleString() : fmtN(network.opd)}
+        </div>
+        <div className="text-[11px] text-gray-400 uppercase">orders / day</div>
+        {network.withOpd > 0 && network.withOpd < stats.total && (
+          <div className="text-[11px] text-[#FB923C]">{stats.total - network.withOpd} without OPD</div>
+        )}
+      </div>
+      <div
+        data-figure="cpo"
+        className="extra-figure col-span-2 bg-white/[0.03] border border-white/10 rounded-lg"
+        title="Total annual rent / 360 / total OPD, over the stores with both an OPD and a rent"
+      >
+        <div className="detail-panel-row-label text-[11px]">Network CPO (weighted)</div>
+        <div className="kpi-number text-[20px] font-bold leading-tight text-[#a78bfa]">
+          {network.cpo === null ? "—" : (network.cpo * factor).toFixed(2)}
+        </div>
+        <div className="text-[11px] text-gray-400 uppercase">
+          {CURRENCY} / order{vat}
+        </div>
+        <div className="text-[11px] text-gray-400">
+          {network.included} of {stats.total} stores included (with an OPD and a rent)
+        </div>
+      </div>
       {/* Next payments from the contract register: due within 30 days, and past due */}
       <div
         data-figure="payments"

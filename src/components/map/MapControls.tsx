@@ -2,7 +2,7 @@ import { RefObject, useEffect, useRef, useState } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
 import { Check, Layers, Map as MapIcon, Maximize2, Moon, Palette, Ruler, Sun } from "lucide-react";
-import { PinColors } from "../../lib/settings";
+import { PIN_COLOR_MODES, PinColors } from "../../lib/settings";
 import { BASE_MAP_ORDER, BASE_MAPS, BaseMapId } from "../../lib/baseMaps";
 
 interface MapControlsProps {
@@ -101,6 +101,68 @@ function BaseMapMenu({
   );
 }
 
+const PIN_MODE: Record<PinColors, { name: string; hint: string }> = {
+  status: { name: "Status", hint: "Live · Paid, Live · Unpaid, Not live" },
+  rent: { name: "Rent per m²", hint: "Against the city median" },
+  opd: { name: "OPD", hint: "Orders per day, by quartile" },
+  cpo: { name: "CPO", hint: "Cost per order, against the city median" },
+};
+
+/** The pin colour modes, opened from the palette button; the current one ticked. */
+function PinColorMenu({
+  mode,
+  onChoose,
+  onClose,
+}: {
+  mode: PinColors;
+  onChoose: (mode: PinColors) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node) && !(e.target as HTMLElement).closest?.("[data-pin-colors]"))
+        onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      onClose();
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+  return (
+    <div ref={ref} className="base-map-menu pin-color-menu" role="menu" aria-label="Pin colours">
+      <div className="base-map-menu-title">Pin colours</div>
+      {PIN_COLOR_MODES.map((id) => (
+        <button
+          key={id}
+          role="menuitemradio"
+          aria-checked={mode === id}
+          data-pin-mode={id}
+          className={`base-map-option ${mode === id ? "on" : ""}`}
+          onClick={() => {
+            onChoose(id);
+            onClose();
+          }}
+        >
+          <span className={`pin-mode-swatch ${id}`} aria-hidden="true" />
+          <span className="flex flex-col items-start min-w-0">
+            <span className="base-map-name">{PIN_MODE[id].name}</span>
+            <span className="base-map-hint">{PIN_MODE[id].hint}</span>
+          </span>
+          {mode === id && <Check size={15} className="ml-auto shrink-0 text-[#fbbf24]" />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /**
  * The buttons down the right of the map: day/night, the base map, pin colours, map layers, measuring and focus mode;
  * then the drawn route's step-by-step directions.
@@ -119,9 +181,10 @@ export default function MapControls({
   onFocusMode,
   panelRef,
 }: MapControlsProps) {
-  const byRent = pinColors === "rent";
+  const colored = pinColors !== "status";
   const night = base === "dark";
   const [menuOpen, setMenuOpen] = useState(false);
+  const [colorMenu, setColorMenu] = useState(false);
   const controlsRef = useNoMapClicks<HTMLDivElement>();
   return (
     <>
@@ -149,19 +212,19 @@ export default function MapControls({
             {menuOpen && <BaseMapMenu base={base} onChoose={onChooseBase} onClose={() => setMenuOpen(false)} />}
           </div>
 
-          <button
-            onClick={() => onPinColors(byRent ? "status" : "rent")}
-            data-pin-colors={pinColors}
-            aria-pressed={byRent}
-            className={`${BTN} ${byRent ? LIT : IDLE}`}
-            title={
-              byRent
-                ? "Pins coloured by rent per m² against the city median. Click to colour by Live / Paid status"
-                : "Pins coloured by Live / Paid status. Click to colour by rent per m² against the city median"
-            }
-          >
-            <Palette size={18} />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setColorMenu(!colorMenu)}
+              data-pin-colors={pinColors}
+              aria-haspopup="menu"
+              aria-expanded={colorMenu}
+              className={`${BTN} ${colored || colorMenu ? LIT : IDLE}`}
+              title={`Pin colours: ${PIN_MODE[pinColors].name}`}
+            >
+              <Palette size={18} />
+            </button>
+            {colorMenu && <PinColorMenu mode={pinColors} onChoose={onPinColors} onClose={() => setColorMenu(false)} />}
+          </div>
 
           <button
             onClick={onOpenLayers}

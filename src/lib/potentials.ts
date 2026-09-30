@@ -40,6 +40,7 @@ export interface Potential {
   status: PotentialStatus;
   size: number | null; // m²
   askingRentAnnual: number | null; // SAR a year, without VAT like the store sheet's rent
+  expectedOpd: number | null; // orders per day expected there, for the CPO against the target
   contact: string; // landlord or broker
   notes: string;
   feasibilityLink: string;
@@ -195,6 +196,7 @@ export function toPotential(raw: unknown, taken: Set<string>, now = new Date()):
     status,
     size: number(r.size),
     askingRentAnnual: number(r.askingRentAnnual),
+    expectedOpd: number(r.expectedOpd),
     contact: text(r.contact),
     notes: text(r.notes),
     feasibilityLink: text(r.feasibilityLink),
@@ -308,6 +310,7 @@ export const POTENTIAL_COLUMNS: Column[] = [
   ["Status", (p) => POTENTIAL_STATUS_LABEL[p.status]],
   ["Size (m²)", (p) => p.size],
   ["Asking Rent (SAR/yr)", (p) => p.askingRentAnnual],
+  ["Expected OPD", (p) => p.expectedOpd],
   [
     "Rent/m² (SAR)",
     (p) => {
@@ -342,6 +345,7 @@ const HEADER_FIELDS: Array<[keyof Potential, string[]]> = [
   ["status", ["status"]],
   ["size", ["size", "size m", "area", "area m", "size sqm", "area sqm"]],
   ["askingRentAnnual", ["asking rent", "asking rent sar yr", "asking rent sar", "rent", "annual rent"]],
+  ["expectedOpd", ["expected opd", "opd", "expected orders per day", "orders per day"]],
   ["contact", ["contact", "landlord", "broker"]],
   ["notes", ["notes", "note"]],
   ["feasibilityLink", ["feasibility link", "feasibility", "study link"]],

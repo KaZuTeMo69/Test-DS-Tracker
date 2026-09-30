@@ -262,6 +262,15 @@ export default function PotentialForm({ mode, draft, cities, onChange, onSave, o
                 />
               </Field>
             </div>
+            <Field id="pf-opd" label="Expected OPD" hint="Orders per day expected there, for the cost per order">
+              <input
+                id="pf-opd"
+                className="pf-input"
+                inputMode="decimal"
+                value={draft.expectedOpd ?? ""}
+                onChange={(e) => onChange({ expectedOpd: numberOrNull(e.target.value) })}
+              />
+            </Field>
             <Field id="pf-contact" label="Contact (landlord / broker)">
               <input
                 id="pf-contact"

@@ -6,6 +6,7 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
 import { CitySummary, SidebarTab, Store } from "../types";
 import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, PAYMENT_TAG, RENEWAL_STYLE } from "../constants";
 import { paymentInfo } from "../lib/payments";
+import { storeCpo } from "../lib/cpo";
 import { Filters } from "../hooks/useFilters";
 import { useSettings } from "../hooks/useSettings";
 import { dataIssues, hasCoords } from "../lib/checks";
@@ -27,6 +28,7 @@ import { ChartSkeleton, ListSkeleton } from "./Skeleton";
 
 // The charts library is large and only the Growth tab uses it, so it loads when that tab first opens
 const CityInsights = lazy(() => import("./CityInsights"));
+const OpdCpoChart = lazy(() => import("./OpdCpoChart"));
 
 interface SidebarProps {
   layout: "overlay" | "sheet"; // a column over the map on large screens, a sheet over its bottom on smaller ones
@@ -84,6 +86,7 @@ const StoreListItem = memo(function StoreListItem({
   const settings = useSettings();
   const renewal = storeRenewal(s, settings);
   const payment = paymentInfo(s);
+  const cpo = shownRent(storeCpo(s), settings);
   const issues = dataIssues(s);
   const badge = "px-2 py-0.5 text-[11px] font-bold rounded-full";
   return (
@@ -160,6 +163,16 @@ const StoreListItem = memo(function StoreListItem({
           {CURRENCY} {fmtR(shownRent(s.rentSARAnnual, settings))}/yr {vatLabel(settings)}
         </span>
       </div>
+      {!!s.opd && (
+        <div className="store-card-footer-metrics store-card-orders text-[11px] font-mono text-gray-400" data-orders>
+          <span>OPD {s.opd.toLocaleString()}</span>
+          {cpo !== null && (
+            <span>
+              CPO {CURRENCY} {cpo.toFixed(2)}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 });
@@ -470,6 +483,7 @@ function usePanelParts(props: SidebarProps) {
       <>
         {insightsExtra}
         <Suspense fallback={<ChartSkeleton />}>
+          <OpdCpoChart stores={stores} selectedId={selectedId} onSelectStore={onSelectStore} />
           <CityInsights citySummaries={citySummaries} />
         </Suspense>
       </>

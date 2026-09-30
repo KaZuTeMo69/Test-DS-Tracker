@@ -8,6 +8,7 @@ import { download } from "./lib/download";
 import { kpiStats } from "./lib/kpis";
 import { kmlFileName, layerToKml } from "./lib/kmlExport";
 import { cityRentMedians, medianFor, rentBenchmarks } from "./lib/rentStats";
+import { cpoBenchmarks, opdLevels } from "./lib/cpo";
 import { zoneBounds, zoneColor } from "./lib/layers";
 import { loadBaseMap, loadOrsKey, loadPanelOpen, saveBaseMap, saveOrsKey, savePanelOpen } from "./lib/storage";
 import { BaseMapChoice, BaseMapId, chooseBaseMap, toBaseMapChoice, toggleNight } from "./lib/baseMaps";
@@ -78,6 +79,11 @@ export default function App() {
   // Rent per m² against each city's median (all stores), and pin sizes by annual rent
   const benchmarks = useMemo(
     () => rentBenchmarks(stores, settings.rentFlagPercent),
+    [stores, settings.rentFlagPercent],
+  );
+  // OPD quartiles and CPO against each city's median, for those pin colours (all stores, like rent per m²)
+  const orders = useMemo(
+    () => ({ opd: opdLevels(stores), cpo: cpoBenchmarks(stores, settings.rentFlagPercent) }),
     [stores, settings.rentFlagPercent],
   );
   // Each city's median store rent per m², for the Potentials' asking rent
@@ -375,6 +381,7 @@ export default function App() {
     status: "study",
     size: null,
     askingRentAnnual: null,
+    expectedOpd: null,
     contact: "",
     notes: "",
     feasibilityLink: "",
@@ -596,6 +603,7 @@ export default function App() {
             <MapComponent
               stores={filteredStores}
               benchmarks={benchmarks}
+              orders={orders}
               bottomInset={bottomInset}
               leftInset={leftInset}
               layoutKey={layoutKey}
@@ -653,6 +661,7 @@ export default function App() {
               stores={stores}
               coverage={coverage}
               benchmark={selectedStore ? (benchmarks.of.get(selectedStore.id) ?? null) : null}
+              cpoBenchmark={selectedStore ? (orders.cpo.get(selectedStore.id) ?? null) : null}
               onSelectZone={openZone}
               onSelectStore={selectStore}
               searchPin={searchPin}
