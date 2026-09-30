@@ -2,6 +2,7 @@ import { Store } from "../types";
 import { formatDate, RenewalDays } from "./contract";
 import { Coverage } from "./coverage";
 import { RENEWAL_STATUS_LABEL, storeRenewal } from "./renewal";
+import { sheetRent } from "./rent";
 
 // The sheet's own columns first, named as in the Google Sheet, so an exported file imports again without losing
 // anything. The worked-out columns come after; their names don't match any column the importer looks for
@@ -16,7 +17,8 @@ const SHEET_COLUMNS: Array<[string, (s: Store) => string | number | null | undef
   ["Contract End Date", (s) => s.endDate], // from the data, or worked out from the start date and duration
   ["Area (sqm.)", (s) => s.size],
   ["Rent/sqm. (SAR)", (s) => s.rentSARsqm],
-  ["Annual Rent W/O VAT", (s) => s.rentSARAnnual],
+  // As in the sheet: for a contract under 12 months, the term's total (so the file imports back the same)
+  ["Annual Rent W/O VAT", (s) => sheetRent(s)],
   ["Lat", (s) => s.lat],
   ["Lng", (s) => s.lng],
 ];
@@ -43,6 +45,15 @@ export function csvCell(v: string | number | null | undefined): string {
 export function storesToCsv(stores: Store[], days: RenewalDays, coverage: Coverage): string {
   const columns: Array<[string, (s: Store) => string | number | null | undefined]> = [
     ...SHEET_COLUMNS,
+    // The contract register's columns, named as the importer reads them
+    ["Contract No", (s) => s.contractNo ?? ""],
+    ["Contract Status", (s) => s.contractStatus ?? ""],
+    ["Next Payment", (s) => s.nextPayment ?? ""],
+    ["Contract Total Value", (s) => s.contractTotal ?? null],
+    ["Region", (s) => s.region ?? ""],
+    // Contracts under 12 months: the term's total, and the rent per year worked out from it
+    ["Contract Value", (s) => s.contractValue ?? null],
+    ["Annualised Rent", (s) => s.rentSARAnnual],
     ["Days to End", (s) => storeRenewal(s, days).daysToEnd],
     [
       "Renewal Starts",

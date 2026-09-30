@@ -1,23 +1,27 @@
 import { memo, ReactNode, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import CardFrame from "./CardFrame";
+import MapsButtons from "./MapsButtons";
 import NearbyStores from "./NearbyStores";
 import { LatLng } from "../lib/coords";
-import { formatDrive, formatKm, googleMapsDirections, nearestByAir, SERVICE_NAME } from "../lib/roads";
+import { formatDrive, formatKm, googleMapsDirections, SERVICE_NAME } from "../lib/roads";
 import { RouteInfo } from "../lib/routing";
 import { Store } from "../types";
-import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, RENEWAL_STYLE } from "../constants";
+import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, PAYMENT_TAG, RENEWAL_STYLE } from "../constants";
+import { PaymentInfo, paymentInfo } from "../lib/payments";
 import { contractDateIssues, dataIssues, hasCoords } from "../lib/checks";
 import { Coverage, coverageFlags, ZoneHit } from "../lib/coverage";
 import {
   daysBetween,
   durationOptionMonths,
-  durationTerm,
   formatDate,
   formatDuration,
   parseDate,
+  monthsText,
+  parseDurationMonths,
   pluralDays,
   RenewalInfo,
+  termAdjective,
   today,
 } from "../lib/contract";
 import { useSettings } from "../hooks/useSettings";
@@ -90,11 +94,11 @@ const ordinal = (n: number) => {
 
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-// "3" or "3 Years" → "3-year", "6 Months" → "6-month", "2+1 years" → "2-year" (the term, not its option); anything
-// else as written
+// "3" or "3 Years" → "3-year", "0.6" or "6 Months" → "6-month", "1.6" → "18-month", "2+1 years" → "2-year" (the
+// term, not its option); anything unreadable as written
 function termPhrase(term: string): string {
-  const m = formatDuration(durationTerm(term)).match(/^(\d+(?:\.\d+)?)\s*(year|month)s?$/i);
-  return m ? `${m[1]}-${m[2].toLowerCase()}` : term.trim().toLowerCase();
+  const months = parseDurationMonths(term);
+  return months ? termAdjective(months) : term.trim().toLowerCase();
 }
 
 // ── Small building blocks ──
@@ -274,6 +278,14 @@ function SummaryTab({
   } else {
     checks.push({ tone: "warn", text: "No contract end date" });
   }
+  const payment = paymentInfo(store);
+  if (payment.status === "overdue")
+    checks.push({ tone: "bad", text: `Payment overdue by ${pluralDays(-payment.days!)} (due ${store.nextPayment})` });
+  else if (payment.status === "due")
+    checks.push({
+      tone: "warn",
+      text: payment.days === 0 ? "Payment due today" : `Payment due ${endsIn(payment.days!)} (${store.nextPayment})`,
+    });
   checks.push(
     hasCoords(store)
       ? { tone: "good", text: "On the map" }
@@ -297,9 +309,12 @@ function SummaryTab({
 
       <div className="grid grid-cols-2 gap-2">
         <Tile
-          label={`Annual rent ${vatLabel(settings)}`}
+          label={`${store.contractValue != null ? "Annualised rent" : "Annual rent"} ${vatLabel(settings)}`}
           value={annualRent === null ? "—" : fmtN(annualRent)}
           unit={annualRent === null ? undefined : CURRENCY}
+          note={
+            store.contractValue != null && store.termMonths ? `${termAdjective(store.termMonths)} contract` : undefined
+          }
         />
         <Tile label="Area" value={store.size || "—"} unit={store.size ? "m²" : undefined} />
         <Tile
@@ -461,7 +476,9 @@ function RentTab({ store, rent, benchmark }: { store: Store; rent: RentCompariso
     <>
       <div className="flex justify-between items-end gap-3 bg-white/[0.03] border border-white/10 rounded-lg store-card-box">
         <div className="min-w-0">
-          <div className="detail-panel-row-label text-[11px]">Annual rent {vat}</div>
+          <div className="detail-panel-row-label text-[11px]">
+            {store.contractValue != null ? "Annualised rent" : "Annual rent"} {vat}
+          </div>
           <div className="detail-panel-figure text-[25px] leading-tight text-[#f3e008]">
             {sar(shownRent(store.rentSARAnnual, settings))}
           </div>
@@ -473,6 +490,20 @@ function RentTab({ store, rent, benchmark }: { store: Store; rent: RentCompariso
           </div>
         </div>
       </div>
+
+      {store.contractValue != null && store.termMonths && (
+        <div className="rent-short" data-short-contract>
+          <Row
+            label={`Contract value ${vat}`.trim()}
+            value={`${sar(shownRent(store.contractValue, settings))} for ${monthsText(store.termMonths)}`}
+          />
+          <Row label={`Annualised ${vat}`.trim()} value={`${sar(shownRent(store.rentSARAnnual, settings))} / yr`} />
+          <p className="text-[11px] text-gray-400 leading-snug store-card-gap-top">
+            For contracts under 12 months the sheet&apos;s rent is the total for the term. The annualised figure is used
+            for the totals, benchmarks and pins.
+          </p>
+        </div>
+      )}
 
       <div>
         <Row label={`Rent per m² ${vat}`} value={sar(shownRent(store.rentSARsqm, settings))} />
@@ -610,8 +641,46 @@ function ContractTab({ store, renewal }: { store: Store; renewal: RenewalInfo })
         <Row label="Renewal starts" value={renewalValue} valueClass={status === "ok" ? "" : toneRow} />
         <Row label="Status" value={RENEWAL_STATUS_LABEL[status]} valueClass={toneRow} />
       </div>
+
+      <RegisterRows store={store} />
     </>
   );
+}
+
+// The contract register's fields (lookup formulas in the store sheet), when the sheet has them
+function RegisterRows({ store }: { store: Store }) {
+  const settings = useSettings();
+  const payment = paymentInfo(store);
+  const has = store.contractNo || store.contractStatus || store.nextPayment || store.contractTotal || store.region;
+  if (!has) return null;
+  return (
+    <>
+      <SectionLabel>Contract register</SectionLabel>
+      <div data-register>
+        <Row label="Contract No" value={store.contractNo || "—"} />
+        <Row label="Contract status" value={store.contractStatus || "—"} />
+        <Row
+          label="Next payment"
+          value={paymentText(store.nextPayment ?? "", payment)}
+          valueClass={payment.status === "overdue" ? TONE.bad.row : payment.status === "due" ? TONE.warn.row : ""}
+        />
+        <Row label="Contract total (incl. VAT)" value={store.contractTotal ? sar(store.contractTotal) : "—"} />
+        {settings.includeVat ? null : (
+          <p className="text-[11px] text-gray-400 store-card-gap-top">
+            The register&apos;s total includes 15% VAT; the rent figures here don&apos;t.
+          </p>
+        )}
+        <Row label="Region" value={store.region || "—"} />
+      </div>
+    </>
+  );
+}
+
+function paymentText(date: string, p: PaymentInfo): string {
+  if (!date) return "—";
+  if (p.days === null) return date;
+  if (p.days < 0) return `${date} · ${pluralDays(-p.days)} overdue`;
+  return `${date} · ${endsIn(p.days)}`;
 }
 
 // ── The card ──
@@ -622,36 +691,6 @@ const TABS: Array<[Tab, string]> = [
   ["contract", "Contract"],
   ["nearby", "Nearby"],
 ];
-
-/**
- * Directions to the store in Google Maps: from the searched point when there is one, otherwise from the nearest
- * other live store; or just the store's place when there's neither.
- */
-function MapsLink({ store, stores, searchPin }: { store: Store; stores: Store[]; searchPin: LatLng | null }) {
-  const here = { lat: store.lat!, lng: store.lng! };
-  const nearest = useMemo(
-    () => (searchPin ? null : nearestByAir({ lat: store.lat!, lng: store.lng! }, stores, 1, store.id)[0]),
-    [searchPin, stores, store],
-  );
-  const origin = searchPin ?? (nearest ? { lat: nearest.store.lat!, lng: nearest.store.lng! } : null);
-  const from = searchPin ? "the searched point" : nearest ? `${nearest.store.name}, the nearest store` : null;
-  return (
-    <a
-      href={
-        origin
-          ? googleMapsDirections(origin, here)
-          : `https://www.google.com/maps/search/?api=1&query=${store.lat},${store.lng}`
-      }
-      target="_blank"
-      rel="noopener noreferrer"
-      title={from ? `Driving directions from ${from}` : "This store in Google Maps"}
-      className="detail-panel-maps-btn text-[12px] block w-full store-card-button bg-[#fbbf24] text-black font-extrabold text-center rounded-lg transition-transform active:scale-95 no-underline shadow-lg"
-    >
-      📍 Open in Google Maps
-      {from && <span className="detail-panel-maps-from">Directions from {from}</span>}
-    </a>
-  );
-}
 
 // z-[600]: above the map legend (500), below the sidebar (2000) and toasts (999)
 function StoreCard({
@@ -671,6 +710,7 @@ function StoreCard({
   const renewal = storeRenewal(store, settings);
   const rent = rentComparison(store, stores);
   const renewalTag = renewal.status === "soon" || renewal.status === "now" || renewal.status === "expired";
+  const payment = paymentInfo(store);
   const flags = coverageFlags(coverage, store);
 
   return (
@@ -707,6 +747,14 @@ function StoreCard({
               className={`detail-panel-tag-live text-[11px] store-card-chip rounded-full border ${RENEWAL_STYLE[renewal.status as "soon" | "now" | "expired"].className}`}
             >
               {RENEWAL_STYLE[renewal.status as "soon" | "now" | "expired"].tag}
+            </span>
+          )}
+          {(payment.status === "due" || payment.status === "overdue") && (
+            <span
+              className={`detail-panel-tag-live text-[11px] store-card-chip rounded-full border ${PAYMENT_TAG[payment.status].className}`}
+              title={`Next payment ${store.nextPayment}`}
+            >
+              {PAYMENT_TAG[payment.status].tag}
             </span>
           )}
           {benchmark?.level === "high" && (
@@ -758,12 +806,13 @@ function StoreCard({
         {tab === "nearby" &&
           (hasCoords(store) ? (
             <>
-              <div className="detail-panel-row-label text-[11px]">Nearest live stores by road</div>
+              <div className="detail-panel-row-label text-[11px]">Nearest live stores by drive time</div>
               <NearbyStores
                 point={{ lat: store.lat!, lng: store.lng! }}
                 stores={stores}
                 excludeId={store.id}
                 onSelect={onSelectStore}
+                pointName={store.name}
               />
             </>
           ) : (
@@ -781,6 +830,15 @@ function StoreCard({
                   <b>{formatKm(route.distance)}</b> · <b>{formatDrive(route.duration)}</b> by road
                 </span>
                 <span className="card-route-via">via {SERVICE_NAME[route.service].replace(/^the /, "")}</span>
+                <a
+                  className="card-route-maps"
+                  href={googleMapsDirections(searchPin, { lat: store.lat!, lng: store.lng! })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Driving directions from the searched point in Google Maps"
+                >
+                  Directions ↗
+                </a>
               </>
             ) : (
               <span className="card-route-via">Working out the road route…</span>
@@ -788,7 +846,7 @@ function StoreCard({
           </div>
         )}
         {hasCoords(store) ? (
-          <MapsLink store={store} stores={stores} searchPin={searchPin} />
+          <MapsButtons point={{ lat: store.lat!, lng: store.lng! }} label={store.name} />
         ) : (
           <button
             disabled

@@ -56,6 +56,23 @@ describe("storeIssues", () => {
   });
 });
 
+describe("durations", () => {
+  it("warns about a bare .1, which may have been typed as .10 (Sheets drops the zero)", () => {
+    const issues = storeIssues(store(5, { contractDuration: "0.1", endDate: "" }));
+    expect(issues.map((i) => i.kind)).toEqual(["durationAmbiguous"]);
+    expect(issues[0].text).toBe(
+      "Contract duration \"0.1\" could be 1 month or 10 months (Sheets drops trailing zeros). Write 10/11 months as text, e.g. '1y 10m'.",
+    );
+    expect(storeIssues(store(6, { contractDuration: "1.1+1" })).map((i) => i.kind)).toEqual(["durationAmbiguous"]);
+    expect(storeIssues(store(7, { contractDuration: "1.11" }))).toEqual([]);
+  });
+
+  it("a months part over 11 isn't a duration: with no end date it's reported", () => {
+    const issues = storeIssues(store(8, { contractDuration: "0.12", endDate: "" }));
+    expect(issues.map((i) => i.kind)).toEqual(["durationUnknown"]);
+  });
+});
+
 describe("dataQuality", () => {
   const stores = [
     store(1),

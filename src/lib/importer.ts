@@ -1,6 +1,7 @@
 import { Store } from "../types";
 import { contractEndDate, formatDate, parseDate, parseDurationMonths } from "./contract";
 import { checkLocation } from "./location";
+import { rentFigures } from "./rent";
 
 /**
  * Reads a number from a cell such as "273,500", "SAR 1.5M", "273K" or "450 m2".
@@ -77,15 +78,26 @@ export type StoreField =
   | "size"
   | "rentAnnual"
   | "lat"
-  | "lng";
+  | "lng"
+  | "contractNo"
+  | "contractStatus"
+  | "nextPayment"
+  | "contractTotal"
+  | "region";
 
 // Header phrases per field, matched as whole words. Fields are assigned in this order and a
 // column taken by one field isn't reused, so "Rent/sqm" is claimed before the plain "rent"
-// fallback for annual rent, and "Payment Status" before the "status" fallback for live.
+// fallback for annual rent, "Payment Status" before the "status" fallback for live, and the
+// contract register's "Contract Status" and "Next Payment" before the "status" and "payment" fallbacks.
 const COLUMN_PATTERNS: Array<{ field: StoreField; phrases: string[]; exclude?: string[] }> = [
   { field: "name", phrases: ["store name", "name", "title"] },
   { field: "city", phrases: ["city", "location"] },
   { field: "duration", phrases: ["contract duration", "duration", "wh code", "whcode"] },
+  { field: "contractNo", phrases: ["contract no", "contract number", "contract num", "contract ref"] },
+  { field: "contractStatus", phrases: ["contract status"] },
+  { field: "nextPayment", phrases: ["next payment", "next payments", "next payment date", "next due date"] },
+  { field: "contractTotal", phrases: ["contract total value", "total contract value", "contract total"] },
+  { field: "region", phrases: ["region"] },
   { field: "dsCode", phrases: ["ds code", "dscode", "store code", "code", "id"] },
   { field: "paid", phrases: ["paid", "payment"] },
   { field: "live", phrases: ["live", "status"] },
@@ -108,23 +120,37 @@ export const normalizeHeader = (h: string) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
-function mapColumns(headers: string[]): Record<StoreField, number> {
+/**
+ * A spreadsheet error in a cell (#N/A, #REF!, #VALUE!, #DIV/0!, #NAME?, #NUM!, #NULL!, #ERROR!, #SPILL!…), as
+ * lookup formulas leave when there's nothing to find. Read as an empty cell.
+ */
+export const isSheetError = (text: string) => /^#(?:N\/A|[A-Z0-9_/]+[!?])$/i.test(text.trim());
+
+/**
+ * The column each field is read from. When several headers match the same field (a sheet with both "City" and
+ * "Location", say), the first one is used unless it has no data at all and another one does.
+ */
+function mapColumns(headers: string[], rows: string[][] = []): Record<StoreField, number> {
   const words = headers.map((h) => ` ${normalizeHeader(h)} `);
   const claimed = new Set<number>();
   const result = {} as Record<StoreField, number>;
+  const hasData = (i: number) =>
+    rows.some((r) => {
+      const v = (r[i] ?? "").trim();
+      return v !== "" && !isSheetError(v);
+    });
 
   for (const { field, phrases, exclude = [] } of COLUMN_PATTERNS) {
-    result[field] = -1;
-    for (const phrase of phrases) {
-      const idx = words.findIndex(
-        (w, i) => !claimed.has(i) && w.includes(` ${phrase} `) && !exclude.some((x) => w.includes(` ${x} `)),
-      );
-      if (idx !== -1) {
-        result[field] = idx;
-        claimed.add(idx);
-        break;
-      }
-    }
+    // Every matching column, by phrase (the likelier header first), then from the left
+    const candidates: number[] = [];
+    for (const phrase of phrases)
+      words.forEach((w, i) => {
+        if (claimed.has(i) || candidates.includes(i)) return;
+        if (w.includes(` ${phrase} `) && !exclude.some((x) => w.includes(` ${x} `))) candidates.push(i);
+      });
+    const idx = (rows.length ? candidates.find(hasData) : undefined) ?? candidates[0] ?? -1;
+    result[field] = idx;
+    if (idx !== -1) claimed.add(idx);
   }
   return result;
 }
@@ -151,6 +177,13 @@ interface StoreFields {
   rentSARAnnual: number | null;
   lat: number | null;
   lng: number | null;
+  // From the contract register (filled by lookup formulas in the sheet; errors are read as empty)
+  contractNo?: string;
+  contractStatus?: string;
+  nextPayment?: string;
+  contractTotal?: number | null; // SAR, including 15% VAT
+  region?: string;
+  sheetErrors?: Array<{ column: string; value: string }>;
 }
 
 /** Contract dates in one format; the end date comes from the data, or else start date + contract duration. */
@@ -162,11 +195,13 @@ function contractDates(startText: string, endText: string, duration: string) {
   return { startDate: start ? formatDate(start) : startText, endDate: end ? formatDate(end) : endText };
 }
 
-/** Fills in monthly and per-m² rent, the contract end date, and validates coordinates. Nothing missing is made up. */
+/**
+ * Fills in the annual, monthly and per-m² rent (a short contract's rent is its term's total, see rentFigures), the
+ * contract end date, and validates coordinates. Nothing missing is made up.
+ */
 function buildStore(id: number, f: StoreFields): Store {
-  const annual = f.rentSARAnnual;
   const dates = contractDates(f.startDate, f.endDate, f.contractDuration);
-  const rentSARsqm = f.rentSARsqm ?? (annual !== null && f.size ? annual / f.size : null);
+  const rent = rentFigures(f.rentSARAnnual, parseDurationMonths(f.contractDuration), f.size, f.rentSARsqm);
   const location = checkLocation(f.city, f.country, f.lat, f.lng);
 
   return {
@@ -176,9 +211,11 @@ function buildStore(id: number, f: StoreFields): Store {
     name: f.name,
     country: f.country,
     city: f.city,
-    rentSARAnnual: annual,
-    rentSARMonthly: annual === null ? null : annual / 12,
-    rentSARsqm,
+    rentSARAnnual: rent.annual,
+    rentSARMonthly: rent.monthly,
+    rentSARsqm: rent.perSqm,
+    contractValue: rent.contractValue,
+    termMonths: rent.termMonths,
     size: f.size,
     lat: location.lat,
     lng: location.lng,
@@ -187,12 +224,24 @@ function buildStore(id: number, f: StoreFields): Store {
     endDate: dates.endDate,
     live: f.live,
     paid: f.paid,
+    contractNo: f.contractNo ?? "",
+    contractStatus: f.contractStatus ?? "",
+    nextPayment: tidyDate(f.nextPayment ?? ""),
+    contractTotal: f.contractTotal ?? null,
+    region: f.region ?? "",
+    sheetErrors: f.sheetErrors?.length ? f.sheetErrors : undefined,
   };
+}
+
+// A readable date in the sheet's format ("05 Jan 2026"); anything else as it is, so Data Quality can point at it
+function tidyDate(text: string): string {
+  const d = text ? parseDate(text) : null;
+  return d ? formatDate(d) : text;
 }
 
 /** Turns a header row plus data rows (from a CSV file or a Google Sheet) into stores. */
 export function rowsToStores(headers: string[], rows: string[][]): Store[] {
-  const col = mapColumns(headers);
+  const col = mapColumns(headers, rows);
   if (col.name === -1) {
     const found = headers.filter((h) => h.trim()).join(", ") || "none";
     throw new Error(`Couldn't find a "Store Name" column in the header row (columns found: ${found}).`);
@@ -201,7 +250,14 @@ export function rowsToStores(headers: string[], rows: string[][]): Store[] {
 
   const stores: Store[] = [];
   for (const cells of rows) {
-    const get = (idx: number) => (idx === -1 ? "" : (cells[idx] ?? "").trim());
+    // Spreadsheet errors are read as empty, and noted so Data Quality can list them
+    const errors: Array<{ column: string; value: string }> = [];
+    const get = (idx: number) => {
+      const v = idx === -1 ? "" : (cells[idx] ?? "").trim();
+      if (!isSheetError(v)) return v;
+      errors.push({ column: headers[idx].trim() || `Column ${idx + 1}`, value: v.toUpperCase() });
+      return "";
+    };
     const name = get(col.name);
     // Skip blank rows and header rows repeated further down the data
     if (!name || normalizeHeader(name) === nameHeader) continue;
@@ -222,6 +278,12 @@ export function rowsToStores(headers: string[], rows: string[][]): Store[] {
         rentSARAnnual: parseNum(get(col.rentAnnual)),
         lat: parseNum(get(col.lat), false),
         lng: parseNum(get(col.lng), false),
+        contractNo: get(col.contractNo),
+        contractStatus: get(col.contractStatus),
+        nextPayment: get(col.nextPayment),
+        contractTotal: parseNum(get(col.contractTotal)),
+        region: get(col.region),
+        sheetErrors: errors,
       }),
     );
   }
@@ -275,6 +337,11 @@ export function parseJSONData(jsonText: string): Store[] {
         rentSARAnnual: parseNum(pick(item.rentSARAnnual, item.annualRent, item.rent)),
         lat: parseNum(pick(item.lat), false),
         lng: parseNum(pick(item.lng), false),
+        contractNo: text(item.contractNo),
+        contractStatus: text(item.contractStatus),
+        nextPayment: text(item.nextPayment),
+        contractTotal: parseNum(pick(item.contractTotal, item.contractTotalValue)),
+        region: text(item.region),
       }),
     );
   });

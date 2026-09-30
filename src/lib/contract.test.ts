@@ -7,6 +7,7 @@ import {
   durationOptionMonths,
   durationTerm,
   formatDuration,
+  isAmbiguousDuration,
   fromHijri,
   parseDate,
   parseDurationMonths,
@@ -97,9 +98,16 @@ describe("formatDate", () => {
 
 describe("parseDurationMonths", () => {
   it.each([
-    ["2", 24], // a bare number is years
+    ["2", 24], // a bare number is years.months
     ["1", 12],
-    ["1.5", 18],
+    ["0.6", 6], // 6 months, not 0.6 of a year
+    ["1.6", 18], // 1 year 6 months
+    ["2.3", 27],
+    ["1.5", 17],
+    ["0.1", 1],
+    ["0.11", 11],
+    ["1.06", 18],
+    ["2.0", 24],
     [" 3 ", 36],
     ["2 Years", 24],
     ["1 year", 12],
@@ -111,11 +119,16 @@ describe("parseDurationMonths", () => {
     ["24M", 24],
     ["1 year 6 months", 18],
     ["1 Year, 6 Months", 18],
+    ["22 months", 22],
+    ["1y 10m", 22],
+    ["1y 11m", 23],
+    ["1.5 years", 18], // a decimal with a unit is still decimal years
   ])("reads %j as %i months", (text, months) => {
     expect(parseDurationMonths(text)).toBe(months);
   });
 
-  it.each(["", "0", "0 months", "Two years", "TBD", "-"])("rejects %j", (text) => {
+  // A months part over 11 isn't a month count
+  it.each(["", "0", "0.0", "0.12", "1.15", "0 months", "Two years", "TBD", "-"])("rejects %j", (text) => {
     expect(parseDurationMonths(text)).toBeNull();
   });
 
@@ -160,7 +173,20 @@ describe("formatDuration", () => {
   it("adds the unit to a bare number", () => {
     expect(formatDuration("2")).toBe("2 years");
     expect(formatDuration("1")).toBe("1 year");
-    expect(formatDuration("1.5")).toBe("1.5 years");
+    expect(formatDuration("0.6")).toBe("6 months");
+    expect(formatDuration("1.6")).toBe("1 year 6 months");
+    expect(formatDuration("0.1")).toBe("1 month");
+    expect(formatDuration("2.11")).toBe("2 years 11 months");
+    // Not a years.months number: as written
+    expect(formatDuration("0.12")).toBe("0.12");
+  });
+
+  it("flags a bare .1, which may have been typed as .10", () => {
+    expect(isAmbiguousDuration("0.1")).toBe(true);
+    expect(isAmbiguousDuration(" 1.1 ")).toBe(true);
+    expect(isAmbiguousDuration("1.11")).toBe(false);
+    expect(isAmbiguousDuration("1.01")).toBe(false);
+    expect(isAmbiguousDuration("1y 1m")).toBe(false);
   });
 
   it("leaves anything else as written", () => {
@@ -173,6 +199,7 @@ describe("formatDuration", () => {
     expect(formatDuration("2+1")).toBe("2 years + 1-year option");
     expect(formatDuration("1+1+1 years")).toBe("1 year + 1-year option + 1-year option");
     expect(formatDuration("6+6 months")).toBe("6 months + 6-month option");
+    expect(formatDuration("1.6+1")).toBe("1 year 6 months + 1-year option");
     expect(formatDuration("2+abc")).toBe("2+abc");
   });
 });

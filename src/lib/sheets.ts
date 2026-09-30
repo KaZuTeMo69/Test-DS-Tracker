@@ -1,5 +1,5 @@
 import { Store } from "../types";
-import { rowsToStores } from "./importer";
+import { isSheetError, rowsToStores } from "./importer";
 
 interface GvizCell {
   v: string | number | boolean | null;
@@ -14,8 +14,10 @@ interface GvizCol {
   label?: string;
 }
 
-function cellText(cell: GvizCell | null | undefined): string {
-  if (!cell || cell.v === null || cell.v === undefined) return "";
+export function cellText(cell: GvizCell | null | undefined): string {
+  if (!cell) return "";
+  // A formula error can come as an empty value with the error only in the displayed text
+  if (cell.v === null || cell.v === undefined) return cell.f && isSheetError(cell.f) ? cell.f : "";
 
   if (typeof cell.v === "string" && cell.v.startsWith("Date(")) {
     const dp = cell.v.match(/Date\((\d+),(\d+),(\d+)\)/);

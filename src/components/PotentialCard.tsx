@@ -4,6 +4,8 @@ import CardFrame from "./CardFrame";
 import ConfirmButton from "./ConfirmButton";
 import NearbyStores from "./NearbyStores";
 import { StatusBadge } from "./PotentialsPanel";
+import MapsButtons from "./MapsButtons";
+import { copyText } from "../lib/clipboard";
 import { Store, ZoneLayer } from "../types";
 import { CURRENCY } from "../constants";
 import { useSettings } from "../hooks/useSettings";
@@ -44,24 +46,6 @@ interface PotentialCardProps {
 type Tab = "study" | "details";
 
 const sar = (n: number | null) => (n === null ? "—" : `${CURRENCY} ${Math.round(n).toLocaleString()}`);
-
-/** Copies text; the fallback is for browsers without clipboard access (plain http, older Safari). */
-export async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    const box = document.createElement("textarea");
-    box.value = text;
-    box.style.position = "fixed";
-    box.style.opacity = "0";
-    document.body.appendChild(box);
-    box.select();
-    const ok = document.execCommand("copy");
-    box.remove();
-    return ok;
-  }
-}
 
 /**
  * A field shown as text; clicked (or Enter on it) it becomes an input. Enter or leaving it saves, Esc cancels.
@@ -333,7 +317,7 @@ function StudyTab({
       )}
 
       <div className="pc-section-label detail-panel-row-label text-[11px]">Nearest live stores</div>
-      <NearbyStores point={{ lat: p.lat, lng: p.lng }} stores={stores} onSelect={onSelectStore} sort="time" />
+      <NearbyStores point={{ lat: p.lat, lng: p.lng }} stores={stores} onSelect={onSelectStore} pointName={p.name} />
     </>
   );
 }
@@ -482,15 +466,7 @@ export default function PotentialCard(props: PotentialCardProps) {
       </div>
 
       <div className="store-card-footer pc-footer">
-        <a
-          href={`https://www.google.com/maps/search/?api=1&query=${p.lat.toFixed(6)},${p.lng.toFixed(6)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="detail-panel-maps-btn text-[12px] block w-full store-card-button bg-[#fbbf24] text-black font-extrabold text-center rounded-lg no-underline shadow-lg"
-          title="This spot in Google Maps"
-        >
-          📍 Open in Google Maps
-        </a>
+        <MapsButtons point={{ lat: p.lat, lng: p.lng }} label={p.name} />
         {p.status === "approved" && (
           <button className="pc-action" onClick={copyRow} title="A tab-separated row in the store sheet's column order">
             <Copy size={13} /> Copy as store row

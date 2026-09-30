@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
-import { ExternalLink } from "lucide-react";
 import { Store } from "../../types";
 import { LatLng } from "../../lib/coords";
-import { googleMapsDirections, nearestByAir } from "../../lib/roads";
+import MapsButtons from "../MapsButtons";
 import NearbyStores from "../NearbyStores";
 import { makeIcon } from "./pinIcon";
 
@@ -22,8 +21,8 @@ interface SearchPinProps {
 const ICON = makeIcon("#FF5722", "round", "m", true);
 
 /**
- * The pin dropped by a coordinate search. Its popup has the nearest stores by road, directions from the nearest one
- * in Google Maps, and adding a Potential there or removing the pin.
+ * The pin dropped by a coordinate search. Its popup has the nearest stores by drive time (each with directions from
+ * it in Google Maps), the point in Google Maps and a link to share it, and adding a Potential there or removing the pin.
  */
 export default function SearchPin({
   pin,
@@ -37,7 +36,6 @@ export default function SearchPin({
 }: SearchPinProps) {
   const markerRef = useRef<L.Marker | null>(null);
   const map = useMap();
-  const nearest = useMemo(() => nearestByAir(pin, stores, 1)[0], [pin, stores]);
 
   // Open the popup once the map has moved to the pin. The map puts the pin in the middle of what's in view, so
   // the popup doesn't pan the map to fit (autoPan): that pan stopped the move to the pin halfway, and searching
@@ -81,29 +79,25 @@ export default function SearchPin({
       {!measuring && (
         <Popup closeButton={false} maxWidth={310} minWidth={270} autoPan={false}>
           <div className="map-popup-container candidate-popup bg-[#111] rounded-xl text-white">
-            <div className="text-center">
-              <div className="candidate-title">Searched point</div>
-              <div className="candidate-coords">
+            <div className="candidate-head">
+              <span className="candidate-title">Searched point</span>
+              <span className="candidate-coords">
                 {pin.lat.toFixed(5)}, {pin.lng.toFixed(5)}
-              </div>
+              </span>
             </div>
 
             <div className="candidate-section">
-              <div className="candidate-label">Nearest live stores by road</div>
-              <NearbyStores point={pin} stores={stores} onSelect={onSelectStore} compact />
+              <div className="candidate-label">Nearest live stores by drive time</div>
+              <NearbyStores
+                point={pin}
+                stores={stores}
+                onSelect={onSelectStore}
+                compact
+                pointName="the searched point"
+              />
             </div>
 
-            {nearest && (
-              <a
-                className="candidate-maps"
-                href={googleMapsDirections({ lat: nearest.store.lat!, lng: nearest.store.lng! }, pin)}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={`Driving directions from ${nearest.store.name} to this point`}
-              >
-                <ExternalLink size={13} /> Directions from {nearest.store.name}
-              </a>
-            )}
+            <MapsButtons point={pin} label="Searched point" className="popup" />
 
             <div className="candidate-actions">
               <button

@@ -35,6 +35,7 @@ export function ExtraFigures({ stats, className = "" }: { stats: KpiStats; class
       color: "#FECC00",
     },
   ];
+  const { due, overdue } = stats.payments;
   return (
     <div className={`extra-figures grid grid-cols-3 gap-2 ${className}`}>
       {figures.map((f) => (
@@ -47,6 +48,22 @@ export function ExtraFigures({ stats, className = "" }: { stats: KpiStats; class
           {f.note && <div className="text-[11px] text-[#FB923C]">{f.note}</div>}
         </div>
       ))}
+      {/* Next payments from the contract register: due within 30 days, and past due */}
+      <div
+        data-figure="payments"
+        className="extra-figure payments-figure col-span-3 bg-white/[0.03] border border-white/10 rounded-lg"
+      >
+        <div className="detail-panel-row-label text-[11px]">Payments due</div>
+        <div className="payments-figure-values">
+          <span className="kpi-number text-[20px] font-bold" style={{ color: due + overdue ? "#fbbf24" : "#ffffff" }}>
+            {due + overdue}
+          </span>
+          <span className="text-[11px] text-gray-400 uppercase">
+            {due} in the next 30 days ·{" "}
+            <span className={overdue ? "text-red-400 font-bold" : ""}>{overdue} overdue</span>
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

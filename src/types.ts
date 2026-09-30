@@ -5,17 +5,29 @@ export interface Store {
   dsCode: string;
   city: string;
   country: string;
-  // Contract; a duration that is only a number is in years ("2" = 2 years)
+  // Contract; a duration that is only a number is years.months ("2" = 2 years, "1.6" = 1 year 6 months)
   contractDuration: string;
   startDate: string;
   endDate: string;
   live?: string;
   paid?: string;
-  // Area and rent (SAR); null when the source data leaves them blank
+  // Area and rent (SAR); null when the source data leaves them blank. For a contract under 12 months the sheet's
+  // rent is the total for the term (contractValue); the annual, monthly and per m² figures are then worked out from
+  // it, and the annual one is what the figures, benchmarks, pins and export use
   size: number | null;
   rentSARAnnual: number | null;
   rentSARMonthly: number | null;
   rentSARsqm: number | null;
+  contractValue?: number | null;
+  termMonths?: number | null; // the contract term, when the duration is readable
+  // From the contract register (lookup formulas in the store sheet). contractTotal is SAR including 15% VAT
+  contractNo?: string;
+  contractStatus?: string;
+  nextPayment?: string; // the next payment's date, as the other dates
+  contractTotal?: number | null;
+  region?: string;
+  // Cells that held a spreadsheet error (#N/A, #REF!…), read as empty
+  sheetErrors?: Array<{ column: string; value: string }>;
   // Location; locationIssue says why the store has no pin (missing or implausible coordinates)
   lat: number | null;
   lng: number | null;

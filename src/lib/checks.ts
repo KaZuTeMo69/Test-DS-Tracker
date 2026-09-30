@@ -1,5 +1,16 @@
 import { Store } from "../types";
-import { parseDate, parseDurationMonths } from "./contract";
+import {
+  contractEndDate,
+  daysBetween,
+  durationOptionMonths,
+  durationTerm,
+  formatDate,
+  isAmbiguousDuration,
+  monthsText,
+  parseDate,
+  parseDurationMonths,
+} from "./contract";
+import { VAT_RATE } from "./settings";
 import { liveStatus, paidStatus } from "./status";
 
 export const hasCoords = (s: Store) => s.lat !== null && s.lng !== null;
@@ -14,8 +25,18 @@ export type IssueKind =
   | "endUnreadable"
   | "durationMissing"
   | "durationUnknown"
+  | "durationAmbiguous"
   | "liveStatus"
-  | "paidStatus";
+  | "paidStatus"
+  | "sheetError"
+  | "paymentUnreadable"
+  | "totalMismatch"
+  | "datesMismatch";
+
+// Contract Total Value (with VAT) may differ from annual rent × term × 1.15 by this much before it's flagged
+export const TOTAL_TOLERANCE = 0.02;
+// The end date may differ from start date + duration by this many days (about a month) before it's flagged
+export const DATES_TOLERANCE_DAYS = 31;
 
 export interface Issue {
   kind: IssueKind;
@@ -32,17 +53,57 @@ function contractIssues(s: Store): Issue[] {
   if (s.endDate) {
     if (!parseDate(s.endDate))
       issues.push({ kind: "endUnreadable", text: `Contract end date "${s.endDate}" isn't a recognised date.` });
+    // The end date is there, but the term decides whether the rent is annual or a short contract's total
+    if (s.contractDuration.trim() && !parseDurationMonths(s.contractDuration))
+      issues.push({
+        kind: "durationUnknown",
+        text: `Contract duration "${s.contractDuration.trim()}" isn't recognised, so the rent is taken as annual.`,
+      });
   } else if (startOk) {
-    issues.push(
-      s.contractDuration.trim() && !parseDurationMonths(s.contractDuration)
-        ? {
-            kind: "durationUnknown",
-            text: `Contract duration "${s.contractDuration.trim()}" isn't recognised, so the end date can't be worked out.`,
-          }
-        : { kind: "durationMissing", text: "Contract duration is missing, so the end date can't be worked out." },
-    );
+    // (A readable duration gives the end date, so then there's nothing to report)
+    if (!s.contractDuration.trim())
+      issues.push({
+        kind: "durationMissing",
+        text: "Contract duration is missing, so the end date can't be worked out.",
+      });
+    else if (!parseDurationMonths(s.contractDuration))
+      issues.push({
+        kind: "durationUnknown",
+        text: `Contract duration "${s.contractDuration.trim()}" isn't recognised, so the end date can't be worked out.`,
+      });
   }
   return issues;
+}
+
+/**
+ * Contract Total Value (from the register, with 15% VAT) against the rent: annual rent (annualised for a short
+ * contract) × the term in years × 1.15. Null when something's missing or they agree within TOTAL_TOLERANCE.
+ */
+export function totalMismatch(s: Store): { expected: number; diff: number } | null {
+  const months = s.termMonths ?? parseDurationMonths(s.contractDuration);
+  if (!s.contractTotal || s.rentSARAnnual === null || !months) return null;
+  const expected = s.rentSARAnnual * (months / 12) * (1 + VAT_RATE);
+  const diff = (s.contractTotal - expected) / expected;
+  return Math.abs(diff) > TOTAL_TOLERANCE ? { expected, diff } : null;
+}
+
+/**
+ * The end date against start date + duration (or + the term and its options, "2+1 years"): null when they agree
+ * within DATES_TOLERANCE_DAYS, or when a date or the duration is missing.
+ */
+export function datesMismatch(s: Store): { expectedEnd: Date; days: number } | null {
+  const start = s.startDate ? parseDate(s.startDate) : null;
+  const end = s.endDate ? parseDate(s.endDate) : null;
+  const term = parseDurationMonths(s.contractDuration);
+  if (!start || !end || !term) return null;
+  const terms = [term];
+  for (const option of durationOptionMonths(s.contractDuration)) terms.push(terms[terms.length - 1] + option);
+  const gaps = terms.map((months) => {
+    const expectedEnd = contractEndDate(start, months);
+    return { expectedEnd, days: daysBetween(expectedEnd, end) };
+  });
+  if (gaps.some((g) => Math.abs(g.days) <= DATES_TOLERANCE_DAYS)) return null;
+  return gaps[0];
 }
 
 /** Why the contract end date (and so the renewal countdown) is missing or unreadable. */
@@ -56,12 +117,37 @@ export function storeIssues(s: Store): Issue[] {
   if (s.rentSARAnnual === null) issues.push({ kind: "rent", text: "Annual rent is missing." });
   if (!s.size) issues.push({ kind: "area", text: "Area is missing." });
   issues.push(...contractIssues(s));
+  const term = durationTerm(s.contractDuration).trim();
+  if (isAmbiguousDuration(term))
+    issues.push({
+      kind: "durationAmbiguous",
+      text: `Contract duration "${term}" could be 1 month or 10 months (Sheets drops trailing zeros). Write 10/11 months as text, e.g. '1y 10m'.`,
+    });
   if (liveStatus(s) === null) {
     issues.push({
       kind: "liveStatus",
       text: s.live?.trim()
         ? `Live status "${s.live.trim()}" isn't recognised. Counted as Not Live.`
         : "Live status is blank. Counted as Not Live.",
+    });
+  }
+  for (const e of s.sheetErrors ?? [])
+    issues.push({ kind: "sheetError", text: `"${e.column}" is ${e.value} in the sheet, so it's read as empty.` });
+  if (s.nextPayment && !parseDate(s.nextPayment))
+    issues.push({ kind: "paymentUnreadable", text: `Next payment "${s.nextPayment}" isn't a recognised date.` });
+  const total = totalMismatch(s);
+  if (total) {
+    const sar = (n: number) => `SAR ${Math.round(n).toLocaleString("en-US")}`;
+    issues.push({
+      kind: "totalMismatch",
+      text: `Contract Total Value ${sar(s.contractTotal!)} is ${Math.abs(Math.round(total.diff * 100))}% ${total.diff > 0 ? "more" : "less"} than annual rent × term × 1.15 (${sar(total.expected)}).`,
+    });
+  }
+  const dates = datesMismatch(s);
+  if (dates) {
+    issues.push({
+      kind: "datesMismatch",
+      text: `The start date plus ${monthsText(parseDurationMonths(s.contractDuration)!)} ends ${formatDate(dates.expectedEnd)}, but the end date is ${s.endDate} (${Math.abs(dates.days)} days ${dates.days > 0 ? "later" : "earlier"}).`,
     });
   }
   if (paidStatus(s) === null) {
@@ -114,11 +200,31 @@ const GROUPS: Record<IssueKind | "duplicateCode", { title: string; fix: string }
   },
   durationUnknown: {
     title: "Contract duration not recognised",
-    fix: "Write durations like 2, 2 Years or 18 Months, or fill in the end date.",
+    fix: "A bare number is years.months: 2 = 2 years, 1.6 = 1 year 6 months, 0.6 = 6 months (the months part goes up to 11). Or write 18 Months or 1y 10m, or fill in the end date.",
+  },
+  durationAmbiguous: {
+    title: "Contract duration could be 1 or 10 months",
+    fix: "Google Sheets turns 0.10 into 0.1. Write 10 or 11 months as text, such as 1y 10m or 22 months.",
   },
   rent: { title: "Annual rent missing", fix: "Fill in the Annual Rent column." },
   area: { title: "Area missing", fix: "Fill in the Area (sqm.) column." },
   duplicateCode: { title: "Same DS code on more than one store", fix: "Give each store its own DS code." },
+  sheetError: {
+    title: "Spreadsheet errors (#N/A, #REF!…)",
+    fix: "A lookup or formula found nothing. Fix it in the sheet; meanwhile the cell is read as empty (a missing end date is worked out from the start date and duration).",
+  },
+  paymentUnreadable: {
+    title: "Next payment date not recognised",
+    fix: "Write dates like 01/02/2026 or 1 Feb 2026.",
+  },
+  totalMismatch: {
+    title: "Contract Total Value doesn't match the rent",
+    fix: "Contract Total Value includes 15% VAT: it should be about annual rent × term in years × 1.15. Check the rent, the duration or the register.",
+  },
+  datesMismatch: {
+    title: "Contract dates don't match the duration",
+    fix: "The end date should be the start date plus the contract duration. Check the dates or the duration.",
+  },
 };
 
 // Groups in the order they're shown: what hides a store or skews the totals first
@@ -131,8 +237,13 @@ const ORDER: Array<IssueKind | "duplicateCode"> = [
   "endUnreadable",
   "durationMissing",
   "durationUnknown",
+  "durationAmbiguous",
   "rent",
   "area",
+  "sheetError",
+  "paymentUnreadable",
+  "totalMismatch",
+  "datesMismatch",
   "duplicateCode",
 ];
 

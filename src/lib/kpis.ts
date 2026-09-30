@@ -1,5 +1,6 @@
 import { Store } from "../types";
 import { RenewalDays } from "./contract";
+import { paymentInfo } from "./payments";
 import { storeRenewal } from "./renewal";
 import { rentFactor } from "./settings";
 import { isLive, isPaid } from "./status";
@@ -14,6 +15,7 @@ export interface KpiStats {
   noRent: number; // stores left out of the rent totals
   noArea: number;
   renewals: { now: number; soon: number; expired: number };
+  payments: { due: number; overdue: number }; // next payments due within 30 days, and past due
   avgRent: number; // rent per m², over the stores with both rent and area
 }
 
@@ -28,6 +30,7 @@ export function kpiStats(stores: Store[], days: RenewalDays, includeVat: boolean
     noRent: 0,
     noArea: 0,
     renewals: { now: 0, soon: 0, expired: 0 },
+    payments: { due: 0, overdue: 0 },
     avgRent: 0,
   };
   let pricedRent = 0;
@@ -46,6 +49,8 @@ export function kpiStats(stores: Store[], days: RenewalDays, includeVat: boolean
     }
     const { status } = storeRenewal(store, days);
     if (status === "now" || status === "soon" || status === "expired") s.renewals[status]++;
+    const payment = paymentInfo(store).status;
+    if (payment === "due" || payment === "overdue") s.payments[payment]++;
   }
   s.avgRent = pricedArea > 0 ? pricedRent / pricedArea : 0;
   return s;

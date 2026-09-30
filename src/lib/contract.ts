@@ -124,9 +124,25 @@ export function formatDate(date: Date): string {
   return `${String(date.getUTCDate()).padStart(2, "0")} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
-// A duration that is only a number is in years ("2" = 2 years); months are always written out ("6 months")
-const BARE_YEARS = /^\d+(?:\.\d+)?$/;
+// A duration that is only a number is years.months: "2" = 2 years, "1.6" = 1 year 6 months, "0.6" = 6 months.
+// The digits after the point are a count of months (so "0.1" is 1 month, and 10 or 11 months are "0.10", "0.11")
+const BARE_NUMBER = /^\d+(?:\.\d+)?$/;
 const UNIT = /(years?|yrs?|y|months?|mos?|m)\b/;
+
+/** A bare years.months number as months; null when it's 0 or the month part is over 11 ("0.12", "1.15"). */
+function bareMonths(text: string): number | null {
+  const [whole, part = ""] = text.split(".");
+  const months = part === "" ? 0 : parseInt(part, 10);
+  if (months > 11) return null;
+  const total = parseInt(whole, 10) * 12 + months;
+  return total > 0 ? total : null;
+}
+
+/**
+ * A bare years.months number with a single "1" after the point ("0.1", "1.1"): Google Sheets drops trailing zeros,
+ * so it may have been typed as 1 month or as 10 months ("0.10").
+ */
+export const isAmbiguousDuration = (text: string) => /^\d+\.1$/.test(text.trim());
 
 /**
  * A term with option periods, "2+1 years": a 2-year term that can be extended by a year. The parts, each with its
@@ -137,13 +153,14 @@ function termAndOptions(text: string): string[] | null {
   const parts = text.split("+").map((p) => p.trim());
   if (parts.some((p) => !p)) return null;
   const unit = parts[parts.length - 1].toLowerCase().match(UNIT)?.[1];
-  return parts.map((p) => (unit && BARE_YEARS.test(p) ? `${p} ${unit}` : p));
+  return parts.map((p) => (unit && BARE_NUMBER.test(p) ? `${p} ${unit}` : p));
 }
 
 /**
- * Reads a contract duration such as "2", "2 Years", "6 Months" or "1 Year 6 Months" as a number of months. With
- * option periods ("2+1 years") it's the term before them: the contract ends, and renewal is due, at the end of the
- * term unless the option is taken up.
+ * Reads a contract duration as a number of months: a bare years.months number ("2", "1.6", "0.6"), or text such as
+ * "2 Years", "6 Months", "22 months", "1 Year 6 Months" or "1y 10m" (a decimal with a unit, "1.5 years", is 18
+ * months). With option periods ("2+1 years") it's the term before them: the contract ends, and renewal is due, at
+ * the end of the term unless the option is taken up.
  */
 export function parseDurationMonths(text: string): number | null {
   if (text.includes("+")) {
@@ -151,10 +168,7 @@ export function parseDurationMonths(text: string): number | null {
     return parts ? parseDurationMonths(parts[0]) : null; // "+1 years" or "2++1": not a term
   }
   const bare = text.trim();
-  if (BARE_YEARS.test(bare)) {
-    const months = Math.round(parseFloat(bare) * 12);
-    return months > 0 ? months : null;
-  }
+  if (BARE_NUMBER.test(bare)) return bareMonths(bare);
   let months = 0;
   for (const [, n, unit] of text.toLowerCase().matchAll(/(\d+(?:\.\d+)?)\s*(years?|yrs?|y|months?|mos?|m)\b/g)) {
     months += unit.startsWith("y") ? parseFloat(n) * 12 : parseFloat(n);
@@ -168,15 +182,21 @@ export function durationOptionMonths(text: string): number[] {
   return options.every((m) => m !== null) ? (options as number[]) : [];
 }
 
-// 24 → "2 years", 6 → "6 months", 18 → "18 months"
-const monthsText = (months: number) =>
-  months % 12 === 0
-    ? `${months / 12} ${months === 12 ? "year" : "years"}`
-    : `${months} ${months === 1 ? "month" : "months"}`;
+/** Months as words: 6 → "6 months", 18 → "1 year 6 months", 24 → "2 years". */
+export function monthsText(months: number): string {
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  const y = years ? `${years} ${years === 1 ? "year" : "years"}` : "";
+  const m = rest ? `${rest} ${rest === 1 ? "month" : "months"}` : "";
+  return [y, m].filter(Boolean).join(" ") || "0 months";
+}
+
+/** A term as an adjective: 24 → "2-year", 6 → "6-month", 18 → "18-month". */
+export const termAdjective = (months: number) => (months % 12 === 0 ? `${months / 12}-year` : `${months}-month`);
 
 /**
- * How a duration reads on screen: a bare number gets its unit ("2" → "2 years"), a term with options is spelled out
- * ("2+1 years" → "2 years + 1-year option"), and anything else stays as written.
+ * How a duration reads on screen: a bare number in words ("0.6" → "6 months", "1.6" → "1 year 6 months", "2" →
+ * "2 years"), a term with options spelled out ("2+1 years" → "2 years + 1-year option"), anything else as written.
  */
 export function formatDuration(text: string): string {
   const bare = text.trim();
@@ -184,11 +204,11 @@ export function formatDuration(text: string): string {
     const term = parseDurationMonths(bare);
     const options = durationOptionMonths(bare);
     if (!term || !options.length) return bare;
-    const option = (m: number) => `${monthsText(m).replace(/ (year|month)s?$/, "-$1")} option`;
-    return [monthsText(term), ...options.map(option)].join(" + ");
+    return [monthsText(term), ...options.map((m) => `${termAdjective(m)} option`)].join(" + ");
   }
-  if (!BARE_YEARS.test(bare)) return bare;
-  return `${bare} ${parseFloat(bare) === 1 ? "year" : "years"}`;
+  if (!BARE_NUMBER.test(bare)) return bare;
+  const months = bareMonths(bare);
+  return months === null ? bare : monthsText(months);
 }
 
 /** Just the term of a duration, without its option periods ("2+1 years" → "2 years"). */
