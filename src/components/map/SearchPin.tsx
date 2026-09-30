@@ -15,15 +15,15 @@ interface SearchPinProps {
   onMeasurePoint: (point: LatLng & { label: string }) => void;
   onSelectStore: (id: number) => void;
   selectedId: number | null; // opening a store closes the popup (the route to it is drawn instead)
-  onAddStore: () => void;
+  onAddPotential: () => void;
   onRemove: () => void;
 }
 
 const ICON = makeIcon("#FF5722", "round", "m", true);
 
 /**
- * The pin dropped by a coordinate search: a candidate site. Its popup has the nearest stores by road, directions
- * from the nearest one in Google Maps, and adding a store there or removing the pin.
+ * The pin dropped by a coordinate search. Its popup has the nearest stores by road, directions from the nearest one
+ * in Google Maps, and adding a Potential there or removing the pin.
  */
 export default function SearchPin({
   pin,
@@ -32,7 +32,7 @@ export default function SearchPin({
   onMeasurePoint,
   onSelectStore,
   selectedId,
-  onAddStore,
+  onAddPotential,
   onRemove,
 }: SearchPinProps) {
   const markerRef = useRef<L.Marker | null>(null);
@@ -109,11 +109,12 @@ export default function SearchPin({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onAddStore();
+                  markerRef.current?.closePopup();
+                  onAddPotential();
                 }}
                 className="candidate-btn primary"
               >
-                Add Store to List
+                Add potential
               </button>
               <button
                 onClick={(e) => {

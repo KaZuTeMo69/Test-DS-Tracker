@@ -4,7 +4,7 @@ import { hexToKmlColor, zoneColor } from "./layers";
 // Written the way Google My Maps exports a layer, so My Maps (Import) and Google Earth read names,
 // descriptions, shapes and colours back. My Maps turns one file into one layer, so each layer is one file.
 
-const escapeXml = (text: string) =>
+export const escapeXml = (text: string) =>
   text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

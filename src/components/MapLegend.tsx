@@ -2,15 +2,21 @@ import { ReactNode, useState } from "react";
 import { ChevronUp } from "lucide-react";
 import { PIN_SEL } from "../constants";
 import { useSettings } from "../hooks/useSettings";
-import { PIN_PATH, PinShape, RENT_COLOR, STATUS_COLOR } from "./map/pinIcon";
+import { DIAMOND_PATH, PIN_PATH, PinShape, RENT_COLOR, STATUS_COLOR } from "./map/pinIcon";
+import { POTENTIAL_COLOR, POTENTIAL_STATUS_LABEL, POTENTIAL_STATUSES } from "../lib/potentials";
 
-const SHAPE_LABEL: Record<PinShape, string> = { round: "Live · Paid", square: "Live · Unpaid", diamond: "Not live" };
+const SHAPE_LABEL: Record<PinShape, string> = { round: "Live · Paid", square: "Live · Unpaid", triangle: "Not live" };
 
 // A small pin in the legend, drawn like the ones on the map
-function Glyph({ shape, color }: { shape: PinShape; color: string }) {
+function Glyph({ shape, color }: { shape: PinShape | "potential"; color: string }) {
   return (
     <svg width="10" height="13" viewBox="0 0 24 32" aria-hidden="true" className="shrink-0">
-      <path d={PIN_PATH[shape]} fill={color} />
+      <path
+        d={shape === "potential" ? DIAMOND_PATH : PIN_PATH[shape]}
+        fill={color}
+        stroke={shape === "potential" && color === POTENTIAL_COLOR.dropped ? "rgba(255,255,255,0.8)" : "none"}
+        strokeWidth="1.6"
+      />
     </svg>
   );
 }
@@ -33,16 +39,16 @@ const Dot = ({ color }: { color: string }) => (
 /**
  * What the pins mean: the shape is the status and the size the annual rent; the colour is the status or rent per
  * m² against the city median (switched with the palette button in the map controls). Also how many of the listed
- * stores have no pin. Folded into a small chip until opened.
+ * stores have no pin, and the Potentials' diamonds when any are on the map. Folded into a small chip until opened.
  */
-export default function MapLegend({ notOnMap }: { notOnMap: number }) {
+export default function MapLegend({ notOnMap, potentials = 0 }: { notOnMap: number; potentials?: number }) {
   const { pinColors, rentFlagPercent } = useSettings();
   const [open, setOpen] = useState(false);
   const byRent = pinColors === "rent";
-  const shapes: PinShape[] = ["round", "square", "diamond"];
+  const shapes: PinShape[] = ["round", "square", "triangle"];
   const swatches = byRent
     ? [RENT_COLOR.below, RENT_COLOR.above, RENT_COLOR.high]
-    : [STATUS_COLOR.round, STATUS_COLOR.square, STATUS_COLOR.diamond];
+    : [STATUS_COLOR.round, STATUS_COLOR.square, STATUS_COLOR.triangle];
 
   return (
     <div
@@ -100,6 +106,16 @@ export default function MapLegend({ notOnMap }: { notOnMap: number }) {
           <Item title="Pins are small, medium or large by annual rent (lowest, middle and highest third of your stores)">
             <span className="text-gray-400 normal-case font-semibold">Bigger pin = higher rent</span>
           </Item>
+          {potentials > 0 && (
+            <div className="legend-potentials flex flex-wrap items-center" aria-label="Potentials">
+              <span className="text-gray-400 text-[11px] font-bold uppercase tracking-tight">Potentials</span>
+              {POTENTIAL_STATUSES.map((s) => (
+                <Item key={s}>
+                  <Glyph shape="potential" color={POTENTIAL_COLOR[s]} /> {POTENTIAL_STATUS_LABEL[s]}
+                </Item>
+              ))}
+            </div>
+          )}
           {notOnMap > 0 && (
             <div
               className="flex items-center gap-2 text-[11px] text-[#FB923C] font-bold uppercase tracking-tight"

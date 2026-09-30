@@ -37,7 +37,6 @@ interface DetailPanelProps {
   searchPin: LatLng | null; // the searched point: directions start there when there is one
   route: RouteInfo | null; // the road route drawn from the searched point to this store
   onClose: () => void;
-  onRemove?: () => void; // only for manually added stores
   onInset?: (px: number) => void; // on a phone: how much of the map the card covers
 }
 
@@ -665,12 +664,9 @@ function StoreCard({
   searchPin,
   route,
   onClose,
-  onRemove,
   onInset,
 }: DetailPanelProps & { store: Store; key?: number }) {
   const [tab, setTab] = useState<Tab>("summary");
-  // Removing takes a second click, so a stray tap can't delete a store
-  const [confirmRemove, setConfirmRemove] = useState(false);
   const settings = useSettings();
   const renewal = storeRenewal(store, settings);
   const rent = rentComparison(store, stores);
@@ -799,14 +795,6 @@ function StoreCard({
             className="detail-panel-maps-btn text-[12px] block w-full store-card-button bg-[#1a1a1a] text-gray-400 font-extrabold text-center rounded-lg cursor-not-allowed border border-[#333]"
           >
             No Maps link
-          </button>
-        )}
-        {onRemove && (
-          <button
-            onClick={() => (confirmRemove ? onRemove() : setConfirmRemove(true))}
-            className={`text-[11px] block w-full store-card-gap-top font-bold text-center rounded-lg cursor-pointer transition-colors store-card-button border ${confirmRemove ? "bg-red-500/15 border-red-500/40 text-red-300" : "bg-transparent border-[#333] text-red-400 hover:border-red-500/40"}`}
-          >
-            {confirmRemove ? "Click again to remove this store" : "Remove manual store"}
           </button>
         )}
       </div>

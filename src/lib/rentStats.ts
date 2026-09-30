@@ -79,11 +79,13 @@ function median(values: number[]): number {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-/**
- * Each store's rent per m² against the median of its city, across all stores (live or not), and its pin size.
- * Stores in a city with fewer than MIN_BENCHMARK_STORES rates aren't compared.
- */
-export function rentBenchmarks(stores: Store[], flagPercent: number): RentBenchmarks {
+export interface CityMedian {
+  median: number;
+  count: number; // stores in the city with a rent per m²
+}
+
+/** Each city's median rent per m² across all stores (live or not), keyed by the city in lower case. */
+export function cityRentMedians(stores: Store[]): Map<string, CityMedian> {
   const rates = new Map<string, number[]>();
   for (const s of stores) {
     const rate = rateOf(s);
@@ -92,21 +94,35 @@ export function rentBenchmarks(stores: Store[], flagPercent: number): RentBenchm
     list.push(rate);
     rates.set(cityKey(s), list);
   }
-  const medians = new Map([...rates].map(([city, list]) => [city, { median: median(list), count: list.length }]));
+  return new Map([...rates].map(([city, list]) => [city, { median: median(list), count: list.length }]));
+}
 
+/** The median for a city name, as written anywhere (case and spaces don't matter). */
+export const medianFor = (medians: Map<string, CityMedian>, city: string) => medians.get(city.trim().toLowerCase());
+
+/**
+ * A rent per m² against its city's median: ±% and a level (high = more than flagPercent above). Cities with fewer
+ * than MIN_BENCHMARK_STORES rates aren't compared.
+ */
+export function compareToMedian(rate: number | null, city: CityMedian | undefined, flagPercent: number): RentBenchmark {
+  const compared = city && city.count >= MIN_BENCHMARK_STORES ? city : null;
+  const diff = compared && rate !== null && rate > 0 ? Math.round((rate / compared.median - 1) * 100) : null;
+  return {
+    median: compared?.median ?? null,
+    cityCount: city?.count ?? 0,
+    diff,
+    level: diff === null ? "none" : diff > flagPercent ? "high" : diff > 0 ? "above" : "below",
+  };
+}
+
+/**
+ * Each store's rent per m² against the median of its city, across all stores (live or not), and its pin size.
+ * Stores in a city with fewer than MIN_BENCHMARK_STORES rates aren't compared.
+ */
+export function rentBenchmarks(stores: Store[], flagPercent: number): RentBenchmarks {
+  const medians = cityRentMedians(stores);
   const of = new Map<number, RentBenchmark>();
-  for (const s of stores) {
-    const city = medians.get(cityKey(s));
-    const rate = rateOf(s);
-    const compared = city && city.count >= MIN_BENCHMARK_STORES ? city : null;
-    const diff = compared && rate !== null ? Math.round((rate / compared.median - 1) * 100) : null;
-    of.set(s.id, {
-      median: compared?.median ?? null,
-      cityCount: city?.count ?? 0,
-      diff,
-      level: diff === null ? "none" : diff > flagPercent ? "high" : diff > 0 ? "above" : "below",
-    });
-  }
+  for (const s of stores) of.set(s.id, compareToMedian(rateOf(s), medians.get(cityKey(s)), flagPercent));
 
   // Thirds by annual rent
   const rents = stores.map((s) => s.rentSARAnnual).filter((r): r is number => r !== null && r > 0);

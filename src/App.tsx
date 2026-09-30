@@ -7,18 +7,30 @@ import { csvFileName, storesToCsv } from "./lib/csvExport";
 import { download } from "./lib/download";
 import { kpiStats } from "./lib/kpis";
 import { kmlFileName, layerToKml } from "./lib/kmlExport";
-import { rentBenchmarks } from "./lib/rentStats";
+import { cityRentMedians, medianFor, rentBenchmarks } from "./lib/rentStats";
 import { zoneBounds, zoneColor } from "./lib/layers";
 import { loadBaseMap, loadOrsKey, loadPanelOpen, saveBaseMap, saveOrsKey, savePanelOpen } from "./lib/storage";
 import { BaseMapChoice, BaseMapId, chooseBaseMap, toBaseMapChoice, toggleNight } from "./lib/baseMaps";
 import { LatLng } from "./lib/coords";
+import {
+  Potential,
+  POTENTIAL_COLOR,
+  PotentialDraft,
+  PotentialStatus,
+  potentialsFileName,
+  potentialsToCsv,
+  potentialsToKml,
+  withStatus,
+} from "./lib/potentials";
+import { nearestByAir } from "./lib/roads";
 import { RouteInfo } from "./lib/routing";
 import { useFilters } from "./hooks/useFilters";
 import { useLayers } from "./hooks/useLayers";
 import { useIsNarrow } from "./hooks/useMediaQuery";
 import { RoadsContext } from "./hooks/useRoads";
 import { SettingsContext, useSettingsState } from "./hooks/useSettings";
-import { isManualStore, useStores } from "./hooks/useStores";
+import { usePotentials } from "./hooks/usePotentials";
+import { useStores } from "./hooks/useStores";
 import { useToast } from "./hooks/useToast";
 import { linkedView, useUrlState } from "./hooks/useUrlState";
 import { openingSheetHeight } from "./components/CardFrame";
@@ -31,6 +43,9 @@ import { ZoomRequest } from "./components/map/MapController";
 import { MapMode } from "./components/map/ZoneEditor";
 import { ZoneRef } from "./components/map/ZoneLayers";
 import MapLegend from "./components/MapLegend";
+import PotentialCard from "./components/PotentialCard";
+import PotentialForm from "./components/PotentialForm";
+import PotentialsPanel from "./components/PotentialsPanel";
 import NavRail from "./components/NavRail";
 import SettingsModal from "./components/SettingsModal";
 import Sidebar from "./components/Sidebar";
@@ -56,6 +71,7 @@ export default function App() {
   const data = useStores(showToast);
   const { stores } = data;
   const { settings, updateSettings } = useSettingsState();
+  const potentials = usePotentials(showToast);
   const mapLayers = useLayers(showToast);
   // Which zones each store is in, across all stores (live or not) and the layers shown on the map
   const coverage = useMemo(() => analyseCoverage(stores, mapLayers.layers), [stores, mapLayers.layers]);
@@ -64,6 +80,8 @@ export default function App() {
     () => rentBenchmarks(stores, settings.rentFlagPercent),
     [stores, settings.rentFlagPercent],
   );
+  // Each city's median store rent per m², for the Potentials' asking rent
+  const cityMedians = useMemo(() => cityRentMedians(stores), [stores]);
   const { filters, filteredStores, citySummaries, allCities, unclear, showUnclearOnly, showCoverageOnly } = useFilters(
     stores,
     coverage,
@@ -108,6 +126,16 @@ export default function App() {
   const [focusedCity, setFocusedCity] = useState<string | null>(null);
   // A selected map zone; a store and a zone are never selected at the same time, so one card shows
   const [selectedZone, setSelectedZone] = useState<ZoneRef | null>(null);
+  // A selected Potential; like a zone, never at the same time as a store
+  const [selectedPotentialId, setSelectedPotentialId] = useState<string | null>(null);
+  // Adding a Potential: placing it (the next map click), then its form; or editing one in the form
+  const [placing, setPlacing] = useState(false);
+  // fromSearch: started from the searched point's popup, whose pin goes once the Potential is added
+  const [potentialForm, setPotentialForm] = useState<{
+    id: string | null;
+    draft: PotentialDraft;
+    fromSearch?: boolean;
+  } | null>(null);
   const [zoomRequest, setZoomRequest] = useState<ZoomRequest | null>(null);
   // Drawing a new zone or editing a zone's shape; the cards are hidden meanwhile so the map is clear
   const [mapMode, setMapMode] = useState<MapMode | null>(null);
@@ -126,6 +154,20 @@ export default function App() {
     const zone = layer && layer.zones.find((z) => z.id === selectedZone.zoneId);
     return layer && zone ? { layer, zone } : null;
   }, [selectedZone, mapLayers.layers]);
+  const selectedPotential = useMemo(
+    () => potentials.list.find((p) => p.id === selectedPotentialId) ?? null,
+    [potentials.list, selectedPotentialId],
+  );
+  // The Potentials' pins: shown or not, dropped ones only when asked for; the selected one always
+  const potentialPins = useMemo(
+    () =>
+      potentials.list.filter(
+        (p) =>
+          p.id === selectedPotentialId ||
+          (settings.showPotentials && (p.status !== "dropped" || settings.showDroppedPotentials)),
+      ),
+    [potentials.list, selectedPotentialId, settings.showPotentials, settings.showDroppedPotentials],
+  );
   const notOnMap = useMemo(() => filteredStores.filter((s) => !hasCoords(s)).length, [filteredStores]);
   // Every problem in the data, for the Data Quality panel (all stores, whatever the filters)
   const quality = useMemo(() => dataQuality(stores), [stores]);
@@ -168,11 +210,6 @@ export default function App() {
     filters.setCoverageOnly(null);
   };
 
-  const handleRemoveManualStore = (id: number) => {
-    data.removeManualStore(id);
-    setSelectedId(null);
-  };
-
   const showUnclearStores = () => {
     showUnclearOnly();
     setFocusedCity(null);
@@ -191,6 +228,7 @@ export default function App() {
   const selectStore = useCallback((id: number) => {
     setSelectedId(id);
     setSelectedZone(null);
+    setSelectedPotentialId(null);
   }, []);
   const selectFromList = useCallback(
     (id: number) => {
@@ -235,6 +273,7 @@ export default function App() {
   const selectZone = useCallback((layerId: string, zoneId: string) => {
     setSelectedZone({ layerId, zoneId });
     setSelectedId(null);
+    setSelectedPotentialId(null);
   }, []);
   const selectZoneFromList = (layerId: string, zoneId: string) => {
     selectZone(layerId, zoneId);
@@ -306,6 +345,115 @@ export default function App() {
     showToast(`Deleted "${zoneSelection.zone.name || "Unnamed zone"}"`);
   };
 
+  // ── Potentials ──
+
+  // Around a point, for zooming to it (Leaflet stops at street level)
+  const pointBounds = (lat: number, lng: number): ReturnType<typeof zoneBounds> => [
+    [lat, lng],
+    [lat, lng],
+  ];
+
+  // A Potential clicked on the map is already in view; one picked in the list is zoomed to
+  const selectPotential = useCallback((id: string) => {
+    setSelectedPotentialId(id);
+    setSelectedId(null);
+    setSelectedZone(null);
+  }, []);
+  const selectPotentialFromList = (p: Potential) => {
+    selectPotential(p.id);
+    zoomTo(pointBounds(p.lat, p.lng), { card: true, closesPanel: true });
+    if (window.innerWidth < NARROW_SCREEN) setPanelOpen(false);
+  };
+
+  // A new Potential's form, with the city of the nearest store and your name filled in
+  const newDraft = (point: LatLng): PotentialDraft => ({
+    name: "",
+    city: nearestByAir(point, stores, 1)[0]?.store.city ?? "",
+    district: "",
+    lat: point.lat,
+    lng: point.lng,
+    status: "study",
+    size: null,
+    askingRentAnnual: null,
+    contact: "",
+    notes: "",
+    feasibilityLink: "",
+    dropReason: "",
+    addedBy: settings.addedBy,
+  });
+  const startPlacing = () => {
+    setSelectedId(null);
+    setSelectedZone(null);
+    setSelectedPotentialId(null);
+    setMapMode(null);
+    setPlacing(true);
+    if (window.innerWidth < NARROW_SCREEN) setPanelOpen(false);
+  };
+  const cancelPlacing = useCallback(() => setPlacing(false), []);
+  const openNewPotential = (point: LatLng, fromSearch = false) => {
+    setPlacing(false);
+    setSelectedId(null);
+    setSelectedZone(null);
+    setSelectedPotentialId(null);
+    setPotentialForm({ id: null, draft: newDraft(point), fromSearch });
+  };
+  // A click on the map while placing opens the form there; with the form open, it moves the pin
+  const formPoint = (lat: number, lng: number) => {
+    if (potentialForm) setPotentialForm({ ...potentialForm, draft: { ...potentialForm.draft, lat, lng } });
+    else if (placing) openNewPotential({ lat, lng });
+  };
+  const editPotentialInForm = (p: Potential) => {
+    const { id, createdAt: _c, updatedAt: _u, statusChangedAt: _s, ...draft } = p;
+    setPotentialForm({ id, draft });
+    zoomTo(pointBounds(p.lat, p.lng), { card: true, closesPanel: true });
+  };
+  const cancelForm = useCallback(() => setPotentialForm(null), []);
+  const saveForm = () => {
+    if (!potentialForm) return;
+    if (potentialForm.id) {
+      potentials.update(potentialForm.id, potentialForm.draft);
+      setSelectedPotentialId(potentialForm.id);
+      showToast("Potential saved");
+    } else {
+      const p = potentials.add(potentialForm.draft);
+      setSelectedPotentialId(p.id);
+      if (potentialForm.fromSearch) setSearchPin(null);
+      showToast(`Added the potential "${p.name}"`);
+    }
+    setPotentialForm(null);
+  };
+  const setPotentialStatus = (p: Potential, status: PotentialStatus, dropReason = "") => {
+    const next = withStatus(p, status, dropReason);
+    if (!next) return;
+    potentials.replace(next);
+    showToast(`"${p.name}" is now ${status === "study" ? "under study" : status}`);
+  };
+  const deletePotential = (p: Potential) => {
+    potentials.remove(p.id);
+    setSelectedPotentialId(null);
+    showToast(`Deleted the potential "${p.name}"`);
+  };
+  const exportPotentials = (kind: "csv" | "kml") => {
+    const name = potentialsFileName(kind);
+    if (kind === "csv") download(name, potentialsToCsv(potentials.list), "text/csv;charset=utf-8");
+    else download(name, potentialsToKml(potentials.list), "application/vnd.google-earth.kml+xml");
+    showToast(`Saved ${name} with ${potentials.list.length} potentials`);
+  };
+  const importPotentials = async (file: File) => {
+    try {
+      const r = potentials.importFile(await file.text());
+      const parts = [`${r.added} added`, `${r.updated} updated`];
+      if (r.skipped) parts.push(`${r.skipped} skipped (no name or location)`);
+      showToast(`Potentials from ${file.name}: ${parts.join(", ")}`);
+    } catch (e) {
+      showToast(`Couldn't read ${file.name}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+  const potentialCounts = useMemo(() => {
+    const study = potentials.list.filter((p) => p.status === "study").length;
+    return `${potentials.list.length} ${potentials.list.length === 1 ? "potential" : "potentials"} · ${study} under study`;
+  }, [potentials.list]);
+
   // The stores that pass the filters, with their renewal dates and zones worked out
   const exportCsv = () => {
     if (!filteredStores.length) {
@@ -338,7 +486,11 @@ export default function App() {
   // while drawing or editing a zone (Esc cancels that). Read through a ref, so the listener is added once
   const keyState = useRef({ focusMode, isPanelOpen, busy: false });
   useEffect(() => {
-    keyState.current = { focusMode, isPanelOpen, busy: mapMode !== null || isUploadModalOpen || isSettingsOpen };
+    keyState.current = {
+      focusMode,
+      isPanelOpen,
+      busy: mapMode !== null || isUploadModalOpen || isSettingsOpen || placing || potentialForm !== null,
+    };
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -431,7 +583,7 @@ export default function App() {
         )}
 
         <div
-          className={`map-area relative flex-1 min-w-0 min-h-0 ${panelShown && !narrow ? (currentTab === "renewals" ? "panel-open panel-wide" : "panel-open") : ""} ${panelShown && narrow ? "panel-sheet-open" : ""} ${(selectedStore || zoneSelection) && !mapMode ? "card-open" : ""}`}
+          className={`map-area relative flex-1 min-w-0 min-h-0 ${panelShown && !narrow ? (currentTab === "renewals" ? "panel-open panel-wide" : "panel-open") : ""} ${panelShown && narrow ? "panel-sheet-open" : ""} ${(selectedStore || zoneSelection || selectedPotential || potentialForm) && !mapMode ? "card-open" : ""}`}
         >
           <div
             ref={mapRef}
@@ -452,6 +604,7 @@ export default function App() {
               onMapClick={() => {
                 setSelectedId(null);
                 setSelectedZone(null);
+                setSelectedPotentialId(null);
                 setFocusedCity(null);
               }}
               allStores={stores}
@@ -471,17 +624,32 @@ export default function App() {
               onFocusMode={enterFocusMode}
               searchOpen={searchOpen && !focusMode}
               zoomRequest={zoomRequest}
-              cardOpen={selectedId !== null || zoneSelection !== null}
+              cardOpen={selectedId !== null || zoneSelection !== null || selectedPotential !== null}
               mapMode={mapMode}
               onDrawn={finishDrawing}
               onEdited={finishEditingShape}
               onCancelMode={() => setMapMode(null)}
-              onAddStore={data.addManualStore}
+              potentials={potentialPins}
+              selectedPotentialId={selectedPotentialId}
+              onSelectPotential={selectPotential}
+              placingPotential={placing}
+              formPin={
+                potentialForm
+                  ? {
+                      lat: potentialForm.draft.lat,
+                      lng: potentialForm.draft.lng,
+                      color: POTENTIAL_COLOR[potentialForm.draft.status],
+                    }
+                  : null
+              }
+              onFormPoint={formPoint}
+              onCancelPlacing={cancelPlacing}
+              onAddPotentialAt={(point) => openNewPotential(point, true)}
               showToast={showToast}
             />
 
             <DetailPanel
-              store={mapMode ? null : selectedStore}
+              store={mapMode || potentialForm ? null : selectedStore}
               stores={stores}
               coverage={coverage}
               benchmark={selectedStore ? (benchmarks.of.get(selectedStore.id) ?? null) : null}
@@ -491,14 +659,41 @@ export default function App() {
               route={searchPin ? routeInfo : null}
               onClose={closeStore}
               onInset={setCardInset}
-              onRemove={
-                selectedStore && isManualStore(selectedStore)
-                  ? () => handleRemoveManualStore(selectedStore.id)
-                  : undefined
-              }
             />
 
-            {zoneSelection && !selectedStore && !mapMode && (
+            {selectedPotential && !selectedStore && !mapMode && !potentialForm && (
+              <PotentialCard
+                key={selectedPotential.id}
+                potential={selectedPotential}
+                stores={stores}
+                layers={mapLayers.layers}
+                cityMedian={medianFor(cityMedians, selectedPotential.city)}
+                storeHeaders={data.storeHeaders}
+                onEdit={(patch) => potentials.update(selectedPotential.id, patch)}
+                onStatus={(status, reason) => setPotentialStatus(selectedPotential, status, reason)}
+                onMove={() => editPotentialInForm(selectedPotential)}
+                onDelete={() => deletePotential(selectedPotential)}
+                onSelectStore={selectStore}
+                onSelectZone={openZone}
+                onCopied={showToast}
+                onClose={() => setSelectedPotentialId(null)}
+                onInset={setCardInset}
+              />
+            )}
+
+            {potentialForm && (
+              <PotentialForm
+                key={potentialForm.id ?? "new"}
+                mode={potentialForm.id ? "edit" : "add"}
+                draft={potentialForm.draft}
+                cities={allCities}
+                onChange={(patch) => setPotentialForm((f) => (f ? { ...f, draft: { ...f.draft, ...patch } } : f))}
+                onSave={saveForm}
+                onCancel={cancelForm}
+              />
+            )}
+
+            {zoneSelection && !selectedStore && !selectedPotential && !mapMode && !potentialForm && (
               <ZoneCard
                 key={zoneSelection.zone.id}
                 layer={zoneSelection.layer}
@@ -515,7 +710,9 @@ export default function App() {
               />
             )}
 
-            {!focusMode && <MapLegend notOnMap={notOnMap} />}
+            {!focusMode && (
+              <MapLegend notOnMap={notOnMap} potentials={settings.showPotentials ? potentialPins.length : 0} />
+            )}
           </div>
 
           {!focusMode && (
@@ -560,6 +757,22 @@ export default function App() {
                 />
               }
               layersSummary={layersSummary}
+              potentialsSummary={potentialCounts}
+              potentialsPanel={
+                <PotentialsPanel
+                  potentials={potentials.list}
+                  selectedId={selectedPotentialId}
+                  onSelect={selectPotentialFromList}
+                  onAdd={startPlacing}
+                  showOnMap={settings.showPotentials}
+                  showDropped={settings.showDroppedPotentials}
+                  onShowOnMap={(showPotentials) => updateSettings({ showPotentials })}
+                  onShowDropped={(showDroppedPotentials) => updateSettings({ showDroppedPotentials })}
+                  onExportCsv={() => exportPotentials("csv")}
+                  onExportKml={() => exportPotentials("kml")}
+                  onImport={importPotentials}
+                />
+              }
               layersPanel={
                 <LayersPanel
                   layers={mapLayers.layers}
