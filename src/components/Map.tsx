@@ -8,13 +8,15 @@ import { hasCoords } from "../lib/checks";
 import { RouteInfo } from "../lib/routing";
 import { PinColors } from "../lib/settings";
 import { RentBenchmarks } from "../lib/rentStats";
-import AddStoreModal from "./map/AddStoreModal";
 import CoordinateSearch from "./map/CoordinateSearch";
 import EditBanner from "./map/EditBanner";
 import BaseMapTiles from "./map/BaseMapTiles";
 import MapControls, { ZoomButtons } from "./map/MapControls";
 import { MeasureBar, MeasureLayer, useMeasure } from "./map/MeasureTool";
 import MapController, { ZoomRequest } from "./map/MapController";
+import PlaceBanner from "./map/PlaceBanner";
+import PotentialMarkers, { PotentialFormPin } from "./map/PotentialMarkers";
+import { Potential } from "../lib/potentials";
 import SearchPin from "./map/SearchPin";
 import StoreMarkers from "./map/StoreMarkers";
 import ZoneEditor, { EditorControls, MapMode } from "./map/ZoneEditor";
@@ -53,7 +55,15 @@ interface MapComponentProps {
   onDrawn: (polygons: PolygonRings[]) => void;
   onEdited: (polygons: PolygonRings[]) => void;
   onCancelMode: () => void;
-  onAddStore?: (store: Omit<Store, "id">) => void;
+  // Potentials: their pins, the one selected, and adding one (placing it, then its form's draggable pin)
+  potentials: Potential[];
+  selectedPotentialId: string | null;
+  onSelectPotential: (id: string) => void;
+  placingPotential: boolean; // the next map click puts the new Potential there
+  formPin: { lat: number; lng: number; color: string } | null; // the Potential being added or edited
+  onFormPoint: (lat: number, lng: number) => void; // placing it, or moving the form's pin
+  onCancelPlacing: () => void;
+  onAddPotentialAt: (point: LatLng) => void; // from the searched point's popup
   showToast?: (msg: string) => void;
 }
 
@@ -88,7 +98,14 @@ export default function MapComponent({
   onDrawn,
   onEdited,
   onCancelMode,
-  onAddStore,
+  potentials,
+  selectedPotentialId,
+  onSelectPotential,
+  placingPotential,
+  formPin,
+  onFormPoint,
+  onCancelPlacing,
+  onAddPotentialAt,
   showToast,
 }: MapComponentProps) {
   // The route's directions panel is placed here, under the map buttons
@@ -97,72 +114,62 @@ export default function MapComponent({
   const modeLayer = mapMode ? layers.find((l) => l.id === mapMode.layerId) : undefined;
   const modeZone = mapMode?.kind === "edit" ? modeLayer?.zones.find((z) => z.id === mapMode.zoneId) : undefined;
 
-  // Coordinate search and manual store adding
+  // Coordinate search
   const [searchInput, setSearchInput] = useState("");
 
   // Measuring road distances between two points
   const measure = useMeasure();
   // While measuring, a store's pin is a point to measure from or to, not a store to open
   const { active: measuring, add: addMeasurePoint } = measure;
+
+  // Drawing a zone, placing a Potential and measuring don't mix: starting one stops the others
+  const { stop: stopMeasuring } = measure;
+  const addingPotential = placingPotential || formPin !== null;
+  // While a Potential is placed, a click on a store's pin puts it there too, rather than opening the store.
+  // onFormPoint is read through a ref: it changes on every render, and a new click handler would redraw every pin
+  const formPointRef = useRef(onFormPoint);
+  useEffect(() => {
+    formPointRef.current = onFormPoint;
+  });
   const clickStore = useCallback(
     (id: number) => {
       const store = allStores.find((s) => s.id === id);
-      if (!measuring) onSelectStore(id);
-      else if (store && hasCoords(store)) addMeasurePoint({ lat: store.lat!, lng: store.lng!, label: store.name });
+      const at = store && hasCoords(store) ? { lat: store.lat!, lng: store.lng! } : null;
+      if (addingPotential) {
+        if (at) formPointRef.current(at.lat, at.lng);
+      } else if (!measuring) onSelectStore(id);
+      else if (at) addMeasurePoint({ ...at, label: store!.name });
     },
-    [measuring, addMeasurePoint, allStores, onSelectStore],
+    [measuring, addingPotential, addMeasurePoint, allStores, onSelectStore],
   );
-  // Drawing a zone and measuring don't mix: starting one stops the other
-  const { stop: stopMeasuring } = measure;
+  // A Potential's pin: a point to measure from or to while measuring, otherwise its card
+  const clickPotential = useCallback(
+    (p: Potential) => {
+      if (addingPotential) return;
+      if (measuring) addMeasurePoint({ lat: p.lat, lng: p.lng, label: p.name });
+      else onSelectPotential(p.id);
+    },
+    [measuring, addingPotential, addMeasurePoint, onSelectPotential],
+  );
   useEffect(() => {
-    if (mapMode) stopMeasuring();
-  }, [mapMode, stopMeasuring]);
-  const [showAddModal, setShowAddModal] = useState(false);
+    if (mapMode || addingPotential) stopMeasuring();
+  }, [mapMode, addingPotential, stopMeasuring]);
 
   const removePin = () => {
     setTempPin(null);
     setSearchInput("");
   };
 
-  const saveManualStore = (name: string, city: string) => {
-    if (!tempPin) return;
-
-    // Only the name, city and pin are known; everything else stays blank and is flagged as missing
-    const newStore: Omit<Store, "id"> = {
-      dsCode: "MANUAL",
-      contractDuration: "",
-      name,
-      country: "KSA",
-      city,
-      size: null,
-      lat: tempPin.lat,
-      lng: tempPin.lng,
-      startDate: "",
-      endDate: "",
-      rentSARAnnual: null,
-      rentSARMonthly: null,
-      rentSARsqm: null,
-      live: "",
-      paid: "",
-    };
-
-    if (onAddStore) {
-      onAddStore(newStore);
-    }
-
-    setShowAddModal(false);
-    removePin();
-
-    if (showToast) {
-      showToast(`Manual store "${newStore.name}" added successfully.`);
-    }
-  };
-
   return (
-    <div id="map" className={`w-full h-full relative cursor-default ${measuring ? "measuring" : ""}`}>
+    <div
+      id="map"
+      className={`w-full h-full relative cursor-default ${measuring || placingPotential ? "measuring" : ""}`}
+    >
       {measuring ? (
         <MeasureBar measure={measure} />
-      ) : mapMode ? (
+      ) : placingPotential ? (
+        <PlaceBanner onCancel={onCancelPlacing} />
+      ) : formPin ? null : mapMode ? (
         <EditBanner
           mode={mapMode}
           layerName={modeLayer?.name ?? ""}
@@ -184,10 +191,6 @@ export default function MapComponent({
         )
       )}
 
-      {showAddModal && tempPin && (
-        <AddStoreModal pin={tempPin} onCancel={() => setShowAddModal(false)} onSave={saveManualStore} />
-      )}
-
       <MapContainer
         center={[24.7136, 46.6753]}
         zoom={6}
@@ -199,7 +202,7 @@ export default function MapComponent({
           stores={stores}
           selectedId={selectedId}
           focusedCity={focusedCity}
-          onMapClick={measuring ? undefined : onMapClick}
+          onMapClick={measuring || addingPotential ? undefined : onMapClick}
           tempPin={tempPin}
           routePanelRef={routePanelRef}
           onRoute={onRoute}
@@ -212,8 +215,8 @@ export default function MapComponent({
         <BaseMapTiles base={baseMap} />
 
         <ZoneLayers
-          key={measuring ? "measuring" : "selecting"}
-          interactive={!measuring}
+          key={measuring || addingPotential ? "measuring" : "selecting"}
+          interactive={!measuring && !addingPotential}
           layers={layers}
           selected={selectedZone}
           onSelect={onSelectZone}
@@ -236,7 +239,7 @@ export default function MapComponent({
             onMeasurePoint={addMeasurePoint}
             onSelectStore={onSelectStore}
             selectedId={selectedId}
-            onAddStore={() => setShowAddModal(true)}
+            onAddPotential={() => onAddPotentialAt(tempPin)}
             onRemove={removePin}
           />
         )}
@@ -249,6 +252,12 @@ export default function MapComponent({
           measuring={measuring}
         />
 
+        <PotentialMarkers potentials={potentials} selectedId={selectedPotentialId} onClick={clickPotential} />
+
+        {addingPotential && (
+          <PotentialFormPin position={formPin} color={formPin?.color ?? "#fbbf24"} onMove={onFormPoint} />
+        )}
+
         <MeasureLayer measure={measure} />
 
         <MapControls
@@ -257,7 +266,7 @@ export default function MapComponent({
           onToggleNight={onToggleNight}
           measuring={measuring}
           onMeasure={measure.toggle}
-          measureDisabled={mapMode !== null}
+          measureDisabled={mapMode !== null || addingPotential}
           hasLayers={layers.some((l) => l.visible)}
           onOpenLayers={onOpenLayers}
           pinColors={pinColors}

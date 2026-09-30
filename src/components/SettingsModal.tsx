@@ -156,7 +156,7 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose, ors
   const end = new Date(Date.UTC(year, 11, 31));
   const start = new Date(end.getTime() - settings.leadDays * DAY_MS);
   const warn = new Date(start.getTime() - settings.warningDays * DAY_MS);
-  // Pin colours are chosen on the map legend, so Reset leaves them as they are
+  // Pin colours, the Potentials shown on the map and your name are chosen elsewhere or personal, so Reset leaves them
   const isDefault =
     settings.leadDays === DEFAULT_SETTINGS.leadDays &&
     settings.warningDays === DEFAULT_SETTINGS.warningDays &&
@@ -255,6 +255,23 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose, ors
         </section>
 
         <section className="settings-section">
+          <h3 className="detail-panel-row-label text-[11px]">Potentials</h3>
+          <label className="settings-row">
+            <span>Your name</span>
+            <input
+              id="added-by"
+              className="zone-input settings-name-input"
+              placeholder="Optional"
+              maxLength={80}
+              autoComplete="name"
+              value={settings.addedBy}
+              onChange={(e) => onChange({ addedBy: e.target.value })}
+            />
+          </label>
+          <p className="settings-note">Put in "Added by" on the Potentials you add. Kept in this browser only.</p>
+        </section>
+
+        <section className="settings-section">
           <h3 className="detail-panel-row-label text-[11px]">Road routing</h3>
           <OrsKeyField value={orsKey} onSave={onOrsKey} />
           <p className="settings-note">
@@ -272,7 +289,15 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose, ors
         <div className="settings-footer flex items-center gap-3">
           <span className="text-[11px] text-gray-400 flex-1">Saved in this browser only.</span>
           <button
-            onClick={() => onChange({ ...DEFAULT_SETTINGS, pinColors: settings.pinColors })}
+            onClick={() =>
+              onChange({
+                ...DEFAULT_SETTINGS,
+                pinColors: settings.pinColors,
+                showPotentials: settings.showPotentials,
+                showDroppedPotentials: settings.showDroppedPotentials,
+                addedBy: settings.addedBy,
+              })
+            }
             disabled={isDefault}
             className="layer-action"
           >

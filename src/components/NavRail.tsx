@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { BarChart3, Building2, CalendarClock, ClipboardCheck, Layers, LucideIcon, Store } from "lucide-react";
+import { BarChart3, Building2, CalendarClock, ClipboardCheck, Diamond, Layers, LucideIcon, Store } from "lucide-react";
 import { SidebarTab } from "../types";
 
 export interface PanelTab {
@@ -15,6 +15,7 @@ export const PANEL_TABS: PanelTab[] = [
   { tab: "cities", label: "City", title: "Cities", Icon: Building2 },
   { tab: "insights", label: "Growth", title: "Growth & coverage", Icon: BarChart3 },
   { tab: "renewals", label: "Renewals", title: "Renewals", Icon: CalendarClock },
+  { tab: "potentials", label: "Potentials", title: "Potentials", Icon: Diamond },
   { tab: "layers", label: "Layers", title: "Map layers", Icon: Layers },
 ];
 // Opened from the settings menu, the Data Issues figure, and the foot of the rail

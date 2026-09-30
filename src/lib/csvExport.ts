@@ -21,11 +21,14 @@ const SHEET_COLUMNS: Array<[string, (s: Store) => string | number | null | undef
   ["Lng", (s) => s.lng],
 ];
 
+/** The store sheet's column headers, in the order of the sample sheet (and of the CSV export). */
+export const STORE_SHEET_HEADERS = SHEET_COLUMNS.map(([header]) => header);
+
 // Spreadsheet apps run a cell that starts with = + @ (or - followed by text) as a formula, so such text is
 // written with a leading apostrophe, which they show as plain text
 const FORMULA_START = /^(?:[=+@\t\r]|-(?![\d.]))/;
 
-function cell(v: string | number | null | undefined): string {
+export function csvCell(v: string | number | null | undefined): string {
   if (v === null || v === undefined) return "";
   let text = String(v);
   if (typeof v === "string" && FORMULA_START.test(text)) text = `'${text}`;
@@ -62,7 +65,7 @@ export function storesToCsv(stores: Store[], days: RenewalDays, coverage: Covera
   if (coverage.hasWhiteSpace) columns.push(["White Space Zone", (s) => zoneNames(s, coverage.whiteSpaceOf, "")]);
 
   const lines = [columns.map(([h]) => h), ...stores.map((s) => columns.map(([, get]) => get(s)))];
-  return "﻿" + lines.map((row) => row.map(cell).join(",")).join("\r\n");
+  return "﻿" + lines.map((row) => row.map(csvCell).join(",")).join("\r\n");
 }
 
 /** dark_stores_2026-09-29.csv (the date where you are), or dark_stores_filtered_… when only some stores are in it. */

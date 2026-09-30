@@ -28,7 +28,7 @@ export const DEFAULT_URL_STATE: UrlState = {
   store: null,
 };
 
-const TABS: SidebarTab[] = ["stores", "cities", "insights", "renewals", "layers", "quality"];
+const TABS: SidebarTab[] = ["stores", "cities", "insights", "renewals", "potentials", "layers", "quality"];
 const ONLY: OnlyFilter[] = ["unclear", "outside", "whitespace"];
 const oneOf = <T extends string>(value: string | null, allowed: readonly T[], fallback: T): T =>
   value !== null && (allowed as readonly string[]).includes(value) ? (value as T) : fallback;

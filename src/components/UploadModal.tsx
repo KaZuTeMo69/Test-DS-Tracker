@@ -13,12 +13,12 @@ import {
   X,
 } from "lucide-react";
 import { Store } from "../types";
-import { parseCSVData, parseJSONData } from "../lib/importer";
+import { csvHeaders, parseCSVData, parseJSONData } from "../lib/importer";
 
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onStoresImported: (stores: Store[], sourceName: string) => void;
+  onStoresImported: (stores: Store[], sourceName: string, headers: string[] | null) => void;
   onGoogleSheetImport: (url: string) => void;
   isLoading?: boolean;
   loadingMsg?: string;
@@ -104,7 +104,7 @@ export default function UploadModal({
           return;
         }
 
-        onStoresImported(parsed, file.name);
+        onStoresImported(parsed, file.name, csvHeaders(content));
         onClose();
       } catch (err) {
         setLocalError(errorText(err, "Failed to parse file. Please check file format."));
@@ -150,7 +150,7 @@ export default function UploadModal({
         return;
       }
 
-      onStoresImported(parsed, "Pasted Data");
+      onStoresImported(parsed, "Pasted Data", csvHeaders(pastedText));
       onClose();
     } catch (err) {
       setLocalError(errorText(err, "Invalid data format."));

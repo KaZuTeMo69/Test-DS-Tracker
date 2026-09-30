@@ -1,18 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Store } from "../types";
 import { SAMPLE_STORES } from "../data/sampleStores";
-import { fetchSheetData } from "../lib/sheets";
-import { loadManualStores, loadSheetId, ManualStore, saveManualStores, saveSheetId } from "../lib/storage";
+import { rowsToStores } from "../lib/importer";
+import { fetchSheetTable } from "../lib/sheets";
+import { loadSheetId, saveSheetId } from "../lib/storage";
 
 // The sheet tab that holds the store list
 const SHEET_TAB = "All Countries";
-
-// Manually added stores get ids from here up, so they never collide with imported stores
-const MANUAL_ID_BASE = 1_000_000;
-
-export const isManualStore = (s: Store) => s.id > MANUAL_ID_BASE;
-
-const withManualIds = (list: ManualStore[]): Store[] => list.map((s, i) => ({ ...s, id: MANUAL_ID_BASE + i + 1 }));
 
 // How a sheet load started: a link entered in the upload window, the sheet saved on an earlier visit,
 // the Sync Sheet button, or the 5-minute auto-refresh
@@ -45,8 +39,7 @@ function assignStableIds(list: Store[], idsByKey: Map<string, number>): Store[] 
 
 /**
  * The store data and where it comes from: the sample stores, a Google Sheet (kept in sync every 5 minutes)
- * or an imported file, plus the manually added stores. The sheet link and manual stores are saved in this
- * browser. `notify` shows a short message to the user.
+ * or an imported file. The sheet link is saved in this browser. `notify` shows a short message to the user.
  */
 export function useStores(notify: (msg: string) => void) {
   // Data source: the sample stores, a Google Sheet (sheetId set) or an imported file (fileName set)
@@ -60,8 +53,9 @@ export function useStores(notify: (msg: string) => void) {
   const [baseStores, setBaseStores] = useState<Store[]>(() =>
     sheetId ? [] : assignStableIds(SAMPLE_STORES, storeIdsRef.current),
   );
-  // Kept separately, and saved in this browser, so reloads and new data don't wipe them
-  const [manualStores, setManualStores] = useState<Store[]>(() => withManualIds(loadManualStores()));
+  // The header row of the sheet or CSV file loaded, in its order (null for the sample data or JSON), so a row can
+  // be copied in the same column order
+  const [storeHeaders, setStoreHeaders] = useState<string[] | null>(null);
 
   // Loading and sync status
   const [isLoading, setIsLoading] = useState(false); // a sheet link from the upload window is loading
@@ -86,14 +80,16 @@ export function useStores(notify: (msg: string) => void) {
       }
 
       try {
-        const data = await fetchSheetData(id, SHEET_TAB);
+        const table = await fetchSheetTable(id, SHEET_TAB);
         if (seq !== loadSeqRef.current) return false;
+        const data = rowsToStores(table.headers, table.rows);
 
         if (data.length === 0) {
           throw new Error("No store data found in this sheet. Please ensure it follows the required column schema.");
         }
 
         setBaseStores(assignStableIds(data, storeIdsRef.current));
+        setStoreHeaders(table.headers);
         setFileName(null);
         setLastSync(syncTime());
         setError(null);
@@ -140,9 +136,6 @@ export function useStores(notify: (msg: string) => void) {
     return () => clearInterval(timer);
   }, [sheetId, loadDataFromSheet]);
 
-  // Remember manual stores between visits
-  useEffect(() => saveManualStores(manualStores), [manualStores]);
-
   // Stops any sheet request in progress and forgets the sheet
   const stopSheet = () => {
     loadSeqRef.current++;
@@ -178,12 +171,13 @@ export function useStores(notify: (msg: string) => void) {
     if (sheetId) loadDataFromSheet(sheetId, "manual");
   };
 
-  const importStores = (importedStores: Store[], sourceName: string) => {
+  const importStores = (importedStores: Store[], sourceName: string, headers: string[] | null = null) => {
     // The file replaces the sheet as the data source, so stop syncing the sheet;
     // otherwise the next auto-refresh would overwrite the imported stores
     const wasSyncing = !!sheetId;
     stopSheet();
     setFileName(sourceName);
+    setStoreHeaders(headers);
     setBaseStores(assignStableIds(importedStores, storeIdsRef.current));
     notify(
       `Successfully imported ${importedStores.length} stores from ${sourceName}${wasSyncing ? ". Google Sheet sync is off" : ""}`,
@@ -193,24 +187,12 @@ export function useStores(notify: (msg: string) => void) {
   const resetSample = () => {
     stopSheet();
     setBaseStores(assignStableIds(SAMPLE_STORES, storeIdsRef.current));
-    setManualStores([]); // also removes the saved copy
+    setStoreHeaders(null);
     setFileName(null);
-    notify("Reset to sample data. The saved sheet link and manual stores are cleared");
+    notify("Reset to sample data. The saved sheet link is cleared");
   };
 
-  const addManualStore = useCallback((newStore: ManualStore) => {
-    setManualStores((prev) => {
-      const id = prev.reduce((max, s) => Math.max(max, s.id), MANUAL_ID_BASE) + 1;
-      return [...prev, { ...newStore, id }];
-    });
-  }, []);
-
-  const removeManualStore = (id: number) => {
-    setManualStores((prev) => prev.filter((s) => s.id !== id));
-    notify("Manual store removed");
-  };
-
-  const stores = useMemo(() => [...baseStores, ...manualStores], [baseStores, manualStores]);
+  const stores = baseStores;
 
   return {
     stores,
@@ -232,7 +214,7 @@ export function useStores(notify: (msg: string) => void) {
     syncSheet,
     importStores,
     resetSample,
-    addManualStore,
-    removeManualStore,
+    // The loaded sheet's (or CSV file's) header row, for copying a row in its column order
+    storeHeaders,
   };
 }

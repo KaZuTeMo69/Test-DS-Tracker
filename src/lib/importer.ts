@@ -21,7 +21,7 @@ function parseNum(val: unknown, multipliers = true): number | null {
 }
 
 /** Splits CSV/TSV text into rows of cells, honouring quotes, "" escapes and line breaks inside quotes. */
-function parseDelimited(text: string): string[][] {
+export function parseDelimited(text: string): string[][] {
   text = text.replace(/^﻿/, "");
   const firstLine = text.split(/\r?\n/, 1)[0];
   const delimiter = [",", "\t", ";"].reduce(
@@ -64,7 +64,7 @@ function parseDelimited(text: string): string[][] {
   return rows.filter((r) => r.some((c) => c !== ""));
 }
 
-type Field =
+export type StoreField =
   | "name"
   | "city"
   | "duration"
@@ -82,7 +82,7 @@ type Field =
 // Header phrases per field, matched as whole words. Fields are assigned in this order and a
 // column taken by one field isn't reused, so "Rent/sqm" is claimed before the plain "rent"
 // fallback for annual rent, and "Payment Status" before the "status" fallback for live.
-const COLUMN_PATTERNS: Array<{ field: Field; phrases: string[]; exclude?: string[] }> = [
+const COLUMN_PATTERNS: Array<{ field: StoreField; phrases: string[]; exclude?: string[] }> = [
   { field: "name", phrases: ["store name", "name", "title"] },
   { field: "city", phrases: ["city", "location"] },
   { field: "duration", phrases: ["contract duration", "duration", "wh code", "whcode"] },
@@ -102,16 +102,16 @@ const COLUMN_PATTERNS: Array<{ field: Field; phrases: string[]; exclude?: string
   { field: "lng", phrases: ["lng", "lon", "long", "longitude"] },
 ];
 
-const normalizeHeader = (h: string) =>
+export const normalizeHeader = (h: string) =>
   h
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
-function mapColumns(headers: string[]): Record<Field, number> {
+function mapColumns(headers: string[]): Record<StoreField, number> {
   const words = headers.map((h) => ` ${normalizeHeader(h)} `);
   const claimed = new Set<number>();
-  const result = {} as Record<Field, number>;
+  const result = {} as Record<StoreField, number>;
 
   for (const { field, phrases, exclude = [] } of COLUMN_PATTERNS) {
     result[field] = -1;
@@ -127,6 +127,13 @@ function mapColumns(headers: string[]): Record<Field, number> {
     }
   }
   return result;
+}
+
+/** The store field each header is read into (null for columns the app doesn't read), matched as on import. */
+export function storeColumnFields(headers: string[]): (StoreField | null)[] {
+  const col = mapColumns(headers);
+  const fieldAt = new Map(Object.entries(col).map(([field, idx]) => [idx, field as StoreField]));
+  return headers.map((_, i) => fieldAt.get(i) ?? null);
 }
 
 interface StoreFields {
@@ -219,6 +226,12 @@ export function rowsToStores(headers: string[], rows: string[][]): Store[] {
     );
   }
   return stores;
+}
+
+/** The header row of CSV / TSV text, or null when it isn't CSV (JSON). */
+export function csvHeaders(text: string): string[] | null {
+  if (/^\s*[[{]/.test(text)) return null;
+  return parseDelimited(text)[0] ?? null;
 }
 
 export function parseCSVData(csvText: string): Store[] {

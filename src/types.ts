@@ -30,7 +30,7 @@ export type RenewalFilter = "all" | "renew" | "expired";
 export type CoverageFilter = "outside" | "whitespace";
 
 // "quality" is the Data Quality panel, opened from the Data issues card or the settings menu rather than a tab
-export type SidebarTab = "stores" | "cities" | "insights" | "renewals" | "layers" | "quality";
+export type SidebarTab = "stores" | "cities" | "insights" | "renewals" | "potentials" | "layers" | "quality";
 
 export interface CitySummary {
   city: string;

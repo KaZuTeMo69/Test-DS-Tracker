@@ -8,6 +8,10 @@ export interface Settings extends RenewalDays {
   includeVat: boolean; // show rent with VAT added; the sheet's rent is without VAT
   rentFlagPercent: number; // flag rent per m² more than this % above the city median
   pinColors: PinColors;
+  // Potentials on the map: shown or not, and the dropped ones separately (hidden unless asked for)
+  showPotentials: boolean;
+  showDroppedPotentials: boolean;
+  addedBy: string; // your name, put on the Potentials you add
 }
 
 export const VAT_RATE = 0.15;
@@ -20,6 +24,9 @@ export const DEFAULT_SETTINGS: Settings = {
   includeVat: false,
   rentFlagPercent: 25,
   pinColors: "status",
+  showPotentials: true,
+  showDroppedPotentials: false,
+  addedBy: "",
 };
 
 /** A whole number from 0 to max, typed or saved, or null. */
@@ -40,6 +47,10 @@ export function toSettings(v: unknown): Settings {
     includeVat: typeof o.includeVat === "boolean" ? o.includeVat : DEFAULT_SETTINGS.includeVat,
     rentFlagPercent: toWholeNumber(o.rentFlagPercent, MAX_PERCENT) ?? DEFAULT_SETTINGS.rentFlagPercent,
     pinColors: o.pinColors === "rent" || o.pinColors === "status" ? o.pinColors : DEFAULT_SETTINGS.pinColors,
+    showPotentials: typeof o.showPotentials === "boolean" ? o.showPotentials : DEFAULT_SETTINGS.showPotentials,
+    showDroppedPotentials:
+      typeof o.showDroppedPotentials === "boolean" ? o.showDroppedPotentials : DEFAULT_SETTINGS.showDroppedPotentials,
+    addedBy: typeof o.addedBy === "string" ? o.addedBy.slice(0, 80) : DEFAULT_SETTINGS.addedBy,
   };
 }
 

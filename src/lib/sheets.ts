@@ -34,7 +34,11 @@ function cellText(cell: GvizCell | null | undefined): string {
   return String(cell.v);
 }
 
-export async function fetchSheetData(sheetId: string, sheetName?: string): Promise<Store[]> {
+/** A sheet tab's header row and data rows, read through Google's public gviz endpoint. */
+export async function fetchSheetTable(
+  sheetId: string,
+  sheetName?: string,
+): Promise<{ headers: string[]; rows: string[][] }> {
   let url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&t=${Date.now()}`;
   if (sheetName) {
     url += `&sheet=${encodeURIComponent(sheetName)}`;
@@ -71,5 +75,11 @@ export async function fetchSheetData(sheetId: string, sheetName?: string): Promi
   const headers = headerCount > 0 ? cols.map((c) => c.label || "") : rows[0] || [];
   const dataRows = headerCount > 0 ? rows : rows.slice(1);
 
-  return rowsToStores(headers, dataRows);
+  return { headers, rows: dataRows };
+}
+
+/** The stores in a sheet tab. */
+export async function fetchSheetData(sheetId: string, sheetName?: string): Promise<Store[]> {
+  const { headers, rows } = await fetchSheetTable(sheetId, sheetName);
+  return rowsToStores(headers, rows);
 }

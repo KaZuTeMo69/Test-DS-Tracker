@@ -1,6 +1,7 @@
 import { lazy, memo, ReactNode, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronLeft, FileDown, FileUp, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useIsPhone } from "../hooks/useMediaQuery";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { CitySummary, SidebarTab, Store } from "../types";
 import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, RENEWAL_STYLE } from "../constants";
@@ -17,6 +18,9 @@ import { isLive } from "../lib/status";
 import DataQualityPanel from "./DataQualityPanel";
 import LoadMore from "./LoadMore";
 import { PANEL_TABS, PanelButton, panelTab, RailBadges } from "./NavRail";
+
+// The icons along the panel sheet: on a phone five fit across, so Layers opens from its button on the map instead
+const PHONE_SHEET_TABS = PANEL_TABS.filter((t) => t.tab !== "layers");
 import RenewalTimeline from "./RenewalTimeline";
 import { ChartSkeleton, ListSkeleton } from "./Skeleton";
 
@@ -51,6 +55,8 @@ interface SidebarProps {
   insightsExtra: ReactNode; // shown above the charts in the Growth tab
   cityFigures: ReactNode; // shown above the city cards
   layersPanel: ReactNode; // the Layers tab
+  potentialsPanel: ReactNode; // the Potentials tab
+  potentialsSummary: string; // its footer
   layersSummary: string; // its footer
 }
 
@@ -201,6 +207,8 @@ function usePanelParts(props: SidebarProps) {
     insightsExtra,
     cityFigures,
     layersPanel,
+    potentialsPanel,
+    potentialsSummary,
     layersSummary,
   } = props;
   const {
@@ -225,12 +233,17 @@ function usePanelParts(props: SidebarProps) {
 
   const actions = (
     <div className="flex gap-1.5 shrink-0">
-      <button onClick={props.onExportCsv} className="panel-action" title="Export to CSV">
-        <FileUp size={16} />
-      </button>
-      <button onClick={props.onImportSheet} className="panel-action" title="Import / Upload Data">
-        <FileDown size={16} />
-      </button>
+      {/* The store file actions; the Potentials panel has its own */}
+      {currentTab !== "potentials" && (
+        <>
+          <button onClick={props.onExportCsv} className="panel-action" title="Export to CSV">
+            <FileUp size={16} />
+          </button>
+          <button onClick={props.onImportSheet} className="panel-action" title="Import / Upload Data">
+            <FileDown size={16} />
+          </button>
+        </>
+      )}
       <button onClick={props.onClose} className="panel-action" title="Close panel (Esc)" aria-label="Close panel">
         <X size={17} />
       </button>
@@ -330,7 +343,7 @@ function usePanelParts(props: SidebarProps) {
   );
 
   const content =
-    loading && currentTab !== "layers" ? (
+    loading && currentTab !== "layers" && currentTab !== "potentials" ? (
       currentTab === "insights" ? (
         <ChartSkeleton label="Loading your stores from the Google Sheet" />
       ) : (
@@ -429,6 +442,8 @@ function usePanelParts(props: SidebarProps) {
       </div>
     ) : currentTab === "layers" ? (
       layersPanel
+    ) : currentTab === "potentials" ? (
+      potentialsPanel
     ) : currentTab === "quality" ? (
       <DataQualityPanel
         groups={quality.groups}
@@ -455,17 +470,19 @@ function usePanelParts(props: SidebarProps) {
     );
 
   const footer =
-    loading && currentTab !== "layers"
+    loading && currentTab !== "layers" && currentTab !== "potentials"
       ? "Loading your stores…"
-      : currentTab === "stores"
-        ? `Showing ${stores.length} of ${totalStores} Stores`
-        : currentTab === "layers"
-          ? layersSummary
-          : currentTab === "renewals"
-            ? `Next 12 months · ${settings.leadDays}-day lead`
-            : currentTab === "quality"
-              ? `${quality.storesWithIssues} of ${totalStores} stores to check`
-              : `${citySummaries.length} Cities Tracked`;
+      : currentTab === "potentials"
+        ? potentialsSummary
+        : currentTab === "stores"
+          ? `Showing ${stores.length} of ${totalStores} Stores`
+          : currentTab === "layers"
+            ? layersSummary
+            : currentTab === "renewals"
+              ? `Next 12 months · ${settings.leadDays}-day lead`
+              : currentTab === "quality"
+                ? `${quality.storesWithIssues} of ${totalStores} stores to check`
+                : `${citySummaries.length} Cities Tracked`;
 
   const bodyClass = `panel-body flex-1 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-[#262626] ${currentTab === "stores" ? "sb-list" : "city-list"}`;
   return { header, actions, storeFilters, content, footer, bodyClass };
@@ -511,6 +528,7 @@ const BAR_ESTIMATE = 96; // the handle, the icons and the summary line, before t
 function PanelSheet(props: SidebarProps) {
   const { isOpen, currentTab, onSelectTab, onOpen, onClose, onInset, badges } = props;
   const { actions, storeFilters, content, footer, bodyClass } = usePanelParts(props);
+  const sheetTabs = useIsPhone() ? PHONE_SHEET_TABS : PANEL_TABS;
   const ref = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<"half" | "full">("half");
@@ -578,8 +596,11 @@ function PanelSheet(props: SidebarProps) {
         >
           <span />
         </button>
-        <div className="panel-sheet-tabs grid grid-cols-5">
-          {PANEL_TABS.map((item) => (
+        <div
+          className="panel-sheet-tabs grid"
+          style={{ gridTemplateColumns: `repeat(${sheetTabs.length}, minmax(0, 1fr))` }}
+        >
+          {sheetTabs.map((item) => (
             <PanelButton
               key={item.tab}
               item={item}
