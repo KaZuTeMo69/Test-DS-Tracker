@@ -4,7 +4,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useIsPhone } from "../hooks/useMediaQuery";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { CitySummary, SidebarTab, Store } from "../types";
-import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, RENEWAL_STYLE } from "../constants";
+import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, PAYMENT_TAG, RENEWAL_STYLE } from "../constants";
+import { paymentInfo } from "../lib/payments";
 import { Filters } from "../hooks/useFilters";
 import { useSettings } from "../hooks/useSettings";
 import { dataIssues, hasCoords } from "../lib/checks";
@@ -21,7 +22,7 @@ import { PANEL_TABS, PanelButton, panelTab, RailBadges } from "./NavRail";
 
 // The icons along the panel sheet: on a phone five fit across, so Layers opens from its button on the map instead
 const PHONE_SHEET_TABS = PANEL_TABS.filter((t) => t.tab !== "layers");
-import RenewalTimeline from "./RenewalTimeline";
+import RenewalsTab from "./RenewalsTab";
 import { ChartSkeleton, ListSkeleton } from "./Skeleton";
 
 // The charts library is large and only the Growth tab uses it, so it loads when that tab first opens
@@ -82,6 +83,7 @@ const StoreListItem = memo(function StoreListItem({
 }) {
   const settings = useSettings();
   const renewal = storeRenewal(s, settings);
+  const payment = paymentInfo(s);
   const issues = dataIssues(s);
   const badge = "px-2 py-0.5 text-[11px] font-bold rounded-full";
   return (
@@ -106,6 +108,15 @@ const StoreListItem = memo(function StoreListItem({
             title={`Contract ends ${s.endDate}`}
           >
             {RENEWAL_STYLE[renewal.status].tag}
+          </span>
+        )}
+        {(payment.status === "due" || payment.status === "overdue") && (
+          <span
+            className={`${badge} border ${PAYMENT_TAG[payment.status].className}`}
+            title={`Next payment ${s.nextPayment}`}
+            data-payment={payment.status}
+          >
+            {PAYMENT_TAG[payment.status].tag}
           </span>
         )}
         {!hasCoords(s) && (
@@ -454,12 +465,7 @@ function usePanelParts(props: SidebarProps) {
         onBack={() => setCurrentTab("stores")}
       />
     ) : currentTab === "renewals" ? (
-      <RenewalTimeline
-        stores={stores}
-        totalStores={totalStores}
-        selectedId={selectedId}
-        onSelectStore={onSelectStore}
-      />
+      <RenewalsTab stores={stores} totalStores={totalStores} selectedId={selectedId} onSelectStore={onSelectStore} />
     ) : (
       <>
         {insightsExtra}

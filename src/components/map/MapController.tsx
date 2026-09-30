@@ -120,7 +120,7 @@ export default function MapController({
           // popup (the nearest stores) has room above it
           const { left, bottom } = insetRef.current;
           const pin = L.latLng(tempPin.lat, tempPin.lng);
-          const popupRoom = Math.min(190, (map.getSize().y - bottom) * 0.24);
+          const popupRoom = Math.min(230, (map.getSize().y - bottom) * 0.28);
           const center = map.unproject(map.project(pin, 14).add([-left / 2, bottom / 2 - popupRoom]), 14);
           map.setView(center, 14, { animate: true });
         } catch (e) {

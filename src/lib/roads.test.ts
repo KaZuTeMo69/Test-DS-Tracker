@@ -11,6 +11,7 @@ import {
   formatDrive,
   formatKm,
   googleMapsDirections,
+  googleMapsPlace,
   legsKey,
   nearestByAir,
   RoadError,
@@ -348,6 +349,16 @@ describe("createCache (road distances remembered for the visit)", () => {
 
   it("keys points to about a metre, so the same point from two places is the same key", () => {
     expect(legsKey({ lat: 24.713600001, lng: 46.6753 }, [1])).toBe(legsKey(RIYADH, [1]));
+  });
+});
+
+describe("googleMapsPlace", () => {
+  it("links to the exact spot as a pin, with no route and no key", () => {
+    expect(googleMapsPlace(RIYADH)).toBe("https://www.google.com/maps/search/?api=1&query=24.713600,46.675300");
+    expect(googleMapsPlace({ lat: -33.8688, lng: 151.2093 })).toBe(
+      "https://www.google.com/maps/search/?api=1&query=-33.868800,151.209300",
+    );
+    expect(googleMapsPlace(RIYADH)).not.toMatch(/key|origin|destination/);
   });
 });
 

@@ -58,10 +58,17 @@ const legsCache = createCache<Fallback<RoadLeg[]>>();
 /** For tests: forget remembered road distances. */
 export const clearRoadCache = () => legsCache.clear();
 
-/** Sorted by road distance (stores with no road route last), straight-line distance breaking ties. */
-export function byRoad(rows: NearbyRow[]): NearbyRow[] {
-  const key = (r: NearbyRow) => r.road?.distance ?? Infinity;
-  return [...rows].sort((a, b) => key(a) - key(b) || a.air - b.air);
+/**
+ * Sorted by drive time (free-flow, no traffic), then road distance; stores with no road answer go last, and the
+ * straight-line distance breaks ties.
+ */
+export function byDriveTime(rows: NearbyRow[]): NearbyRow[] {
+  return [...rows].sort(
+    (a, b) =>
+      (a.road?.duration ?? Infinity) - (b.road?.duration ?? Infinity) ||
+      (a.road?.distance ?? Infinity) - (b.road?.distance ?? Infinity) ||
+      a.air - b.air,
+  );
 }
 
 /** Routes and road distances, with fallback between services, remembered answers, and toasts for what happened. */
@@ -111,7 +118,7 @@ export function useRoads() {
             // Told once, when the answer first comes, not every time it's read from memory
             if (!cached && near.length) tellOutcome(setup, outcome, "the road distances");
             return {
-              rows: byRoad(near.map((n, i) => ({ ...n, road: outcome.result[i] ?? null }))),
+              rows: byDriveTime(near.map((n, i) => ({ ...n, road: outcome.result[i] ?? null }))),
               service: outcome.service,
             };
           },

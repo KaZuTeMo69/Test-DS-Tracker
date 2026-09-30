@@ -386,6 +386,9 @@ export function formatDrive(seconds: number): string {
 
 const at = (p: LatLng) => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`;
 
+/** The exact spot as a pin in Google Maps, no route (a plain link: no key, no Google code in the app). */
+export const googleMapsPlace = (point: LatLng) => `https://www.google.com/maps/search/?api=1&query=${at(point)}`;
+
 /** Driving directions in Google Maps (a plain link: no key, no Google code in the app). */
 export const googleMapsDirections = (origin: LatLng, destination: LatLng) =>
   `https://www.google.com/maps/dir/?api=1&origin=${at(origin)}&destination=${at(destination)}&travelmode=driving`;

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Marker, Polyline, Tooltip, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import { ExternalLink, Ruler, X } from "lucide-react";
+import { ArrowLeftRight, ExternalLink, Ruler, X } from "lucide-react";
 import { LatLng } from "../../lib/coords";
 import {
   airDistance,
@@ -44,6 +44,8 @@ export function useMeasure() {
     setMeasured(null);
   }, []);
   const toggle = useCallback(() => (active ? stop() : setActive(true)), [active, stop]);
+  // A ↔ B: the route the other way round (one-way streets can make it different)
+  const swap = useCallback(() => setPoints((ps) => (ps.length === 2 ? [ps[1], ps[0]] : ps)), []);
 
   // The road route once both points are down, again after each move; an answer for old points is dropped
   const [a, b] = points;
@@ -75,7 +77,7 @@ export function useMeasure() {
     return () => document.removeEventListener("keydown", onKey);
   }, [active, stop]);
 
-  return { active, points, measured, add, move, stop, toggle };
+  return { active, points, measured, add, move, stop, toggle, swap };
 }
 
 export type Measure = ReturnType<typeof useMeasure>;
@@ -191,6 +193,14 @@ export function MeasureBar({ measure }: { measure: Measure }) {
               <span className="measure-figure-value">×{(road.distance / air!).toFixed(2)}</span>
             </div>
           )}
+          <button
+            className="measure-swap"
+            onClick={measure.swap}
+            title="Swap A and B: the route the other way"
+            aria-label="Swap A and B"
+          >
+            <ArrowLeftRight size={13} /> A↔B
+          </button>
           <a className="measure-maps-link" href={googleMapsDirections(a, b)} target="_blank" rel="noopener noreferrer">
             <ExternalLink size={13} /> Google Maps
           </a>

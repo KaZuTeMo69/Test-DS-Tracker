@@ -20,5 +20,11 @@ export const COVERAGE_TAG: Record<"outside" | "whitespace", { tag: string; short
   whitespace: { tag: "IN WHITE SPACE", short: "WHITE SPACE", className: "bg-white/10 border-white/25 text-gray-100" },
 };
 
+// Tags for a store whose next payment (from the contract register) is due within 30 days, or past due
+export const PAYMENT_TAG: Record<"due" | "overdue", { tag: string; className: string }> = {
+  due: { tag: "PAYMENT DUE", className: "bg-[#fbbf24]/10 border-[#fbbf24]/30 text-[#fbbf24]" },
+  overdue: { tag: "PAYMENT OVERDUE", className: "bg-red-500/15 border-red-500/45 text-red-300" },
+};
+
 // Tag for a store whose rent per m² is more than the Settings % above its city median
 export const HIGH_RENT_TAG = { tag: "HIGH RENT", className: "bg-red-500/10 border-red-500/35 text-red-300" };

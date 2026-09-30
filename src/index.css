@@ -2627,8 +2627,29 @@ body {
   white-space: nowrap;
 }
 
+.measure-swap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 2px 0 0 auto !important;
+  padding: 7px 10px !important;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #161616;
+  color: #e5e5e5;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.measure-swap:hover {
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+
 .measure-maps-link {
-  margin-left: auto !important;
+  margin-left: 0 !important;
 }
 
 .measure-bar-via {
@@ -2671,6 +2692,43 @@ body {
 
 .nearby-row:hover:not(:disabled) {
   border-color: #fbbf24;
+}
+
+/* A row: the store (opens it) and, beside it, directions from it in Google Maps */
+.nearby-item {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  margin: 0 !important;
+}
+
+.nearby-item .nearby-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.nearby-route {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 9px;
+  border: 1px solid #2e2e2e;
+  background: #151515;
+  color: #d4d4d4;
+}
+
+.nearby-route:hover {
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+
+.nearby.compact .nearby-route {
+  width: 28px;
+  border-radius: 7px;
 }
 
 .nearby-row:disabled {
@@ -2734,12 +2792,14 @@ body {
   gap: 4px;
 }
 
-/* In the map popup each store is one line: name, road distance and time, straight line */
+/* In the map popup: the name and drive time on one line, road km and the straight line on the next */
 .nearby.compact .nearby-row {
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  grid-template-areas: "name road air";
-  padding: 5px 8px !important;
+  padding: 3px 9px !important;
   gap: 0 8px;
+}
+
+.nearby.compact .nearby-note {
+  display: inline;
 }
 
 .nearby.compact .nearby-air::before {
@@ -2747,7 +2807,7 @@ body {
 }
 
 .nearby.compact .nearby-air::after {
-  content: ")";
+  content: " straight)";
 }
 
 .nearby.compact .nearby-name {
@@ -2778,9 +2838,17 @@ body {
   color: #ff5722;
 }
 
+.candidate-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: nowrap;
+}
+
 .candidate-coords {
-  margin-top: 4px !important;
-  padding: 3px 8px !important;
+  margin: 0 !important;
+  padding: 2px 7px !important;
   border-radius: 6px;
   font-family: var(--token-font-family-mono);
   font-size: 12px;
@@ -2873,6 +2941,19 @@ body {
 .card-route-via {
   font-size: 11px;
   color: var(--token-color-text-secondary);
+}
+
+.card-route-maps {
+  margin-left: auto !important;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fbbf24;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.card-route-maps:hover {
+  text-decoration: underline;
 }
 
 /* With a store card open on a wide screen, the search and measuring bars sit in the middle of what's left */
@@ -3765,12 +3846,8 @@ body {
 
 .pc-footer {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-}
-
-.pc-footer > * {
-  flex: 1;
-  min-width: 0;
 }
 
 .pc-actions {
@@ -3830,4 +3907,197 @@ body {
 .settings-name-input {
   width: 220px;
   max-width: 100%;
+}
+
+/* Open in Google Maps (the pin) and Share pin, side by side */
+.maps-buttons {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin: 0 !important;
+}
+
+.maps-open,
+.maps-share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 8px 12px !important;
+  margin: 0 !important;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.maps-open {
+  background: #fbbf24;
+  color: #111111;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+.maps-open:hover {
+  background: #ffd24d;
+}
+
+.maps-share {
+  background: #161616;
+  color: #e5e5e5;
+  border: 1px solid #333;
+}
+
+.maps-share:hover {
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+
+.maps-open:focus-visible,
+.maps-share:focus-visible,
+.nearby-route:focus-visible,
+.measure-swap:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* In the searched point's popup: normal case, so the full label fits its width */
+.maps-buttons.popup .maps-open,
+.maps-buttons.popup .maps-share {
+  min-height: 34px;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 6px 10px !important;
+}
+
+/* Payments due, under the other figures */
+.payments-figure-values {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Renewals tab: Renewals / Payments */
+.renewals-seg {
+  grid-template-columns: 1fr 1fr;
+  margin: 0 !important;
+}
+
+.payments {
+  gap: 12px;
+}
+
+.payments-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 !important;
+}
+
+.payments-group-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--token-color-text-secondary);
+  margin: 0 !important;
+}
+
+.payments-group-title.bad {
+  color: #f87171;
+}
+
+.payments-group-title.warn {
+  color: #fbbf24;
+}
+
+.payment-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  width: 100%;
+  padding: 9px 12px !important;
+  margin: 0 !important;
+  border-radius: 10px;
+  border: 1px solid #2e2e2e;
+  border-left: 3px solid #3a3a3a;
+  background: #141414;
+  text-align: left;
+  cursor: pointer;
+}
+
+.payment-row:hover {
+  background: #1a1a1a;
+}
+
+.payment-row.on {
+  border-color: #fbbf24;
+}
+
+.payment-row.overdue {
+  border-left-color: #f87171;
+}
+
+.payment-row.due {
+  border-left-color: #fbbf24;
+}
+
+.payment-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-date {
+  font-family: var(--token-font-family-mono, "DM Mono", monospace);
+  font-size: 12px;
+  color: #e5e5e5;
+  white-space: nowrap;
+}
+
+.payment-sub {
+  font-size: 11px;
+  color: var(--token-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-when {
+  font-size: 11px;
+  color: var(--token-color-text-secondary);
+  white-space: nowrap;
+  justify-self: end;
+}
+
+.payment-row.overdue .payment-when {
+  color: #f87171;
+  font-weight: 700;
+}
+
+.payment-row.due .payment-when {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+/* Leaflet colours every link in a popup; these keep their own colours */
+.leaflet-container a.maps-open {
+  color: #111111;
+}
+
+.leaflet-container a.nearby-route {
+  color: #d4d4d4;
+}
+
+.leaflet-container a.nearby-route:hover {
+  color: #fbbf24;
 }
