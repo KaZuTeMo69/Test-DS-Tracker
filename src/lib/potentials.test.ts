@@ -40,6 +40,7 @@ const draft = (over: Partial<PotentialDraft> = {}): PotentialDraft => ({
   status: "study",
   size: 400,
   askingRentAnnual: 320000,
+  expectedOpd: null,
   contact: "",
   notes: "",
   feasibilityLink: "",

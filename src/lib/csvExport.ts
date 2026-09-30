@@ -3,6 +3,7 @@ import { formatDate, RenewalDays } from "./contract";
 import { Coverage } from "./coverage";
 import { RENEWAL_STATUS_LABEL, storeRenewal } from "./renewal";
 import { sheetRent } from "./rent";
+import { storeCpo } from "./cpo";
 
 // The sheet's own columns first, named as in the Google Sheet, so an exported file imports again without losing
 // anything. The worked-out columns come after; their names don't match any column the importer looks for
@@ -51,9 +52,19 @@ export function storesToCsv(stores: Store[], days: RenewalDays, coverage: Covera
     ["Next Payment", (s) => s.nextPayment ?? ""],
     ["Contract Total Value", (s) => s.contractTotal ?? null],
     ["Region", (s) => s.region ?? ""],
+    ["OPD", (s) => s.opd ?? null],
+    ["OPD As Of", (s) => s.opdAsOf ?? ""],
     // Contracts under 12 months: the term's total, and the rent per year worked out from it
     ["Contract Value", (s) => s.contractValue ?? null],
     ["Annualised Rent", (s) => s.rentSARAnnual],
+    // Rent cost per order, worked out (annual rent / 360 / OPD); not read back on import
+    [
+      "CPO (SAR)",
+      (s) => {
+        const cpo = storeCpo(s);
+        return cpo === null ? null : Math.round(cpo * 100) / 100;
+      },
+    ],
     ["Days to End", (s) => storeRenewal(s, days).daysToEnd],
     [
       "Renewal Starts",

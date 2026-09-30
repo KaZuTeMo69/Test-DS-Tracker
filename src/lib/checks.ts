@@ -31,7 +31,9 @@ export type IssueKind =
   | "sheetError"
   | "paymentUnreadable"
   | "totalMismatch"
-  | "datesMismatch";
+  | "datesMismatch"
+  | "opdMissing"
+  | "opdNotLive";
 
 // Contract Total Value (with VAT) may differ from annual rent × term × 1.15 by this much before it's flagged
 export const TOTAL_TOLERANCE = 0.02;
@@ -150,6 +152,8 @@ export function storeIssues(s: Store): Issue[] {
       text: `The start date plus ${monthsText(parseDurationMonths(s.contractDuration)!)} ends ${formatDate(dates.expectedEnd)}, but the end date is ${s.endDate} (${Math.abs(dates.days)} days ${dates.days > 0 ? "later" : "earlier"}).`,
     });
   }
+  if (s.opd && s.opd > 0 && liveStatus(s) === false)
+    issues.push({ kind: "opdNotLive", text: `OPD ${s.opd.toLocaleString("en-US")} on a store that isn't live.` });
   if (paidStatus(s) === null) {
     issues.push({
       kind: "paidStatus",
@@ -221,6 +225,14 @@ const GROUPS: Record<IssueKind | "duplicateCode", { title: string; fix: string }
     title: "Contract Total Value doesn't match the rent",
     fix: "Contract Total Value includes 15% VAT: it should be about annual rent × term in years × 1.15. Check the rent, the duration or the register.",
   },
+  opdMissing: {
+    title: "Live store with no OPD",
+    fix: "Fill in the OPD (orders per day) column, so the store's cost per order can be worked out.",
+  },
+  opdNotLive: {
+    title: "OPD on a store that isn't live",
+    fix: "A store that isn't live shouldn't have orders. Check its Live status or its OPD.",
+  },
   datesMismatch: {
     title: "Contract dates don't match the duration",
     fix: "The end date should be the start date plus the contract duration. Check the dates or the duration.",
@@ -244,6 +256,8 @@ const ORDER: Array<IssueKind | "duplicateCode"> = [
   "paymentUnreadable",
   "totalMismatch",
   "datesMismatch",
+  "opdMissing",
+  "opdNotLive",
   "duplicateCode",
 ];
 
@@ -262,6 +276,13 @@ export function dataQuality(stores: Store[]): { groups: IssueGroup[]; storesWith
       flagged.add(s.id);
     }
   }
+  // Live stores without an OPD, once the data has an OPD column at all (else every store would be listed)
+  if (stores.some((s) => s.opd && s.opd > 0))
+    for (const s of stores) {
+      if (liveStatus(s) !== true || (s.opd && s.opd > 0)) continue;
+      add("opdMissing", s, "Live, but no OPD, so there's no cost per order.");
+      flagged.add(s.id);
+    }
   const byCode = new Map<string, Store[]>();
   for (const s of stores) {
     const code = s.dsCode.trim().toUpperCase();

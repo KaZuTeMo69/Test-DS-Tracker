@@ -23,7 +23,8 @@ import {
   zonesAt,
 } from "../lib/potentials";
 import { CityMedian, compareToMedian } from "../lib/rentStats";
-import { shownRent, vatLabel } from "../lib/settings";
+import { rentFactor, shownRent, vatLabel } from "../lib/settings";
+import { potentialTargets } from "../lib/cpo";
 import { ZoneHit } from "../lib/coverage";
 
 interface PotentialCardProps {
@@ -243,6 +244,44 @@ function StatusControl({
   );
 }
 
+// The asking rent against the target CPO (Settings): the estimated CPO, the OPD needed, the most rent to pay
+function CpoStudy({ potential: p }: { potential: Potential }) {
+  const settings = useSettings();
+  const { targetCpo } = settings;
+  const t = potentialTargets(p.askingRentAnnual, p.expectedOpd, targetCpo);
+  const factor = rentFactor(settings.includeVat);
+  const money = (n: number) => `${CURRENCY} ${(n * factor).toFixed(2)}`;
+  const over = t.estimatedCpo !== null && targetCpo ? t.estimatedCpo > targetCpo : null;
+  return (
+    <div className="pc-rent pc-cpo" data-cpo-study>
+      <div className="pc-cpo-row">
+        <span className="pc-figure-label">Estimated CPO</span>
+        <span className={`pc-cpo-value ${over === null ? "" : over ? "bad" : "good"}`}>
+          {t.estimatedCpo === null ? "—" : money(t.estimatedCpo)}
+          {over !== null && <small>{over ? " above target" : " within target"}</small>}
+        </span>
+      </div>
+      <div className="pc-cpo-row">
+        <span className="pc-figure-label">OPD needed for the target</span>
+        <span className="pc-cpo-value">{t.minOpd === null ? "—" : Math.ceil(t.minOpd).toLocaleString()}</span>
+      </div>
+      <div className="pc-cpo-row">
+        <span className="pc-figure-label">Most rent / yr at the expected OPD</span>
+        <span className="pc-cpo-value">
+          {t.maxRent === null ? "—" : `${CURRENCY} ${Math.floor(t.maxRent * factor).toLocaleString()}`}
+        </span>
+      </div>
+      <p className="pc-cpo-note">
+        {!targetCpo
+          ? "Set a target CPO in Settings to see the OPD needed and the most rent to pay."
+          : `Target ${money(targetCpo)} per order.`}
+        {p.expectedOpd === null && " Add the expected OPD in Details for the estimate."}
+        {p.askingRentAnnual === null && " Add the asking rent in Details."}
+      </p>
+    </div>
+  );
+}
+
 function ZoneRow({ hit, onSelect }: { hit: ZoneHit; onSelect: (layerId: string, zoneId: string) => void }) {
   return (
     <button
@@ -316,6 +355,9 @@ function StudyTab({
         </div>
       )}
 
+      <div className="pc-section-label detail-panel-row-label text-[11px]">Cost per order {vat}</div>
+      <CpoStudy potential={p} />
+
       <div className="pc-section-label detail-panel-row-label text-[11px]">Nearest live stores</div>
       <NearbyStores point={{ lat: p.lat, lng: p.lng }} stores={stores} onSelect={onSelectStore} pointName={p.name} />
     </>
@@ -346,6 +388,14 @@ function DetailsTab({ potential: p, onEdit }: Pick<PotentialCardProps, "potentia
         display={p.askingRentAnnual !== null ? sar(shownRent(p.askingRentAnnual, settings)) : undefined}
         check={numberCheck}
         onSave={(t) => onEdit({ askingRentAnnual: toNumber(t) })}
+      />
+      <EditableRow
+        label="Expected OPD"
+        value={numberText(p.expectedOpd)}
+        kind="number"
+        display={p.expectedOpd !== null ? `${p.expectedOpd.toLocaleString()} orders / day` : undefined}
+        check={numberCheck}
+        onSave={(t) => onEdit({ expectedOpd: toNumber(t) })}
       />
       <EditableRow label="Contact" value={p.contact} onSave={(contact) => onEdit({ contact })} />
       <EditableRow label="Notes" value={p.notes} kind="multiline" onSave={(notes) => onEdit({ notes })} />

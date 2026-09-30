@@ -1,6 +1,7 @@
 import { Store } from "../types";
 import { RenewalDays } from "./contract";
 import { paymentInfo } from "./payments";
+import { NetworkFigures, networkFigures } from "./cpo";
 import { storeRenewal } from "./renewal";
 import { rentFactor } from "./settings";
 import { isLive, isPaid } from "./status";
@@ -16,6 +17,7 @@ export interface KpiStats {
   noArea: number;
   renewals: { now: number; soon: number; expired: number };
   payments: { due: number; overdue: number }; // next payments due within 30 days, and past due
+  network: NetworkFigures; // total OPD, and the CPO weighted by orders
   avgRent: number; // rent per m², over the stores with both rent and area
 }
 
@@ -31,6 +33,7 @@ export function kpiStats(stores: Store[], days: RenewalDays, includeVat: boolean
     noArea: 0,
     renewals: { now: 0, soon: 0, expired: 0 },
     payments: { due: 0, overdue: 0 },
+    network: networkFigures(stores),
     avgRent: 0,
   };
   let pricedRent = 0;

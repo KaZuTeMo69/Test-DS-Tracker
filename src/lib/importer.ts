@@ -83,7 +83,9 @@ export type StoreField =
   | "contractStatus"
   | "nextPayment"
   | "contractTotal"
-  | "region";
+  | "region"
+  | "opdAsOf"
+  | "opd";
 
 // Header phrases per field, matched as whole words. Fields are assigned in this order and a
 // column taken by one field isn't reused, so "Rent/sqm" is claimed before the plain "rent"
@@ -98,6 +100,9 @@ const COLUMN_PATTERNS: Array<{ field: StoreField; phrases: string[]; exclude?: s
   { field: "nextPayment", phrases: ["next payment", "next payments", "next payment date", "next due date"] },
   { field: "contractTotal", phrases: ["contract total value", "total contract value", "contract total"] },
   { field: "region", phrases: ["region"] },
+  // "OPD As Of" before "OPD", which it contains
+  { field: "opdAsOf", phrases: ["opd as of", "opd date", "orders as of"] },
+  { field: "opd", phrases: ["opd", "orders per day", "orders day", "orders a day"] },
   { field: "dsCode", phrases: ["ds code", "dscode", "store code", "code", "id"] },
   { field: "paid", phrases: ["paid", "payment"] },
   { field: "live", phrases: ["live", "status"] },
@@ -183,6 +188,8 @@ interface StoreFields {
   nextPayment?: string;
   contractTotal?: number | null; // SAR, including 15% VAT
   region?: string;
+  opd?: number | null;
+  opdAsOf?: string;
   sheetErrors?: Array<{ column: string; value: string }>;
 }
 
@@ -229,6 +236,8 @@ function buildStore(id: number, f: StoreFields): Store {
     nextPayment: tidyDate(f.nextPayment ?? ""),
     contractTotal: f.contractTotal ?? null,
     region: f.region ?? "",
+    opd: f.opd ?? null,
+    opdAsOf: f.opdAsOf ?? "",
     sheetErrors: f.sheetErrors?.length ? f.sheetErrors : undefined,
   };
 }
@@ -283,6 +292,8 @@ export function rowsToStores(headers: string[], rows: string[][]): Store[] {
         nextPayment: get(col.nextPayment),
         contractTotal: parseNum(get(col.contractTotal)),
         region: get(col.region),
+        opd: parseNum(get(col.opd)),
+        opdAsOf: get(col.opdAsOf),
         sheetErrors: errors,
       }),
     );
@@ -342,6 +353,8 @@ export function parseJSONData(jsonText: string): Store[] {
         nextPayment: text(item.nextPayment),
         contractTotal: parseNum(pick(item.contractTotal, item.contractTotalValue)),
         region: text(item.region),
+        opd: parseNum(pick(item.opd, item.ordersPerDay)),
+        opdAsOf: text(item.opdAsOf),
       }),
     );
   });

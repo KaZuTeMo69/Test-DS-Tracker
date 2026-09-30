@@ -26,6 +26,9 @@ export interface Store {
   nextPayment?: string; // the next payment's date, as the other dates
   contractTotal?: number | null;
   region?: string;
+  // Orders per day, and when it was measured (free text such as "Aug 2026", shown as it is)
+  opd?: number | null;
+  opdAsOf?: string;
   // Cells that held a spreadsheet error (#N/A, #REF!…), read as empty
   sheetErrors?: Array<{ column: string; value: string }>;
   // Location; locationIssue says why the store has no pin (missing or implausible coordinates)

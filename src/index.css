@@ -4101,3 +4101,144 @@ body {
 .leaflet-container a.nearby-route:hover {
   color: #fbbf24;
 }
+
+/* The pin colour menu's swatches: the colours each mode uses */
+.pin-mode-swatch {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  margin: 0 !important;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.pin-mode-swatch.status,
+.pin-mode-swatch.rent,
+.pin-mode-swatch.cpo {
+  background: linear-gradient(90deg, #4ade80 33%, #fbbf24 33% 66%, #f87171 66%);
+}
+
+.pin-mode-swatch.rent,
+.pin-mode-swatch.cpo {
+  background: linear-gradient(135deg, #4ade80 33%, #fbbf24 33% 66%, #f87171 66%);
+}
+
+.pin-mode-swatch.opd {
+  background: linear-gradient(90deg, #6d28d9 25%, #8b5cf6 25% 50%, #a78bfa 50% 75%, #ddd6fe 75%);
+}
+
+.store-card-orders {
+  margin-top: 2px !important;
+}
+
+/* OPD against CPO, in the Growth tab */
+.opd-cpo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 24px !important;
+}
+
+.opd-cpo-plot {
+  position: relative;
+  height: 260px;
+  width: 100%;
+  padding: 8px 4px 4px !important;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.opd-cpo-quadrant {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--token-color-text-secondary);
+  background: rgba(17, 17, 17, 0.75);
+  padding: 1px 6px !important;
+  border-radius: 6px;
+}
+
+.opd-cpo-quadrant.top-left {
+  top: 8px;
+  left: 50px;
+}
+
+.opd-cpo-quadrant.top-right {
+  top: 8px;
+  right: 18px;
+}
+
+.opd-cpo-quadrant.bottom-left {
+  bottom: 44px;
+  left: 50px;
+}
+
+.opd-cpo-quadrant.bottom-right {
+  bottom: 44px;
+  right: 18px;
+}
+
+.opd-cpo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.opd-cpo-table th {
+  text-align: left;
+  font-weight: 600;
+  color: #d4d4d4;
+  padding: 4px 2px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.opd-cpo-table td {
+  text-align: right;
+  font-family: var(--token-font-family-mono);
+  color: #ffffff;
+  padding: 4px 2px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* A Potential's cost per order against the target */
+.pc-cpo {
+  gap: 4px;
+}
+
+.pc-cpo-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.pc-cpo-value {
+  font-family: var(--token-font-family-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.pc-cpo-value small {
+  font-family: var(--token-font-family-sans);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pc-cpo-value.good small {
+  color: #4ade80;
+}
+
+.pc-cpo-value.bad small {
+  color: #f87171;
+}
+
+.pc-cpo-note {
+  font-size: 11px;
+  color: var(--token-color-text-secondary);
+  margin: 4px 0 0 !important;
+}

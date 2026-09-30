@@ -8,9 +8,16 @@ import { Store } from "../../types";
 import { PIN_SEL } from "../../constants";
 import { useSettings } from "../../hooks/useSettings";
 import { hasCoords } from "../../lib/checks";
-import { PinSize, RentBenchmarks } from "../../lib/rentStats";
+import { PinSize, RentBenchmark, RentBenchmarks } from "../../lib/rentStats";
 import { isLive, isPaid } from "../../lib/status";
-import { makeIcon, PinShape, pinShape, RENT_COLOR, STATUS_COLOR } from "./pinIcon";
+import { makeIcon, OPD_COLOR, PinShape, pinShape, RENT_COLOR, STATUS_COLOR } from "./pinIcon";
+import { OpdLevel } from "../../lib/cpo";
+
+/** What the OPD and CPO pin colours need: each store's OPD quartile and CPO against its city's median. */
+export interface OrderColours {
+  opd: Map<number, OpdLevel>;
+  cpo: Map<number, RentBenchmark>;
+}
 
 const clusterIcon = (cluster: L.MarkerCluster) =>
   L.divIcon({
@@ -87,12 +94,14 @@ const StoreMarker = memo(function StoreMarker({
 export default function StoreMarkers({
   stores,
   benchmarks,
+  orders,
   selectedId,
   onSelectStore,
   measuring = false,
 }: {
   stores: Store[];
   benchmarks: RentBenchmarks;
+  orders: OrderColours; // OPD quartiles and CPO against the city median, for those pin colours
   selectedId: number | null;
   onSelectStore: (id: number) => void;
   measuring?: boolean;
@@ -107,13 +116,20 @@ export default function StoreMarkers({
     >
       {stores.filter(hasCoords).map((s) => {
         const shape = pinShape(s);
-        const level = benchmarks.of.get(s.id)?.level ?? "none";
+        const color =
+          pinColors === "rent"
+            ? RENT_COLOR[benchmarks.of.get(s.id)?.level ?? "none"]
+            : pinColors === "opd"
+              ? OPD_COLOR[orders.opd.get(s.id) ?? "none"]
+              : pinColors === "cpo"
+                ? RENT_COLOR[orders.cpo.get(s.id)?.level ?? "none"]
+                : STATUS_COLOR[shape];
         return (
           <StoreMarker
             key={s.id}
             store={s}
             selected={selectedId === s.id}
-            color={pinColors === "rent" ? RENT_COLOR[level] : STATUS_COLOR[shape]}
+            color={color}
             shape={shape}
             size={benchmarks.sizeOf.get(s.id) ?? "s"}
             popup={!measuring}

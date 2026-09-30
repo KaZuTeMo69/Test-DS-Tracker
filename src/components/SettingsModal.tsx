@@ -97,6 +97,40 @@ function OrsKeyField({ value, onSave }: { value: string; onSave: (key: string) =
 const DAY_MS = 86_400_000;
 const VAT_PERCENT = Math.round(VAT_RATE * 100);
 
+// A money amount typed freely (2 decimals); empty for none. Takes effect as soon as it reads as one
+function DecimalInput({
+  value,
+  onChange,
+  label,
+}: {
+  value: number | null;
+  onChange: (n: number | null) => void;
+  label: string;
+}) {
+  const [draft, setDraft] = useState(value === null ? "" : String(value));
+  useEffect(() => setDraft(value === null ? "" : String(value)), [value]);
+  const read = (text: string) => {
+    const n = Number(text.replace(/,/g, "").trim());
+    return text.trim() === "" ? null : Number.isFinite(n) && n > 0 && n < 10000 ? Math.round(n * 100) / 100 : NaN;
+  };
+  const valid = !Number.isNaN(read(draft));
+  return (
+    <input
+      inputMode="decimal"
+      aria-label={label}
+      aria-invalid={!valid}
+      placeholder="None"
+      className={`settings-days zone-input ${valid ? "" : "invalid"}`}
+      value={draft}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        const n = read(e.target.value);
+        if (!Number.isNaN(n)) onChange(n);
+      }}
+    />
+  );
+}
+
 // A number typed freely; it takes effect as soon as it's a whole number from 0 to max
 function NumberInput({
   value,
@@ -161,7 +195,8 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose, ors
     settings.leadDays === DEFAULT_SETTINGS.leadDays &&
     settings.warningDays === DEFAULT_SETTINGS.warningDays &&
     settings.includeVat === DEFAULT_SETTINGS.includeVat &&
-    settings.rentFlagPercent === DEFAULT_SETTINGS.rentFlagPercent;
+    settings.rentFlagPercent === DEFAULT_SETTINGS.rentFlagPercent &&
+    settings.targetCpo === DEFAULT_SETTINGS.targetCpo;
 
   return (
     <div
@@ -251,6 +286,23 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose, ors
           <p className="settings-note">
             Stores over this get a HIGH RENT tag, and a red pin when the map colours pins by rent per m². A city needs 3
             stores with rent and area to have a median. Whole numbers from 0 to {MAX_PERCENT}.
+          </p>
+        </section>
+
+        <section className="settings-section">
+          <h3 className="detail-panel-row-label text-[11px]">Orders</h3>
+          <label className="settings-row">
+            <span>Target CPO</span>
+            <DecimalInput
+              value={settings.targetCpo}
+              onChange={(targetCpo) => onChange({ targetCpo })}
+              label="Target CPO in SAR"
+            />
+            <span>SAR per order</span>
+          </label>
+          <p className="settings-note">
+            The most rent a store should cost per order (annual rent / 360 / OPD, without VAT). Potentials are measured
+            against it: the OPD needed at the asking rent, and the most rent at the expected OPD. Leave empty for none.
           </p>
         </section>
 
