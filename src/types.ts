@@ -25,6 +25,8 @@ export interface Store {
   contractStatus?: string;
   nextPayment?: string; // the next payment's date, as the other dates
   contractTotal?: number | null;
+  // Service fees a year, without VAT (annualised for a contract under 12 months, as the rent); not in the rent figures
+  serviceFeesAnnual?: number | null;
   region?: string;
   // Orders per day, and when it was measured (free text such as "Aug 2026", shown as it is)
   opd?: number | null;

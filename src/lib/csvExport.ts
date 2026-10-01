@@ -2,7 +2,7 @@ import { Store } from "../types";
 import { formatDate, RenewalDays } from "./contract";
 import { Coverage } from "./coverage";
 import { RENEWAL_STATUS_LABEL, storeRenewal } from "./renewal";
-import { sheetRent } from "./rent";
+import { contractTermValue, sheetRent, sheetServiceFees } from "./rent";
 import { storeCpo } from "./cpo";
 
 // The sheet's own columns first, named as in the Google Sheet, so an exported file imports again without losing
@@ -54,8 +54,17 @@ export function storesToCsv(stores: Store[], days: RenewalDays, coverage: Covera
     ["Region", (s) => s.region ?? ""],
     ["OPD", (s) => s.opd ?? null],
     ["OPD As Of", (s) => s.opdAsOf ?? ""],
-    // Contracts under 12 months: the term's total, and the rent per year worked out from it
-    ["Contract Value", (s) => s.contractValue ?? null],
+    // As in the sheet (the term's total for a contract under 12 months), so it imports back the same
+    ["Service Fees", (s) => sheetServiceFees(s)],
+    // The whole term's value, (rent + service fees) × term, without VAT; and the rent per year (annualised for a
+    // contract under 12 months)
+    [
+      "Contract Value",
+      (s) => {
+        const v = contractTermValue(s);
+        return v === null ? null : Math.round(v * 100) / 100;
+      },
+    ],
     ["Annualised Rent", (s) => s.rentSARAnnual],
     // Rent cost per order, worked out (annual rent / 360 / OPD); not read back on import
     [
