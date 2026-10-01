@@ -11,6 +11,7 @@ import {
   parseDurationMonths,
 } from "./contract";
 import { VAT_RATE } from "./settings";
+import { contractTermValue } from "./rent";
 import { liveStatus, paidStatus } from "./status";
 
 export const hasCoords = (s: Store) => s.lat !== null && s.lng !== null;
@@ -78,13 +79,14 @@ function contractIssues(s: Store): Issue[] {
 }
 
 /**
- * Contract Total Value (from the register, with 15% VAT) against the rent: annual rent (annualised for a short
- * contract) × the term in years × 1.15. Null when something's missing or they agree within TOTAL_TOLERANCE.
+ * Contract Total Value (from the register, with 15% VAT) against the contract's value: (annual rent + annual service
+ * fees, both annualised for a short contract) × the term in years × 1.15. Null when something's missing or they
+ * agree within TOTAL_TOLERANCE.
  */
 export function totalMismatch(s: Store): { expected: number; diff: number } | null {
   const months = s.termMonths ?? parseDurationMonths(s.contractDuration);
   if (!s.contractTotal || s.rentSARAnnual === null || !months) return null;
-  const expected = s.rentSARAnnual * (months / 12) * (1 + VAT_RATE);
+  const expected = (contractTermValue({ ...s, termMonths: months }) ?? 0) * (1 + VAT_RATE);
   const diff = (s.contractTotal - expected) / expected;
   return Math.abs(diff) > TOTAL_TOLERANCE ? { expected, diff } : null;
 }
@@ -142,7 +144,7 @@ export function storeIssues(s: Store): Issue[] {
     const sar = (n: number) => `SAR ${Math.round(n).toLocaleString("en-US")}`;
     issues.push({
       kind: "totalMismatch",
-      text: `Contract Total Value ${sar(s.contractTotal!)} is ${Math.abs(Math.round(total.diff * 100))}% ${total.diff > 0 ? "more" : "less"} than annual rent × term × 1.15 (${sar(total.expected)}).`,
+      text: `Contract Total Value ${sar(s.contractTotal!)} is ${Math.abs(Math.round(total.diff * 100))}% ${total.diff > 0 ? "more" : "less"} than ${s.serviceFeesAnnual ? "(annual rent + service fees)" : "annual rent"} × term × 1.15 (${sar(total.expected)}).`,
     });
   }
   const dates = datesMismatch(s);
@@ -223,7 +225,7 @@ const GROUPS: Record<IssueKind | "duplicateCode", { title: string; fix: string }
   },
   totalMismatch: {
     title: "Contract Total Value doesn't match the rent",
-    fix: "Contract Total Value includes 15% VAT: it should be about annual rent × term in years × 1.15. Check the rent, the duration or the register.",
+    fix: "Contract Total Value includes 15% VAT: it should be about (annual rent + service fees) × term in years × 1.15. Check the rent, the service fees, the duration or the register.",
   },
   opdMissing: {
     title: "Live store with no OPD",

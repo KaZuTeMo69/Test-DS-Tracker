@@ -38,6 +38,40 @@ export function rentFigures(
   };
 }
 
+/**
+ * Service fees, read like the rent column and without VAT: a year's fees, or the whole term's for a contract under
+ * 12 months (then worked out per year, as the rent is). Null without them.
+ */
+export function serviceFeesAnnual(column: number | null, termMonths: number | null): number | null {
+  if (column === null) return null;
+  return termMonths !== null && termMonths > 0 && termMonths < 12 ? (column * 12) / termMonths : column;
+}
+
+/**
+ * What the contract is worth over its whole term, without VAT: (annual rent + annual service fees) × the term in
+ * years. Null without the rent or a readable term.
+ */
+export function contractTermValue(s: {
+  rentSARAnnual: number | null;
+  serviceFeesAnnual?: number | null;
+  termMonths?: number | null;
+}): number | null {
+  if (s.rentSARAnnual === null || !s.termMonths) return null;
+  return ((s.rentSARAnnual + (s.serviceFeesAnnual ?? 0)) * s.termMonths) / 12;
+}
+
+/** The service fees as in the sheet: the term's total for a short contract, else a year's. */
+export const sheetServiceFees = (s: {
+  serviceFeesAnnual?: number | null;
+  contractValue?: number | null;
+  termMonths?: number | null;
+}) =>
+  s.serviceFeesAnnual == null
+    ? null
+    : s.contractValue != null && s.termMonths
+      ? (s.serviceFeesAnnual * s.termMonths) / 12
+      : s.serviceFeesAnnual;
+
 /** The rent column as it is in the sheet: the term's total for a short contract, else the annual rent. */
 export const sheetRent = (s: { contractValue?: number | null; rentSARAnnual: number | null }) =>
   s.contractValue ?? s.rentSARAnnual;

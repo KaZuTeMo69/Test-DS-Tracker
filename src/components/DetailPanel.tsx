@@ -10,6 +10,7 @@ import { Store } from "../types";
 import { COVERAGE_TAG, CURRENCY, HIGH_RENT_TAG, PAYMENT_TAG, RENEWAL_STYLE } from "../constants";
 import { PaymentInfo, paymentInfo } from "../lib/payments";
 import { storeCpo } from "../lib/cpo";
+import { contractTermValue } from "../lib/rent";
 import { contractDateIssues, dataIssues, hasCoords } from "../lib/checks";
 import { Coverage, coverageFlags, ZoneHit } from "../lib/coverage";
 import {
@@ -28,7 +29,7 @@ import {
 import { useSettings } from "../hooks/useSettings";
 import { fmtN } from "../lib/format";
 import { RENEWAL_STATUS_LABEL, storeRenewal } from "../lib/renewal";
-import { rentFactor, shownRent, vatLabel } from "../lib/settings";
+import { rentFactor, shownRent, VAT_RATE, vatLabel } from "../lib/settings";
 import { MIN_BENCHMARK_STORES, RentBenchmark, RentComparison, rentComparison } from "../lib/rentStats";
 import { isLive, isPaid, liveStatus, paidStatus } from "../lib/status";
 
@@ -538,19 +539,7 @@ function RentTab({ store, rent, benchmark }: { store: Store; rent: RentCompariso
         </div>
       </div>
 
-      {store.contractValue != null && store.termMonths && (
-        <div className="rent-short" data-short-contract>
-          <Row
-            label={`Contract value ${vat}`.trim()}
-            value={`${sar(shownRent(store.contractValue, settings))} for ${monthsText(store.termMonths)}`}
-          />
-          <Row label={`Annualised ${vat}`.trim()} value={`${sar(shownRent(store.rentSARAnnual, settings))} / yr`} />
-          <p className="text-[11px] text-gray-400 leading-snug store-card-gap-top">
-            For contracts under 12 months the sheet&apos;s rent is the total for the term. The annualised figure is used
-            for the totals, benchmarks and pins.
-          </p>
-        </div>
-      )}
+      <ContractValueRows store={store} />
 
       <div>
         <Row label={`Rent per m² ${vat}`} value={sar(shownRent(store.rentSARsqm, settings))} />
@@ -702,11 +691,56 @@ function ContractTab({ store, renewal }: { store: Store; renewal: RenewalInfo })
   );
 }
 
+// The service fees, and what the contract is worth over its whole term: (rent + service fees) × term. For a contract
+// under 12 months, the rent per year worked out from the sheet's total for the term too
+function ContractValueRows({ store }: { store: Store }) {
+  const settings = useSettings();
+  const vat = vatLabel(settings);
+  const service = store.serviceFeesAnnual ?? null;
+  const value = contractTermValue(store);
+  const short = store.contractValue != null && !!store.termMonths;
+  if (service === null && value === null) return null;
+  const notes = [
+    value !== null &&
+      (service !== null
+        ? "Contract value = (rent + service fees) × term."
+        : "Contract value = rent × term (no service fees in the data)."),
+    short &&
+      `For contracts under 12 months the sheet's rent${service !== null ? " and service fees are" : " is"} the total for the term. The annualised rent is used for the totals, benchmarks and pins.`,
+    service !== null && !short && "Service fees aren't counted in the rent figures, benchmarks or CPO.",
+  ].filter(Boolean);
+  return (
+    <div className="rent-short" data-contract-value {...(short ? { "data-short-contract": "" } : {})}>
+      {service !== null && (
+        <Row label={`Service fees ${vat}`.trim()} value={`${sar(shownRent(service, settings))} / yr`} />
+      )}
+      {service !== null && store.rentSARAnnual !== null && (
+        <Row
+          label={`Rent + service fees ${vat}`.trim()}
+          value={`${sar(shownRent(store.rentSARAnnual + service, settings))} / yr`}
+        />
+      )}
+      {value !== null && (
+        <Row
+          label={`Contract value ${vat}`.trim()}
+          value={`${sar(shownRent(value, settings))} for ${monthsText(store.termMonths!)}`}
+        />
+      )}
+      {short && (
+        <Row label={`Annualised ${vat}`.trim()} value={`${sar(shownRent(store.rentSARAnnual, settings))} / yr`} />
+      )}
+      <p className="text-[11px] text-gray-400 leading-snug store-card-gap-top">{notes.join(" ")}</p>
+    </div>
+  );
+}
+
 // The contract register's fields (lookup formulas in the store sheet), when the sheet has them
 function RegisterRows({ store }: { store: Store }) {
   const settings = useSettings();
   const payment = paymentInfo(store);
   const has = store.contractNo || store.contractStatus || store.nextPayment || store.contractTotal || store.region;
+  // The total the rent and service fees come to over the term, to set beside the register's
+  const worked = contractTermValue(store);
   if (!has) return null;
   return (
     <>
@@ -720,6 +754,9 @@ function RegisterRows({ store }: { store: Store }) {
           valueClass={payment.status === "overdue" ? TONE.bad.row : payment.status === "due" ? TONE.warn.row : ""}
         />
         <Row label="Contract total (incl. VAT)" value={store.contractTotal ? sar(store.contractTotal) : "—"} />
+        {store.contractTotal && worked !== null ? (
+          <Row label="Worked out (incl. VAT)" value={sar(worked * (1 + VAT_RATE))} />
+        ) : null}
         {settings.includeVat ? null : (
           <p className="text-[11px] text-gray-400 store-card-gap-top">
             The register&apos;s total includes 15% VAT; the rent figures here don&apos;t.

@@ -1,7 +1,7 @@
 import { Store } from "../types";
 import { contractEndDate, formatDate, parseDate, parseDurationMonths } from "./contract";
 import { checkLocation } from "./location";
-import { rentFigures } from "./rent";
+import { rentFigures, serviceFeesAnnual } from "./rent";
 
 /**
  * Reads a number from a cell such as "273,500", "SAR 1.5M", "273K" or "450 m2".
@@ -83,6 +83,7 @@ export type StoreField =
   | "contractStatus"
   | "nextPayment"
   | "contractTotal"
+  | "serviceFees"
   | "region"
   | "opdAsOf"
   | "opd";
@@ -99,6 +100,22 @@ const COLUMN_PATTERNS: Array<{ field: StoreField; phrases: string[]; exclude?: s
   { field: "contractStatus", phrases: ["contract status"] },
   { field: "nextPayment", phrases: ["next payment", "next payments", "next payment date", "next due date"] },
   { field: "contractTotal", phrases: ["contract total value", "total contract value", "contract total"] },
+  // Before "payment" (paid) and "rent", so "Service Payments" or "Service Fees" isn't taken for either
+  {
+    field: "serviceFees",
+    phrases: [
+      "service fees",
+      "service fee",
+      "service charges",
+      "service charge",
+      "service payments",
+      "service payment",
+      "services fees",
+      "service cost",
+      "service costs",
+    ],
+    exclude: ["month", "monthly"],
+  },
   { field: "region", phrases: ["region"] },
   // "OPD As Of" before "OPD", which it contains
   { field: "opdAsOf", phrases: ["opd as of", "opd date", "orders as of"] },
@@ -187,6 +204,7 @@ interface StoreFields {
   contractStatus?: string;
   nextPayment?: string;
   contractTotal?: number | null; // SAR, including 15% VAT
+  serviceFees?: number | null; // as the rent column: a year's, or the term's for a short contract; without VAT
   region?: string;
   opd?: number | null;
   opdAsOf?: string;
@@ -235,6 +253,7 @@ function buildStore(id: number, f: StoreFields): Store {
     contractStatus: f.contractStatus ?? "",
     nextPayment: tidyDate(f.nextPayment ?? ""),
     contractTotal: f.contractTotal ?? null,
+    serviceFeesAnnual: serviceFeesAnnual(f.serviceFees ?? null, rent.termMonths),
     region: f.region ?? "",
     opd: f.opd ?? null,
     opdAsOf: f.opdAsOf ?? "",
@@ -291,6 +310,7 @@ export function rowsToStores(headers: string[], rows: string[][]): Store[] {
         contractStatus: get(col.contractStatus),
         nextPayment: get(col.nextPayment),
         contractTotal: parseNum(get(col.contractTotal)),
+        serviceFees: parseNum(get(col.serviceFees)),
         region: get(col.region),
         opd: parseNum(get(col.opd)),
         opdAsOf: get(col.opdAsOf),
@@ -352,6 +372,7 @@ export function parseJSONData(jsonText: string): Store[] {
         contractStatus: text(item.contractStatus),
         nextPayment: text(item.nextPayment),
         contractTotal: parseNum(pick(item.contractTotal, item.contractTotalValue)),
+        serviceFees: parseNum(pick(item.serviceFees, item.serviceFeesAnnual, item.serviceCharge)),
         region: text(item.region),
         opd: parseNum(pick(item.opd, item.ordersPerDay)),
         opdAsOf: text(item.opdAsOf),
