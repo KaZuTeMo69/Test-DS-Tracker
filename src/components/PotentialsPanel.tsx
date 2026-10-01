@@ -1,5 +1,5 @@
 import { ChangeEvent, CSSProperties, useMemo, useRef, useState } from "react";
-import { Download, Plus, Search, Upload, X } from "lucide-react";
+import { ClipboardCopy, Download, Plus, Search, Upload, X } from "lucide-react";
 import { CURRENCY } from "../constants";
 import {
   daysSince,
@@ -10,9 +10,13 @@ import {
   PotentialStatus,
   rentPerSqm,
 } from "../lib/potentials";
+import { PotentialsTab } from "../hooks/usePotentials";
 
 interface PotentialsPanelProps {
-  potentials: Potential[];
+  potentials: Potential[]; // the sheet's and the drafts
+  draftIds: Set<string>; // added in the app, not in the sheet yet
+  tab: PotentialsTab; // whether the spreadsheet has a Potentials tab
+  onCopyDrafts: (drafts: Potential[]) => void; // every draft as rows for the tab
   selectedId: string | null;
   onSelect: (p: Potential) => void;
   onAdd: () => void; // starts placing a new one on the map
@@ -37,12 +41,23 @@ export function StatusBadge({ status }: { status: PotentialStatus }) {
 
 const ago = (days: number) => (days === 0 ? "today" : `${days}d`);
 
+// Where the list comes from, by whether the spreadsheet has a Potentials tab
+const SOURCE_NOTE: Record<PotentialsTab, string> = {
+  found: "from the sheet",
+  unknown: "Potentials tab not read yet",
+  missing: "no Potentials tab in the sheet",
+  none: "no sheet linked",
+};
+
 /**
  * The Potentials: how many at each status (each a filter), a search, and the list. A row selects the Potential
  * on the map and opens its card. Adding, the map toggles, and CSV / KML export and import are here too.
  */
 export default function PotentialsPanel({
   potentials,
+  draftIds,
+  tab,
+  onCopyDrafts,
   selectedId,
   onSelect,
   onAdd,
@@ -72,6 +87,9 @@ export default function PotentialsPanel({
       .filter((p) => !q || [p.name, p.city, p.district, p.id].some((t) => t.toLowerCase().includes(q)))
       .sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.createdAt.localeCompare(a.createdAt));
   }, [potentials, status, query]);
+
+  const drafts = useMemo(() => potentials.filter((p) => draftIds.has(p.id)), [potentials, draftIds]);
+  const fromSheet = potentials.length - drafts.length;
 
   const pickFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -116,6 +134,28 @@ export default function PotentialsPanel({
         )}
       </label>
 
+      <div className="potentials-source" data-potentials-source={tab}>
+        <span className="potentials-source-text">
+          {tab === "found" ? (
+            <>
+              <b>{fromSheet}</b> {SOURCE_NOTE.found}
+            </>
+          ) : (
+            SOURCE_NOTE[tab]
+          )}
+          {" · "}
+          <b>{drafts.length}</b> {drafts.length === 1 ? "draft" : "drafts"}
+        </span>
+        <button
+          className="layer-action"
+          onClick={() => onCopyDrafts(drafts)}
+          disabled={!drafts.length}
+          title="Every draft as a tab-separated row, to paste into the Potentials tab"
+        >
+          <ClipboardCopy size={13} /> Copy all drafts
+        </button>
+      </div>
+
       <div className="potentials-toggles">
         <label className="settings-row settings-toggle-row">
           <input
@@ -155,6 +195,11 @@ export default function PotentialsPanel({
                     <span className="potential-row-name" title={p.name}>
                       {p.name}
                     </span>
+                    {draftIds.has(p.id) && (
+                      <span className="potential-row-draft" title="Draft — not in sheet yet">
+                        Draft
+                      </span>
+                    )}
                     <StatusBadge status={p.status} />
                   </span>
                   <span className="potential-row-meta">
@@ -162,9 +207,11 @@ export default function PotentialsPanel({
                     <span className="potential-row-rent">
                       {rate !== null ? `${CURRENCY} ${Math.round(rate).toLocaleString()}/m²` : "No rent/m²"}
                     </span>
-                    <span className="potential-row-age" title={`Added ${new Date(p.createdAt).toLocaleDateString()}`}>
-                      {ago(daysSince(p.createdAt, now))}
-                    </span>
+                    {p.createdAt && (
+                      <span className="potential-row-age" title={`Added ${new Date(p.createdAt).toLocaleDateString()}`}>
+                        {ago(daysSince(p.createdAt, now))}
+                      </span>
+                    )}
                   </span>
                 </button>
               </li>

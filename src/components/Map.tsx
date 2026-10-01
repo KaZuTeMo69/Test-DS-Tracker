@@ -58,6 +58,7 @@ interface MapComponentProps {
   onCancelMode: () => void;
   // Potentials: their pins, the one selected, and adding one (placing it, then its form's draggable pin)
   potentials: Potential[];
+  draftPotentialIds: Set<string>; // the ones added in the app, not in the sheet yet
   selectedPotentialId: string | null;
   onSelectPotential: (id: string) => void;
   placingPotential: boolean; // the next map click puts the new Potential there
@@ -101,6 +102,7 @@ export default function MapComponent({
   onEdited,
   onCancelMode,
   potentials,
+  draftPotentialIds,
   selectedPotentialId,
   onSelectPotential,
   placingPotential,
@@ -255,7 +257,12 @@ export default function MapComponent({
           measuring={measuring}
         />
 
-        <PotentialMarkers potentials={potentials} selectedId={selectedPotentialId} onClick={clickPotential} />
+        <PotentialMarkers
+          potentials={potentials}
+          draftIds={draftPotentialIds}
+          selectedId={selectedPotentialId}
+          onClick={clickPotential}
+        />
 
         {addingPotential && (
           <PotentialFormPin position={formPin} color={formPin?.color ?? "#fbbf24"} onMove={onFormPoint} />

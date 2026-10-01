@@ -4,6 +4,7 @@ import { escapeXml } from "./kmlExport";
 import { normalizeHeader, parseDelimited, StoreField, storeColumnFields } from "./importer";
 import { pointInZone, ZoneHit } from "./coverage";
 import { hexToKmlColor, zoneColor } from "./layers";
+import { parseCoordinateInput } from "./coords";
 
 // ── What a Potential is ──
 
@@ -45,9 +46,9 @@ export interface Potential {
   notes: string;
   feasibilityLink: string;
   dropReason: string; // required while dropped, cleared otherwise
-  createdAt: string; // ISO
-  updatedAt: string;
-  statusChangedAt: string;
+  createdAt: string; // ISO; "" for a sheet row without a Date Added
+  updatedAt: string; // ISO, or "" (a sheet row doesn't say)
+  statusChangedAt: string; // ISO, or "" (a sheet row doesn't say)
   addedBy: string;
 }
 
@@ -157,7 +158,7 @@ export function editPotential(p: Potential, patch: Partial<PotentialDraft>, now 
 const text = (v: unknown) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
 
 /** A number from a cell or a saved value: "1,200", "SAR 450,000", "85 m²"; null when there isn't one. */
-function number(v: unknown): number | null {
+export function number(v: unknown): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
   const m = text(v)
     .replace(/,/g, "")
@@ -209,11 +210,21 @@ export function toPotential(raw: unknown, taken: Set<string>, now = new Date()):
   });
 }
 
-/** A status as written ("Approved", "dropped "); null when it isn't one. */
+// What each status may be written as, after lower-casing and dropping punctuation ("Under-Study" → "under study")
+const STATUS_WORDS: Record<PotentialStatus, string[]> = {
+  study: ["study", "scouting", "under study"],
+  approved: ["approved"],
+  backup: ["backup", "back up"],
+  dropped: ["dropped"],
+};
+
+/** A status as written ("Approved", "dropped ", "Scouting", "Under Study"); null when it isn't one. */
 export function toStatus(v: unknown): PotentialStatus | null {
-  const t = text(v).trim().toLowerCase();
-  const found = POTENTIAL_STATUSES.find((s) => s === t || POTENTIAL_STATUS_LABEL[s].toLowerCase() === t);
-  return found ?? null;
+  const t = text(v)
+    .toLowerCase()
+    .replace(/[^a-z]+/g, " ")
+    .trim();
+  return POTENTIAL_STATUSES.find((s) => STATUS_WORDS[s].includes(t)) ?? null;
 }
 
 // ── Moving the old manual stores over ──
@@ -328,38 +339,83 @@ export const POTENTIAL_COLUMNS: Column[] = [
   ["Status Changed", (p) => p.statusChangedAt],
 ];
 
-/** The Potentials as a CSV file: UTF-8 with a byte-order mark, so Excel shows Arabic names. */
-export function potentialsToCsv(list: Potential[]): string {
-  const lines = [POTENTIAL_COLUMNS.map(([h]) => h), ...list.map((p) => POTENTIAL_COLUMNS.map(([, get]) => get(p)))];
+/**
+ * The Potentials as a CSV file: UTF-8 with a byte-order mark, so Excel shows Arabic names. With the drafts' IDs, a
+ * last Source column says which are in the sheet and which are drafts.
+ */
+export function potentialsToCsv(list: Potential[], draftIds?: Set<string>): string {
+  const columns: Column[] = draftIds
+    ? [...POTENTIAL_COLUMNS, ["Source", (p) => (draftIds.has(p.id) ? "Draft" : "Sheet")]]
+    : POTENTIAL_COLUMNS;
+  const lines = [columns.map(([h]) => h), ...list.map((p) => columns.map(([, get]) => get(p)))];
   return "﻿" + lines.map((row) => row.map(csvCell).join(",")).join("\r\n");
 }
 
-// Header words per field, compared after lower-casing and dropping punctuation ("Size (m²)" → "size m")
-const HEADER_FIELDS: Array<[keyof Potential, string[]]> = [
-  ["id", ["id", "potential id"]],
-  ["name", ["name", "potential name", "site name"]],
+/** A column of a Potentials sheet or file: a field, or "coords" for one column holding "lat, lng". */
+export type PotentialColumn = keyof Potential | "coords";
+
+// Header words per field, compared after lower-casing and dropping punctuation ("Size (m²)" → "size m"), and again
+// without a unit in brackets ("Asking Rent (annual SAR)" → "asking rent")
+const HEADER_FIELDS: Array<[PotentialColumn, string[]]> = [
+  ["id", ["id", "potential id", "site id"]],
+  ["name", ["name", "potential name", "site name", "potential", "site"]],
   ["city", ["city"]],
   ["district", ["district", "neighbourhood", "neighborhood"]],
   ["lat", ["lat", "latitude"]],
   ["lng", ["lng", "lon", "long", "longitude"]],
-  ["status", ["status"]],
-  ["size", ["size", "size m", "area", "area m", "size sqm", "area sqm"]],
-  ["askingRentAnnual", ["asking rent", "asking rent sar yr", "asking rent sar", "rent", "annual rent"]],
-  ["expectedOpd", ["expected opd", "opd", "expected orders per day", "orders per day"]],
-  ["contact", ["contact", "landlord", "broker"]],
-  ["notes", ["notes", "note"]],
-  ["feasibilityLink", ["feasibility link", "feasibility", "study link"]],
-  ["dropReason", ["drop reason", "reason dropped"]],
-  ["addedBy", ["added by"]],
-  ["createdAt", ["date added", "created", "created at"]],
-  ["updatedAt", ["updated", "updated at"]],
+  ["coords", ["coordinates", "coordinate", "coords", "lat lng", "lat long", "lat lon", "latlng", "location", "gps"]],
+  ["status", ["status", "stage"]],
+  ["size", ["size", "size m", "size m2", "size sqm", "area", "area m", "area m2", "area sqm", "sqm"]],
+  [
+    "askingRentAnnual",
+    [
+      "asking rent",
+      "asking rent sar yr",
+      "asking rent sar",
+      "asking rent annual",
+      "annual asking rent",
+      "rent",
+      "annual rent",
+    ],
+  ],
+  ["expectedOpd", ["expected opd", "opd", "expected orders per day", "orders per day", "expected orders"]],
+  ["contact", ["contact", "landlord", "broker", "contact person"]],
+  ["notes", ["notes", "note", "comments", "remarks"]],
+  ["feasibilityLink", ["feasibility link", "feasibility", "feasibility study", "feasibility study link", "study link"]],
+  ["dropReason", ["drop reason", "reason dropped", "dropped reason", "reason for dropping"]],
+  ["addedBy", ["added by", "created by"]],
+  ["createdAt", ["date added", "added on", "created", "created at", "created on"]],
+  ["updatedAt", ["updated", "updated at", "last updated"]],
   ["statusChangedAt", ["status changed", "status changed at"]],
 ];
 
-const fieldOfHeader = (header: string): keyof Potential | null => {
-  const h = normalizeHeader(header);
-  return HEADER_FIELDS.find(([, names]) => names.includes(h))?.[0] ?? null;
+const fieldOfHeader = (header: string): PotentialColumn | null => {
+  const full = normalizeHeader(header);
+  const bare = normalizeHeader(header.replace(/\([^)]*\)|\[[^\]]*\]/g, " "));
+  const field = HEADER_FIELDS.find(([, names]) => names.includes(full) || names.includes(bare))?.[0] ?? null;
+  // A monthly rent isn't the asking rent a year
+  return field === "askingRentAnnual" && /month|\bmo\b/i.test(header) ? null : field;
 };
+
+/**
+ * The field under each header, or null: matched by the header's text (any case, punctuation or unit in brackets),
+ * never by position. When two columns match one field, the first is used.
+ */
+export function potentialColumnFields(headers: string[]): Array<PotentialColumn | null> {
+  const seen = new Set<PotentialColumn>();
+  return headers.map((h) => {
+    const f = fieldOfHeader(h);
+    if (!f || seen.has(f)) return null;
+    seen.add(f);
+    return f;
+  });
+}
+
+/** The point in a "lat, lng" cell (decimal, or degrees-minutes-seconds), or null. */
+export function coordsCell(cell: string): { lat: number; lng: number } | null {
+  const parsed = parseCoordinateInput(cell);
+  return parsed && "point" in parsed ? parsed.point : null;
+}
 
 export interface PotentialImport {
   list: Potential[]; // everything after the merge
@@ -397,13 +453,16 @@ function merge(existing: Potential[], rows: Record<string, unknown>[], now: Date
 export function importPotentialsCsv(csv: string, existing: Potential[], now = new Date()): PotentialImport {
   const [headers, ...rows] = parseDelimited(csv);
   if (!headers) return { list: existing, added: 0, updated: 0, skipped: 0 };
-  const fields = headers.map(fieldOfHeader);
+  const fields = potentialColumnFields(headers);
   if (!fields.includes("name")) throw new Error('No "Name" column in the header row.');
   const objects = rows.map((cells) => {
     const o: Record<string, unknown> = {};
     fields.forEach((f, i) => {
-      if (f && o[f] === undefined) o[f] = cells[i] ?? "";
+      if (f) o[f] = cells[i] ?? "";
     });
+    // One "lat, lng" column stands in for Lat and Lng
+    const point = !text(o.lat).trim() && !text(o.lng).trim() ? coordsCell(text(o.coords)) : null;
+    if (point) Object.assign(o, point);
     return o;
   });
   return merge(existing, objects, now);
@@ -428,8 +487,8 @@ export function importPotentialsJson(json: string, existing: Potential[], now = 
 
 // ── KML ──
 
-/** The Potentials as pins in a KML file (Google Earth, My Maps), coloured by status. */
-export function potentialsToKml(list: Potential[]): string {
+/** The Potentials as pins in a KML file (Google Earth, My Maps), coloured by status. Drafts say so. */
+export function potentialsToKml(list: Potential[], draftIds?: Set<string>): string {
   const styles = POTENTIAL_STATUSES.map(
     (s) =>
       `    <Style id="potential-${s}"><IconStyle><color>${hexToKmlColor(POTENTIAL_COLOR[s])}</color>` +
@@ -439,6 +498,7 @@ export function potentialsToKml(list: Potential[]): string {
     const rate = rentPerSqm(p);
     const lines = [
       `${POTENTIAL_STATUS_LABEL[p.status]} · ${p.id}`,
+      draftIds?.has(p.id) ? "Draft, not in the sheet yet" : "",
       [p.district, p.city].filter(Boolean).join(", "),
       p.size !== null ? `Size: ${p.size} m²` : "",
       p.askingRentAnnual !== null
@@ -496,7 +556,7 @@ const STORE_VALUE: Partial<Record<StoreField, (p: Potential) => string | number 
 };
 
 // A cell for a tab-separated row: tabs and line breaks would split it, so they become spaces
-const tsvCell = (v: string | number | null | undefined) =>
+export const tsvCell = (v: string | number | null | undefined) =>
   v === null || v === undefined ? "" : String(v).replace(/[\t\r\n]+/g, " ");
 
 /**

@@ -66,6 +66,8 @@ export function useStores(notify: (msg: string) => void) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<string>(""); // time of the last successful sheet load
   const syncFailedRef = useRef(false);
+  // The sheet each successful load came from, and how many there have been: the Potentials tab is read after each
+  const [sheetSync, setSheetSync] = useState<{ id: string; count: number }>({ id: "", count: 0 });
 
   const loadDataFromSheet = useCallback(
     async (id: string, mode: SheetLoad): Promise<boolean> => {
@@ -90,6 +92,7 @@ export function useStores(notify: (msg: string) => void) {
 
         setBaseStores(assignStableIds(data, storeIdsRef.current));
         setStoreHeaders(table.headers);
+        setSheetSync((s) => ({ id, count: s.count + 1 }));
         setFileName(null);
         setLastSync(syncTime());
         setError(null);
@@ -147,6 +150,7 @@ export function useStores(notify: (msg: string) => void) {
     setSyncError(null);
     syncFailedRef.current = false;
     setLastSync("");
+    setSheetSync((s) => ({ id: "", count: s.count }));
   };
 
   /** Loads a Google Sheet from its link; true once it has loaded (and is then remembered and kept in sync). */
@@ -216,5 +220,7 @@ export function useStores(notify: (msg: string) => void) {
     resetSample,
     // The loaded sheet's (or CSV file's) header row, for copying a row in its column order
     storeHeaders,
+    // The sheet of the last successful load ("" once none is linked) and a count of loads, for the Potentials tab
+    sheetSync,
   };
 }

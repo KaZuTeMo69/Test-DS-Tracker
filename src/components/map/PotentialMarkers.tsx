@@ -7,10 +7,12 @@ import { potentialIcon } from "./pinIcon";
 const PotentialMarker = memo(function PotentialMarker({
   potential: p,
   selected,
+  draft,
   onClick,
 }: {
   potential: Potential;
   selected: boolean;
+  draft: boolean; // added in the app, not in the sheet yet: a dashed outline
   onClick: (p: Potential) => void;
   key?: string;
 }) {
@@ -27,34 +29,43 @@ const PotentialMarker = memo(function PotentialMarker({
   return (
     <Marker
       position={[p.lat, p.lng]}
-      icon={potentialIcon(POTENTIAL_COLOR[p.status], { selected, light: p.status === "dropped" })}
+      icon={potentialIcon(POTENTIAL_COLOR[p.status], { selected, draft, light: p.status === "dropped" })}
       eventHandlers={handlers}
       zIndexOffset={selected ? 1100 : 500}
       keyboard
-      title={`${p.name} (Potential, ${POTENTIAL_STATUS_LABEL[p.status]})`}
-      alt={`Potential: ${p.name}`}
+      title={`${p.name} (Potential, ${POTENTIAL_STATUS_LABEL[p.status]}${draft ? ", draft" : ""})`}
+      alt={`Potential: ${p.name}${draft ? " (draft)" : ""}`}
     >
       <Tooltip direction="top" offset={[0, -34]} className="potential-tooltip">
         <b>{p.name}</b> · {POTENTIAL_STATUS_LABEL[p.status]}
+        {draft && " · Draft"}
       </Tooltip>
     </Marker>
   );
 });
 
-/** The Potentials' diamond pins (not clustered, so they're never hidden in a store cluster). */
+/** The Potentials' diamond pins (not clustered, so they're never hidden in a store cluster). Drafts are dashed. */
 export default function PotentialMarkers({
   potentials,
+  draftIds,
   selectedId,
   onClick,
 }: {
   potentials: Potential[];
+  draftIds: Set<string>;
   selectedId: string | null;
   onClick: (p: Potential) => void; // select it, or snap a measuring point to it
 }) {
   return (
     <>
       {potentials.map((p) => (
-        <PotentialMarker key={p.id} potential={p} selected={selectedId === p.id} onClick={onClick} />
+        <PotentialMarker
+          key={p.id}
+          potential={p}
+          selected={selectedId === p.id}
+          draft={draftIds.has(p.id)}
+          onClick={onClick}
+        />
       ))}
     </>
   );

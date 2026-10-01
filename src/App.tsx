@@ -24,6 +24,14 @@ import {
   withStatus,
 } from "./lib/potentials";
 import { nearestByAir } from "./lib/roads";
+import { copyText } from "./lib/clipboard";
+import {
+  potentialSheetRows,
+  potentialsTemplateCsv,
+  sheetIssueGroups,
+  spreadsheetLink,
+  TEMPLATE_FILE_NAME,
+} from "./lib/sheetPotentials";
 import { RouteInfo } from "./lib/routing";
 import { useFilters } from "./hooks/useFilters";
 import { useLayers } from "./hooks/useLayers";
@@ -37,6 +45,7 @@ import { linkedView, useUrlState } from "./hooks/useUrlState";
 import { openingSheetHeight } from "./components/CardFrame";
 import CoverageSummary from "./components/CoverageSummary";
 import DetailPanel from "./components/DetailPanel";
+import { PotentialsQuality } from "./components/DataQualityPanel";
 import { ExtraFigures } from "./components/KpiFigures";
 import LayersPanel from "./components/LayersPanel";
 import MapComponent from "./components/Map";
@@ -72,7 +81,7 @@ export default function App() {
   const data = useStores(showToast);
   const { stores } = data;
   const { settings, updateSettings } = useSettingsState();
-  const potentials = usePotentials(showToast);
+  const potentials = usePotentials(showToast, { sheetSync: data.sheetSync, storeHeaders: data.storeHeaders });
   const mapLayers = useLayers(showToast);
   // Which zones each store is in, across all stores (live or not) and the layers shown on the map
   const coverage = useMemo(() => analyseCoverage(stores, mapLayers.layers), [stores, mapLayers.layers]);
@@ -177,6 +186,9 @@ export default function App() {
   const notOnMap = useMemo(() => filteredStores.filter((s) => !hasCoords(s)).length, [filteredStores]);
   // Every problem in the data, for the Data Quality panel (all stores, whatever the filters)
   const quality = useMemo(() => dataQuality(stores), [stores]);
+  // The problems in the rows of the sheet's Potentials tab, in their own section of Data Quality
+  const potentialQuality = useMemo(() => sheetIssueGroups(potentials.tabIssues), [potentials.tabIssues]);
+  const issueCount = quality.storesWithIssues + potentialQuality.rows;
   // The totals in the top bar, for the stores that pass the filters
   const stats = useMemo(() => kpiStats(filteredStores, settings, settings.includeVat), [filteredStores, settings]);
 
@@ -418,9 +430,10 @@ export default function App() {
   const saveForm = () => {
     if (!potentialForm) return;
     if (potentialForm.id) {
-      potentials.update(potentialForm.id, potentialForm.draft);
+      // A draft whose row reached the sheet while its form was open is edited in the sheet now
+      if (potentials.update(potentialForm.id, potentialForm.draft)) showToast("Potential saved");
+      else showToast("It's in the sheet now, so it's edited there. Nothing was changed");
       setSelectedPotentialId(potentialForm.id);
-      showToast("Potential saved");
     } else {
       const p = potentials.add(potentialForm.draft);
       setSelectedPotentialId(p.id);
@@ -442,8 +455,8 @@ export default function App() {
   };
   const exportPotentials = (kind: "csv" | "kml") => {
     const name = potentialsFileName(kind);
-    if (kind === "csv") download(name, potentialsToCsv(potentials.list), "text/csv;charset=utf-8");
-    else download(name, potentialsToKml(potentials.list), "application/vnd.google-earth.kml+xml");
+    if (kind === "csv") download(name, potentialsToCsv(potentials.list, potentials.draftIds), "text/csv;charset=utf-8");
+    else download(name, potentialsToKml(potentials.list, potentials.draftIds), "application/vnd.google-earth.kml+xml");
     showToast(`Saved ${name} with ${potentials.list.length} potentials`);
   };
   const importPotentials = async (file: File) => {
@@ -458,8 +471,22 @@ export default function App() {
   };
   const potentialCounts = useMemo(() => {
     const study = potentials.list.filter((p) => p.status === "study").length;
-    return `${potentials.list.length} ${potentials.list.length === 1 ? "potential" : "potentials"} · ${study} under study`;
-  }, [potentials.list]);
+    const drafts = potentials.drafts.length;
+    return `${potentials.list.length} ${potentials.list.length === 1 ? "potential" : "potentials"} · ${study} under study${drafts ? ` · ${drafts} ${drafts === 1 ? "draft" : "drafts"}` : ""}`;
+  }, [potentials.list, potentials.drafts]);
+  // Drafts as rows for the Potentials tab, in its column order once it's been read
+  const copyForSheet = async (list: Potential[]) => {
+    const n = list.length;
+    if (await copyText(potentialSheetRows(list, potentials.tabHeaders)))
+      showToast(
+        `Copied ${n === 1 ? "a row" : `${n} rows`} for the Potentials tab. Paste into the first empty row of the tab`,
+      );
+    else showToast("Couldn't copy. Your browser blocked the clipboard");
+  };
+  const downloadTemplate = () => {
+    download(TEMPLATE_FILE_NAME, potentialsTemplateCsv(), "text/csv;charset=utf-8");
+    showToast(`Saved ${TEMPLATE_FILE_NAME}. Import it into your spreadsheet as a new sheet`);
+  };
 
   // The stores that pass the filters, with their renewal dates and zones worked out
   const exportCsv = () => {
@@ -531,8 +558,8 @@ export default function App() {
   const openSettings = useCallback(() => setIsSettingsOpen(true), []);
 
   const railBadges = useMemo(
-    () => ({ renewals: stats.renewals.now, quality: quality.storesWithIssues }),
-    [stats.renewals.now, quality.storesWithIssues],
+    () => ({ renewals: stats.renewals.now, quality: issueCount }),
+    [stats.renewals.now, issueCount],
   );
   // Leaflet is told to measure itself again when anything around the map opens or closes
   const layoutKey = `${focusMode}|${panelShown}|${narrow}|${leftInset}`;
@@ -567,7 +594,7 @@ export default function App() {
           unclear={unclear}
           unclearOnly={filters.unclearOnly}
           onShowUnclear={showUnclearStores}
-          issueCount={quality.storesWithIssues}
+          issueCount={issueCount}
           onShowIssues={openDataQuality}
           loading={loadingSheet}
           searchOpen={searchOpen}
@@ -582,6 +609,8 @@ export default function App() {
         onClose={closeSettings}
         orsKey={orsKey}
         onOrsKey={setOrsKey}
+        potentialsTab={potentials.tab}
+        onDownloadTemplate={downloadTemplate}
       />
 
       <main className="app-main flex flex-1 min-h-0 relative">
@@ -638,6 +667,7 @@ export default function App() {
               onEdited={finishEditingShape}
               onCancelMode={() => setMapMode(null)}
               potentials={potentialPins}
+              draftPotentialIds={potentials.draftIds}
               selectedPotentialId={selectedPotentialId}
               onSelectPotential={selectPotential}
               placingPotential={placing}
@@ -678,6 +708,10 @@ export default function App() {
                 layers={mapLayers.layers}
                 cityMedian={medianFor(cityMedians, selectedPotential.city)}
                 storeHeaders={data.storeHeaders}
+                draft={potentials.draftIds.has(selectedPotential.id)}
+                sheetLink={data.sheetId ? spreadsheetLink(data.sheetId) : null}
+                tab={potentials.tab}
+                tabHeaders={potentials.tabHeaders}
                 onEdit={(patch) => potentials.update(selectedPotential.id, patch)}
                 onStatus={(status, reason) => setPotentialStatus(selectedPotential, status, reason)}
                 onMove={() => editPotentialInForm(selectedPotential)}
@@ -754,6 +788,17 @@ export default function App() {
               coverage={coverage}
               benchmarks={benchmarks}
               quality={quality}
+              potentialsQuality={
+                <PotentialsQuality
+                  groups={potentialQuality.groups}
+                  rows={potentialQuality.rows}
+                  selectedId={selectedPotentialId}
+                  onSelectPotential={(id) => {
+                    const p = potentials.list.find((x) => x.id === id);
+                    if (p) selectPotentialFromList(p);
+                  }}
+                />
+              }
               cityFigures={<ExtraFigures stats={stats} className="city-figures" />}
               insightsExtra={
                 <CoverageSummary
@@ -770,6 +815,9 @@ export default function App() {
               potentialsPanel={
                 <PotentialsPanel
                   potentials={potentials.list}
+                  draftIds={potentials.draftIds}
+                  tab={potentials.tab}
+                  onCopyDrafts={copyForSheet}
                   selectedId={selectedPotentialId}
                   onSelect={selectPotentialFromList}
                   onAdd={startPlacing}

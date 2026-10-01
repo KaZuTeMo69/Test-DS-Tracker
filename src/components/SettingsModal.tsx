@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Settings as SettingsIcon, X } from "lucide-react";
+import { Download, Settings as SettingsIcon, X } from "lucide-react";
 import { DEFAULT_SETTINGS, MAX_DAYS, MAX_PERCENT, Settings, toWholeNumber, VAT_RATE } from "../lib/settings";
 import { formatDate, today } from "../lib/contract";
 import { checkOrsKey, KEY_CHECK_MESSAGE, KeyCheck } from "../lib/roads";
+import { PotentialsTab } from "../hooks/usePotentials";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,7 +12,18 @@ interface SettingsModalProps {
   onClose: () => void;
   orsKey: string; // kept apart from the other settings: Reset to defaults leaves it
   onOrsKey: (key: string) => void;
+  potentialsTab: PotentialsTab; // whether the linked spreadsheet has a Potentials tab
+  onDownloadTemplate: () => void; // the tab's header row as a CSV file
 }
+
+// Whether the spreadsheet has the Potentials tab the shared pipeline is read from
+const TAB_STATUS: Record<PotentialsTab, string> = {
+  found: "Your spreadsheet has a Potentials tab: its rows show on the map, read-only. Edit them in Google Sheets.",
+  unknown: "Your spreadsheet's Potentials tab hasn't been read yet: it's read after each sync.",
+  missing:
+    "Your spreadsheet has no Potentials tab yet, so only the drafts added here show. Download the template and, in Google Sheets, choose File → Import → Upload → Insert new sheet(s): the new tab is named Potentials.",
+  none: "Link a Google Sheet to share the Potentials through its Potentials tab. Until then, the ones added here are drafts in this browser.",
+};
 
 /**
  * The OpenRouteService key: typed or pasted, and saved when the field is left (or Enter), not on every keystroke,
@@ -169,7 +181,16 @@ function NumberInput({
 }
 
 /** Renewal lead and warning days, and whether rent is shown with VAT. Changes apply at once. */
-export default function SettingsModal({ isOpen, settings, onChange, onClose, orsKey, onOrsKey }: SettingsModalProps) {
+export default function SettingsModal({
+  isOpen,
+  settings,
+  onChange,
+  onClose,
+  orsKey,
+  onOrsKey,
+  potentialsTab,
+  onDownloadTemplate,
+}: SettingsModalProps) {
   useEffect(() => {
     if (!isOpen) return;
     // Esc closes just this window (preventDefault tells the page's own Esc handling it's been used)
@@ -321,6 +342,12 @@ export default function SettingsModal({ isOpen, settings, onChange, onClose, ors
             />
           </label>
           <p className="settings-note">Put in "Added by" on the Potentials you add. Kept in this browser only.</p>
+          <p className="settings-note" data-potentials-tab={potentialsTab}>
+            {TAB_STATUS[potentialsTab]}
+          </p>
+          <button className="layer-action settings-template" onClick={onDownloadTemplate}>
+            <Download size={13} /> Download Potentials template
+          </button>
         </section>
 
         <section className="settings-section">
