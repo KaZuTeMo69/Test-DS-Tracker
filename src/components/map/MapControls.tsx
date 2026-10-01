@@ -1,7 +1,7 @@
 import { RefObject, useEffect, useRef, useState } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
-import { Check, Layers, Map as MapIcon, Maximize2, Moon, Palette, Ruler, Sun } from "lucide-react";
+import { Check, Group, Layers, Map as MapIcon, Maximize2, Moon, Palette, Ruler, Sun, Ungroup } from "lucide-react";
 import { PIN_COLOR_MODES, PinColors } from "../../lib/settings";
 import { BASE_MAP_ORDER, BASE_MAPS, BaseMapId } from "../../lib/baseMaps";
 
@@ -13,6 +13,8 @@ interface MapControlsProps {
   onOpenLayers: () => void;
   pinColors: PinColors;
   onPinColors: (pinColors: PinColors) => void;
+  clusterStores: boolean; // stores close together grouped into clusters
+  onClusterStores: (on: boolean) => void;
   measuring: boolean;
   onMeasure: () => void; // starts measuring, or stops and clears it
   measureDisabled: boolean; // while a zone is being drawn or edited
@@ -164,8 +166,8 @@ function PinColorMenu({
 }
 
 /**
- * The buttons down the right of the map: day/night, the base map, pin colours, map layers, measuring and focus mode;
- * then the drawn route's step-by-step directions.
+ * The buttons down the right of the map: day/night, the base map, pin colours, clustering on or off, map layers,
+ * measuring and focus mode; then the drawn route's step-by-step directions.
  */
 export default function MapControls({
   base,
@@ -175,6 +177,8 @@ export default function MapControls({
   onOpenLayers,
   pinColors,
   onPinColors,
+  clusterStores,
+  onClusterStores,
   measuring,
   onMeasure,
   measureDisabled,
@@ -225,6 +229,17 @@ export default function MapControls({
             </button>
             {colorMenu && <PinColorMenu mode={pinColors} onChoose={onPinColors} onClose={() => setColorMenu(false)} />}
           </div>
+
+          {/* Clustering is on by default, so the button is lit when it's off: every store shows on its own */}
+          <button
+            onClick={() => onClusterStores(!clusterStores)}
+            aria-pressed={clusterStores}
+            data-cluster-stores={clusterStores ? "on" : "off"}
+            className={`${BTN} ${clusterStores ? IDLE : LIT}`}
+            title={clusterStores ? "Clustering on: show every store on its own" : "Clustering off: group nearby stores"}
+          >
+            {clusterStores ? <Group size={18} /> : <Ungroup size={18} />}
+          </button>
 
           <button
             onClick={onOpenLayers}

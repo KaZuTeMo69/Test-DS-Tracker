@@ -3,16 +3,19 @@ import { Marker, Tooltip, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { Potential, POTENTIAL_COLOR, POTENTIAL_STATUS_LABEL } from "../../lib/potentials";
 import { potentialIcon } from "./pinIcon";
+import { useZoomedOut } from "./useZoomedOut";
 
 const PotentialMarker = memo(function PotentialMarker({
   potential: p,
   selected,
   draft,
+  small,
   onClick,
 }: {
   potential: Potential;
   selected: boolean;
   draft: boolean; // added in the app, not in the sheet yet: a dashed outline
+  small: boolean; // zoomed out: a smaller diamond
   onClick: (p: Potential) => void;
   key?: string;
 }) {
@@ -29,14 +32,14 @@ const PotentialMarker = memo(function PotentialMarker({
   return (
     <Marker
       position={[p.lat, p.lng]}
-      icon={potentialIcon(POTENTIAL_COLOR[p.status], { selected, draft, light: p.status === "dropped" })}
+      icon={potentialIcon(POTENTIAL_COLOR[p.status], { selected, draft, small, light: p.status === "dropped" })}
       eventHandlers={handlers}
       zIndexOffset={selected ? 1100 : 500}
       keyboard
       title={`${p.name} (Potential, ${POTENTIAL_STATUS_LABEL[p.status]}${draft ? ", draft" : ""})`}
       alt={`Potential: ${p.name}${draft ? " (draft)" : ""}`}
     >
-      <Tooltip direction="top" offset={[0, -34]} className="potential-tooltip">
+      <Tooltip direction="top" offset={[0, small ? -22 : -34]} className="potential-tooltip">
         <b>{p.name}</b> · {POTENTIAL_STATUS_LABEL[p.status]}
         {draft && " · Draft"}
       </Tooltip>
@@ -44,7 +47,10 @@ const PotentialMarker = memo(function PotentialMarker({
   );
 });
 
-/** The Potentials' diamond pins (not clustered, so they're never hidden in a store cluster). Drafts are dashed. */
+/**
+ * The Potentials' diamond pins (not clustered, so they're never hidden in a store cluster). Drafts are dashed;
+ * zoomed out, they're smaller.
+ */
 export default function PotentialMarkers({
   potentials,
   draftIds,
@@ -56,6 +62,7 @@ export default function PotentialMarkers({
   selectedId: string | null;
   onClick: (p: Potential) => void; // select it, or snap a measuring point to it
 }) {
+  const zoomedOut = useZoomedOut();
   return (
     <>
       {potentials.map((p) => (
@@ -64,6 +71,7 @@ export default function PotentialMarkers({
           potential={p}
           selected={selectedId === p.id}
           draft={draftIds.has(p.id)}
+          small={zoomedOut}
           onClick={onClick}
         />
       ))}

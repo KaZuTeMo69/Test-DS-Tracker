@@ -47,6 +47,8 @@ interface MapComponentProps {
   onOpenLayers: () => void;
   pinColors: PinColors;
   onPinColors: (pinColors: PinColors) => void;
+  clusterStores: boolean; // stores close together grouped into clusters
+  onClusterStores: (on: boolean) => void;
   onFocusMode: () => void;
   searchOpen: boolean; // the coordinate search bar, opened and closed from the top bar
   zoomRequest: ZoomRequest | null;
@@ -93,6 +95,8 @@ export default function MapComponent({
   onOpenLayers,
   pinColors,
   onPinColors,
+  clusterStores,
+  onClusterStores,
   onFocusMode,
   searchOpen,
   zoomRequest,
@@ -281,6 +285,8 @@ export default function MapComponent({
           onOpenLayers={onOpenLayers}
           pinColors={pinColors}
           onPinColors={onPinColors}
+          clusterStores={clusterStores}
+          onClusterStores={onClusterStores}
           onFocusMode={onFocusMode}
           panelRef={routePanelRef}
         />

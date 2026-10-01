@@ -14,6 +14,7 @@ export interface Settings extends RenewalDays {
   showDroppedPotentials: boolean;
   addedBy: string; // your name, put on the Potentials you add
   targetCpo: number | null; // SAR per order a store should cost at most; the Potentials are measured against it
+  clusterStores: boolean; // group stores that are close together into clusters on the map
 }
 
 export const VAT_RATE = 0.15;
@@ -30,6 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showDroppedPotentials: false,
   addedBy: "",
   targetCpo: null,
+  clusterStores: true,
 };
 
 /** A whole number from 0 to max, typed or saved, or null. */
@@ -60,6 +62,7 @@ export function toSettings(v: unknown): Settings {
       typeof o.targetCpo === "number" && Number.isFinite(o.targetCpo) && o.targetCpo > 0 && o.targetCpo < 10000
         ? o.targetCpo
         : DEFAULT_SETTINGS.targetCpo,
+    clusterStores: typeof o.clusterStores === "boolean" ? o.clusterStores : DEFAULT_SETTINGS.clusterStores,
   };
 }
 

@@ -372,6 +372,7 @@ export default function SettingsModal({
               onChange({
                 ...DEFAULT_SETTINGS,
                 pinColors: settings.pinColors,
+                clusterStores: settings.clusterStores,
                 showPotentials: settings.showPotentials,
                 showDroppedPotentials: settings.showDroppedPotentials,
                 addedBy: settings.addedBy,

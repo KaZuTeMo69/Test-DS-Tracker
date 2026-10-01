@@ -64,7 +64,14 @@ export default function MapController({
     click: () => {
       if (onMapClick) onMapClick();
     },
+    // The zoom on the map's box, for the styles (and checks) that depend on it
+    zoomend: () => {
+      map.getContainer().dataset.zoom = String(map.getZoom());
+    },
   });
+  useEffect(() => {
+    map.getContainer().dataset.zoom = String(map.getZoom());
+  }, [map]);
   const storesWithCoords = useMemo(() => stores.filter((s) => s.lat !== null && s.lng !== null), [stores]);
   const pinsKey = useMemo(() => storesWithCoords.map((s) => `${s.id}:${s.lat},${s.lng}`).join("|"), [storesWithCoords]);
   // What the view was last fitted to. A background refresh hands over a new store list with the same pins,

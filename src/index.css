@@ -4335,3 +4335,45 @@ a.pc-action {
 .quality-row.off {
   cursor: default;
 }
+
+/* Store clusters: a dark disc with the count, ringed by the colours of the stores inside */
+.store-cluster-icon {
+  background: none;
+  border: none;
+}
+
+.store-cluster {
+  line-height: 0;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
+  cursor: pointer;
+}
+
+.store-cluster-icon:hover .store-cluster {
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.35));
+}
+
+.leaflet-tooltip.cluster-tooltip {
+  background: #141414;
+  border: 1px solid #333;
+  color: #efefef;
+  font-family: "DM Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 9px !important;
+  margin: 0 !important;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  white-space: normal;
+  width: max-content;
+  max-width: 260px;
+}
+
+.leaflet-tooltip.cluster-tooltip::before {
+  border-top-color: #333;
+}
+
+/* Stores as dots when zoomed out */
+.store-dot {
+  background: none;
+  border: none;
+}
