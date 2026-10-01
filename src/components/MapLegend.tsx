@@ -36,13 +36,41 @@ const Dot = ({ color }: { color: string }) => (
   <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
 );
 
+// A cluster in the legend: the dark disc in a ring of the mode's colours, as on the map
+function Donut({ colors }: { colors: string[] }) {
+  const r = 5.5;
+  const c = 2 * Math.PI * r;
+  const part = c / colors.length;
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0">
+      <circle cx="8" cy="8" r="8" fill="#141414" />
+      {colors.map((color, i) => (
+        <circle
+          key={color}
+          cx="8"
+          cy="8"
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeDasharray={`${part - 1} ${c - part + 1}`}
+          strokeDashoffset={-i * part}
+          transform="rotate(-90 8 8)"
+        />
+      ))}
+      <circle cx="8" cy="8" r="3.4" fill="#141414" stroke="#333" strokeWidth="0.8" />
+    </svg>
+  );
+}
+
 /**
  * What the pins mean: the shape is the status and the size the annual rent; the colour is the status, rent per m²
- * or CPO against the city median, or OPD by quartile (chosen with the palette button in the map controls). Also how many of the listed
- * stores have no pin, and the Potentials' diamonds when any are on the map. Folded into a small chip until opened.
+ * or CPO against the city median, or OPD by quartile (chosen with the palette button in the map controls). Zoomed out
+ * stores are dots, and a cluster's ring shows the mix inside. Also how many of the listed stores have no pin, and the
+ * Potentials' diamonds when any are on the map. Folded into a small chip until opened.
  */
 export default function MapLegend({ notOnMap, potentials = 0 }: { notOnMap: number; potentials?: number }) {
-  const { pinColors, rentFlagPercent } = useSettings();
+  const { pinColors, rentFlagPercent, clusterStores } = useSettings();
   const [open, setOpen] = useState(false);
   // Colours other than status: the shapes still say the status, in grey
   const byValue = pinColors !== "status";
@@ -118,6 +146,15 @@ export default function MapLegend({ notOnMap, potentials = 0 }: { notOnMap: numb
               <Glyph shape={shape} color={byValue ? "#d4d4d4" : STATUS_COLOR[shape]} /> {SHAPE_LABEL[shape]}
             </Item>
           ))}
+          <Item title="Zoomed out, stores are coloured dots (sized by rent); the status shapes show from street level">
+            <span className="text-gray-400 normal-case font-semibold">Zoom in for the status shapes</span>
+          </Item>
+          {clusterStores && (
+            <Item title="A cluster's ring is split in the colours of the stores inside, in their proportions. Hover for the numbers">
+              <Donut colors={swatches} />
+              <span className="normal-case font-semibold">Ring = mix of stores inside</span>
+            </Item>
+          )}
           <Item>
             <Dot color={PIN_SEL} /> Selected
           </Item>

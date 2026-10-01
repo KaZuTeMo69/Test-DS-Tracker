@@ -658,6 +658,8 @@ export default function App() {
               onOpenLayers={openLayers}
               pinColors={settings.pinColors}
               onPinColors={(pinColors) => updateSettings({ pinColors })}
+              clusterStores={settings.clusterStores}
+              onClusterStores={(clusterStores) => updateSettings({ clusterStores })}
               onFocusMode={enterFocusMode}
               searchOpen={searchOpen && !focusMode}
               zoomRequest={zoomRequest}

@@ -3,6 +3,8 @@ import { Store } from "../../types";
 import { PinSize, RentLevel } from "../../lib/rentStats";
 import { OpdLevel } from "../../lib/cpo";
 import { isLive, isPaid } from "../../lib/status";
+import { PIN_SEL } from "../../constants";
+import type { PinCategory } from "./pinCategories";
 
 // Fix for default marker icons in Leaflet
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -61,8 +63,17 @@ const WIDTH: Record<PinSize, number> = { s: 24, m: 30, l: 37 };
 // Icons are cached so re-renders hand Leaflet the same icon object instead of rebuilding every pin
 const iconCache = new Map<string, L.DivIcon>();
 
-export function makeIcon(color: string, shape: PinShape = "round", size: PinSize = "m", selected = false) {
-  const cacheKey = `${color}|${shape}|${size}|${selected}`;
+/** The options of a store's icon: with its colour category, which the store's cluster reads for its ring. */
+export type StoreIconOptions = L.DivIconOptions & { ring?: PinCategory };
+
+export function makeIcon(
+  color: string,
+  shape: PinShape = "round",
+  size: PinSize = "m",
+  selected = false,
+  ring?: PinCategory,
+) {
+  const cacheKey = `${color}|${shape}|${size}|${selected}|${ring?.key ?? ""}|${ring?.label ?? ""}`;
   const cached = iconCache.get(cacheKey);
   if (cached) return cached;
 
@@ -92,8 +103,50 @@ export function makeIcon(color: string, shape: PinShape = "round", size: PinSize
     iconSize: [sz, h],
     iconAnchor: [sz / 2, h],
     popupAnchor: [0, -h],
-  });
+    ring,
+  } as StoreIconOptions);
   iconCache.set(cacheKey, icon);
+  return icon;
+}
+
+// ── Zoomed out: small dots ──
+
+/** Below this zoom, stores are dots rather than pins, so the colours read at a glance over a whole city. */
+export const DOT_ZOOM = 12;
+
+// Dot widths by annual rent, as the pins' sizes
+const DOT_WIDTH: Record<PinSize, number> = { s: 10, m: 12, l: 14 };
+const dotCache = new Map<string, L.DivIcon>();
+
+/**
+ * A store when zoomed out: a dot in its colour with a white outline, sized by rent like the pins. The selected one is
+ * larger, in the selection blue with a halo. The clickable box is bigger than the dot.
+ */
+export function dotIcon(color: string, shape: PinShape, size: PinSize = "m", selected = false, ring?: PinCategory) {
+  const cacheKey = `${color}|${shape}|${size}|${selected}|${ring?.key ?? ""}|${ring?.label ?? ""}`;
+  const cached = dotCache.get(cacheKey);
+  if (cached) return cached;
+  const d = selected ? 18 : DOT_WIDTH[size];
+  const box = d + 10;
+  const c = box / 2;
+  const r = d / 2;
+  const fill = selected ? PIN_SEL : color;
+  // Drawn as a path, like the pins, so the fill reads the same way
+  const dot = `M${c - r} ${c}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0z`;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${box}" height="${box}" viewBox="0 0 ${box} ${box}" ` +
+    `data-shape="${shape}" data-size="${size}" data-marker="dot">` +
+    (selected ? `<circle cx="${c}" cy="${c}" r="${r + 4}" fill="${fill}" opacity="0.3"/>` : "") +
+    `<path d="${dot}" fill="${fill}" stroke="#ffffff" stroke-width="1.5"/></svg>`;
+  const icon = L.divIcon({
+    html: svg,
+    className: "store-dot",
+    iconSize: [box, box],
+    iconAnchor: [c, c],
+    popupAnchor: [0, -r - 2],
+    ring,
+  } as StoreIconOptions);
+  dotCache.set(cacheKey, icon);
   return icon;
 }
 
@@ -107,13 +160,17 @@ const potentialIconCache = new Map<string, L.DivIcon>();
  * A Potential's pin: a diamond in its status colour with a small white diamond inside. The dark grey of dropped
  * ones gets a light outline so it shows on the night map. Selected: bigger, with a white halo (not the selected
  * stores' sky blue, which is close to the backup blue). The form's pin (moving) has a dashed white outline, and a
- * draft (added in the app, not in the sheet yet) a finer dashed one.
+ * draft (added in the app, not in the sheet yet) a finer dashed one. Zoomed out (small), they're smaller.
  */
-export function potentialIcon(color: string, { selected = false, moving = false, light = false, draft = false } = {}) {
-  const key = `${color}|${selected}|${moving}|${light}|${draft}`;
+export function potentialIcon(
+  color: string,
+  { selected = false, moving = false, light = false, draft = false, small = false } = {},
+) {
+  const key = `${color}|${selected}|${moving}|${light}|${draft}|${small}`;
   const cached = potentialIconCache.get(key);
   if (cached) return cached;
-  const sz = POTENTIAL_WIDTH + (selected || moving ? 8 : 0);
+  // Smaller when zoomed out (where the stores are dots), still a diamond
+  const sz = (small ? 16 : POTENTIAL_WIDTH) + (selected || moving ? 8 : 0);
   const h = Math.round(sz * 1.35);
   const stroke = moving || draft ? "#ffffff" : light ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.45)";
   const dashes = moving ? 'stroke-dasharray="2.4 1.8"' : draft ? 'stroke-dasharray="1.8 1.4"' : "";
