@@ -91,6 +91,12 @@ const validCoords = (lat: unknown, lng: unknown) =>
 
 export const isWebLink = (text: string) => /^https?:\/\/[^\s]+\.[^\s]+/i.test(text.trim());
 
+/**
+ * A link that's safe to open: a web address (http or https), else null. Feasibility links from the sheet or an
+ * imported file aren't checked as the form's are, so anything else is shown as text rather than as a link.
+ */
+export const webLinkOrNull = (text: string): string | null => (isWebLink(text) ? text.trim() : null);
+
 /** What's wrong with a Potential as typed: name and city are required, and a dropped one needs its reason. */
 export function checkPotential(p: PotentialDraft): PotentialErrors {
   const errors: PotentialErrors = {};

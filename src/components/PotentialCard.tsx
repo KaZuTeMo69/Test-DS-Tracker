@@ -13,6 +13,7 @@ import {
   daysSince,
   isWebLink,
   Potential,
+  webLinkOrNull,
   POTENTIAL_COLOR,
   POTENTIAL_STATUS_LABEL,
   POTENTIAL_STATUSES,
@@ -399,6 +400,8 @@ function DetailsTab({
 }: Pick<PotentialCardProps, "potential" | "onEdit"> & { readOnly: boolean }) {
   const settings = useSettings();
   const now = useMemo(() => new Date(), []);
+  // Opened only when it's a web address; from the sheet or a file it isn't checked as the form's is
+  const studyLink = webLinkOrNull(p.feasibilityLink);
   const days = p.createdAt ? daysSince(p.createdAt, now) : null;
   return (
     <>
@@ -451,9 +454,9 @@ function DetailsTab({
         value={p.feasibilityLink}
         kind="url"
         display={
-          p.feasibilityLink ? (
+          studyLink ? (
             <a
-              href={p.feasibilityLink}
+              href={studyLink}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
