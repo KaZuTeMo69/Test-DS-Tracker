@@ -116,6 +116,7 @@ export default function PotentialForm({ mode, draft, cities, onChange, onSave, o
     errors[key] ? { "aria-invalid": true, "aria-describedby": `pf-${key}-error` } : {};
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- only keeps clicks inside the form from reaching the map; Esc and the buttons close it
     <form
       ref={ref}
       data-modal

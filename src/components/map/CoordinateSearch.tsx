@@ -34,6 +34,7 @@ export default function CoordinateSearch({
   };
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- only keeps clicks and keys inside the search from reaching the map and the page
     <div
       className={`coord-search absolute top-4 left-1/2 -translate-x-1/2 sm:w-[340px] w-[220px] max-w-[90vw] z-[1000] pointer-events-auto transition-all duration-300 ${stepAside ? "md:max-xl:hidden" : ""}`}
       onClick={(e) => e.stopPropagation()}

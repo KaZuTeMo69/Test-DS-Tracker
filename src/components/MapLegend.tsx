@@ -84,6 +84,7 @@ export default function MapLegend({ notOnMap, potentials = 0 }: { notOnMap: numb
   const measure = pinColors === "cpo" ? "CPO" : "Rent per m²";
 
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- only keeps clicks inside from reaching the map; the controls inside are buttons
     <div
       className={`map-legend absolute bg-[#111111]/90 backdrop-blur border border-[#333] rounded-lg shadow-2xl z-[500] ${open ? "open" : ""}`}
       onClick={(e) => e.stopPropagation()}

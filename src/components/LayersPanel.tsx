@@ -50,6 +50,7 @@ function LayerCard({
           {layer.visible ? <Eye size={15} /> : <EyeOff size={15} />}
         </button>
         <label className="zone-swatch shrink-0" style={{ background: layer.color }} title="Layer colour">
+          <span className="sr-only">Layer colour</span>
           <input
             type="color"
             value={layer.color.toLowerCase()}

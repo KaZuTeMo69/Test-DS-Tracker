@@ -318,7 +318,7 @@ describe("createCache (road distances remembered for the visit)", () => {
 
   it("shares a request still on its way", async () => {
     const cache = createCache<number>();
-    let resolve = (_: number) => {};
+    let resolve: (value: number) => void = () => {};
     const load = vi.fn(() => new Promise<number>((r) => (resolve = r)));
     const a = cache.get("k", load);
     const b = cache.get("k", load);

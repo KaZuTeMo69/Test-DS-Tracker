@@ -14,6 +14,7 @@ export default function PlaceBanner({ onCancel }: { onCancel: () => void }) {
   }, [onCancel]);
   const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- only keeps clicks inside from reaching the map; the controls inside are buttons
     <div
       className="measure-bar place-banner absolute left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto"
       role="status"

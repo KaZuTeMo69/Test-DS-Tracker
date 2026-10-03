@@ -223,14 +223,14 @@ export default function SettingsModal({
     <div
       data-modal
       className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9000] backdrop-blur-md settings-backdrop"
-      onClick={onClose}
     >
+      {/* A click beside the window closes it; Esc does the same from the keyboard */}
+      <div className="absolute inset-0" aria-hidden="true" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-title"
         className="settings-modal relative bg-[#111111] border border-[#262626] rounded-[20px] w-full max-w-[480px] shadow-[0_30px_80px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[92vh]"
-        onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}

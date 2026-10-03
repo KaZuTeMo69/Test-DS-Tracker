@@ -172,17 +172,17 @@ export default function UploadModal({
     <div
       data-modal
       className="modal-backdrop fixed inset-0 bg-black/75 flex items-center justify-center z-[9000] backdrop-blur-md"
-      onClick={onClose}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {/* A click beside the window closes it; Esc does the same from the keyboard */}
+      <div className="absolute inset-0" aria-hidden="true" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="import-title"
         className="modal-card import-modal relative bg-[#111111] border border-[#2a2a2a] rounded-[20px] w-full shadow-[0_30px_80px_rgba(0,0,0,0.8)] overflow-y-auto scrollbar-thin"
-        onClick={(e) => e.stopPropagation()}
       >
         <header className="modal-head">
           <div className="modal-icon">

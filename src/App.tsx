@@ -621,6 +621,7 @@ export default function App() {
         <div
           className={`map-area relative flex-1 min-w-0 min-h-0 ${panelShown && !narrow ? (currentTab === "renewals" ? "panel-open panel-wide" : "panel-open") : ""} ${panelShown && narrow ? "panel-sheet-open" : ""} ${(selectedStore || zoneSelection || selectedPotential || potentialForm) && !mapMode ? "card-open" : ""}`}
         >
+          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a click on the map clears the selected store; the card's Close button does it from the keyboard */}
           <div
             ref={mapRef}
             className={`map-container absolute inset-0 ${cardInset ? "sheet-open" : ""}`}
