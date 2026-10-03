@@ -120,17 +120,36 @@ export function parseKML(text: string): ParsedKml {
   return result;
 }
 
+/** The largest KML or KMZ read (and the largest KML inside a KMZ): bigger ones could freeze the page. */
+export const MAX_ZONE_FILE_BYTES = 50 * 1024 * 1024;
+const tooBig = (max: number) => `it's over ${Math.round(max / 1024 / 1024)} MB, too large to read`;
+
+/** Why a file can't be read as zones without opening it (its size), or null. */
+export const zoneFileProblem = (size: number, max = MAX_ZONE_FILE_BYTES): string | null =>
+  size > max ? tooBig(max) : null;
+
 const isZip = (bytes: Uint8Array) => bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
 
 /** Reads a .kml file, or a .kmz (a zipped KML, which is what My Maps exports by default). */
-export function parseKmlBytes(bytes: Uint8Array): ParsedKml {
+export function parseKmlBytes(bytes: Uint8Array, max = MAX_ZONE_FILE_BYTES): ParsedKml {
+  const problem = zoneFileProblem(bytes.length, max);
+  if (problem) throw new Error(problem);
   if (!isZip(bytes)) return parseKML(strFromU8(bytes));
   let files: Record<string, Uint8Array>;
+  // A KML that would unzip to more than the limit isn't unzipped
+  let oversized = false;
   try {
-    files = unzipSync(bytes, { filter: (f) => f.name.toLowerCase().endsWith(".kml") });
+    files = unzipSync(bytes, {
+      filter: (f) => {
+        if (!f.name.toLowerCase().endsWith(".kml")) return false;
+        if (f.originalSize > max) oversized = true;
+        return !oversized;
+      },
+    });
   } catch {
     throw new Error("the KMZ file is damaged");
   }
+  if (oversized) throw new Error(`the KML inside ${tooBig(max).replace("it's", "is")}`);
   // The main document is doc.kml by convention; otherwise take the first KML inside
   const names = Object.keys(files).sort((a, b) => Number(b.endsWith("doc.kml")) - Number(a.endsWith("doc.kml")));
   if (!names.length) throw new Error("the KMZ file has no KML inside");
