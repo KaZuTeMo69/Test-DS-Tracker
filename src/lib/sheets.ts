@@ -19,7 +19,8 @@ export function cellText(cell: GvizCell | null | undefined): string {
   if (cell.v === null || cell.v === undefined) return cell.f && isSheetError(cell.f) ? cell.f : "";
 
   if (typeof cell.v === "string" && cell.v.startsWith("Date(")) {
-    const dp = cell.v.match(/Date\((\d+),(\d+),(\d+)\)/);
+    // Date(year, month from 0, day), followed by the time for a cell that has one; only the date is kept
+    const dp = cell.v.match(/^Date\((\d+),(\d+),(\d+)(?:,\d+)*\)$/);
     if (dp) {
       const year = +dp[1];
       const month = +dp[2];
