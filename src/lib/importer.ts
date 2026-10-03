@@ -341,13 +341,15 @@ export function parseCSVData(csvText: string): Store[] {
 }
 
 export function parseJSONData(jsonText: string): Store[] {
-  let raw: any;
+  let raw: unknown;
   try {
     raw = JSON.parse(jsonText);
   } catch (err) {
     throw new Error(`Invalid JSON: ${err instanceof Error ? err.message : String(err)}`);
   }
-  const list = Array.isArray(raw) ? raw : raw?.stores || raw?.data || [];
+  // A list, or { stores: [...] } or { data: [...] }
+  const wrapper = raw && typeof raw === "object" ? (raw as { stores?: unknown; data?: unknown }) : undefined;
+  const list = Array.isArray(raw) ? raw : wrapper?.stores || wrapper?.data || [];
   if (!Array.isArray(list)) return [];
 
   // First value that is actually present; unlike ||, keeps 0 and false
@@ -355,8 +357,10 @@ export function parseJSONData(jsonText: string): Store[] {
   const text = (...vals: unknown[]) => String(pick(...vals) ?? "").trim();
 
   const stores: Store[] = [];
-  list.forEach((item: any) => {
-    const name = text(item?.name, item?.storeName);
+  list.forEach((entry: unknown) => {
+    if (!entry || typeof entry !== "object") return;
+    const item = entry as Record<string, unknown>;
+    const name = text(item.name, item.storeName);
     if (!name) return;
     stores.push(
       buildStore(stores.length + 1, {

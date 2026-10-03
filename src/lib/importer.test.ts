@@ -166,6 +166,17 @@ describe("parseJSONData", () => {
     expect(parseJSONData(JSON.stringify({ stores: [{ name: "A" }, { city: "Riyadh" }] }))).toHaveLength(1);
   });
 
+  it("reads { data: [...] }, skips entries that aren't objects, and keeps 0", () => {
+    const stores = parseJSONData(JSON.stringify({ data: [null, "A", 7, [], { name: "B", size: 0 }] }));
+    expect(stores.map((s) => s.name)).toEqual(["B"]);
+    expect(stores[0].size).toBe(0);
+  });
+
+  it("finds nothing in JSON that isn't a list or a wrapper of one", () => {
+    for (const json of ["42", '"stores"', "null", "true", '{"stores": "A"}', '{"other": []}'])
+      expect(parseJSONData(json)).toEqual([]);
+  });
+
   it("explains invalid JSON", () => {
     expect(() => parseJSONData("{oops")).toThrow(/Invalid JSON/);
   });
