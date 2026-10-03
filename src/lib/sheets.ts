@@ -1,5 +1,4 @@
-import { Store } from "../types";
-import { isSheetError, rowsToStores } from "./importer";
+import { isSheetError } from "./importer";
 
 interface GvizCell {
   v: string | number | boolean | null;
@@ -134,10 +133,4 @@ export async function fetchOptionalTab(
   const data = await requestGviz(sheetId, sheetName);
   if (data.status === "error" || !data.table) return null;
   return tableText(data.table);
-}
-
-/** The stores in a sheet tab. */
-export async function fetchSheetData(sheetId: string, sheetName?: string): Promise<Store[]> {
-  const { headers, rows } = await fetchSheetTable(sheetId, sheetName);
-  return rowsToStores(headers, rows);
 }
