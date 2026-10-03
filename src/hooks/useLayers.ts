@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LayerKind, PolygonRings, Zone, ZoneLayer } from "../types";
-import { parseKmlBytes } from "../lib/kml";
+import { parseKmlBytes, zoneFileProblem } from "../lib/kml";
 import { clearLayers, deleteLayer, loadLayers, saveLayer } from "../lib/layerStore";
 import { DEFAULT_OPACITY, LAYER_KIND_LABEL, looksLikeWhiteSpace, newId, nextLayerColor } from "../lib/layers";
 
@@ -87,6 +87,9 @@ export function useLayers(notify: (msg: string) => void) {
     const messages: string[] = [];
     for (const file of files) {
       try {
+        // Too big to read is said before the file is loaded into memory
+        const problem = zoneFileProblem(file.size);
+        if (problem) throw new Error(problem);
         const parsed = parseKmlBytes(new Uint8Array(await file.arrayBuffer()));
         if (!parsed.zones.length && !parsed.lines.length) {
           messages.push(`No polygons found in ${file.name}`);

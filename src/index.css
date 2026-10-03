@@ -870,6 +870,12 @@ body {
   background: #171717;
 }
 
+.store-list-card:focus-visible,
+.city-card:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: -2px;
+}
+
 .store-list-card.selected {
   border-color: rgba(251, 191, 36, 0.6);
   background: #1a1812;

@@ -193,6 +193,7 @@ export default function MapControls({
   return (
     <>
       <div className="map-controls leaflet-top leaflet-right mt-4 mr-4 !z-[1000] pointer-events-none">
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- only keeps clicks inside from reaching the map; the controls inside are buttons */}
         <div ref={controlsRef} className="flex flex-col gap-2 items-end pointer-events-auto" onClick={stopClick}>
           <button
             onClick={onToggleNight}
@@ -276,6 +277,7 @@ export function ZoomButtons() {
   const map = useMap();
   const ref = useNoMapClicks<HTMLDivElement>();
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- only keeps clicks inside from reaching the map; the controls inside are buttons
     <div ref={ref} className="zoom-control" role="group" aria-label="Zoom" onClick={stopClick}>
       <button
         onClick={(e) => {

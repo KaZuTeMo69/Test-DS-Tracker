@@ -70,6 +70,7 @@ function BottomSheet({ label, onClose, onInset, children }: Omit<CardFrameProps,
   });
 
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- only keeps clicks inside the sheet from reaching the map; the controls inside are buttons
     <div
       ref={ref}
       role="region"
@@ -110,6 +111,7 @@ export default function CardFrame({ width, label, onClose, onInset, children }: 
     );
   }
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- only keeps clicks inside the card from reaching the map; the controls inside are buttons
     <div
       onClick={stop}
       role="region"

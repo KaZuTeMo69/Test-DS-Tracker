@@ -1,5 +1,4 @@
-import { Store } from "../types";
-import { isSheetError, rowsToStores } from "./importer";
+import { isSheetError } from "./importer";
 
 interface GvizCell {
   v: string | number | boolean | null;
@@ -20,7 +19,8 @@ export function cellText(cell: GvizCell | null | undefined): string {
   if (cell.v === null || cell.v === undefined) return cell.f && isSheetError(cell.f) ? cell.f : "";
 
   if (typeof cell.v === "string" && cell.v.startsWith("Date(")) {
-    const dp = cell.v.match(/Date\((\d+),(\d+),(\d+)\)/);
+    // Date(year, month from 0, day), followed by the time for a cell that has one; only the date is kept
+    const dp = cell.v.match(/^Date\((\d+),(\d+),(\d+)(?:,\d+)*\)$/);
     if (dp) {
       const year = +dp[1];
       const month = +dp[2];
@@ -48,19 +48,42 @@ interface GvizResponse {
   table?: GvizTable;
 }
 
-// One request to Google's public gviz endpoint; throws when there's no answer or it can't be read
+/** How long a sheet request may take before it's given up (the next sync tries again). */
+export const SHEET_TIMEOUT_MS = 30_000;
+
+// What to check when Google won't hand the sheet over: a sheet that isn't shared publicly is answered with Google's
+// sign-in page (which the browser may also refuse to read across sites, as a network error)
+const SHARING_HINT = "Check that the sheet is shared as “Anyone with the link can view”.";
+
+// One request to Google's public gviz endpoint; throws when there's no answer in time, an error status, or an answer
+// that can't be read. A request that never answered would otherwise keep the auto-refresh waiting for good
 async function requestGviz(sheetId: string, sheetName?: string): Promise<GvizResponse> {
   let url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&t=${Date.now()}`;
   if (sheetName) {
     url += `&sheet=${encodeURIComponent(sheetName)}`;
   }
 
-  const response = await fetch(url);
-  const text = await response.text();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SHEET_TIMEOUT_MS);
+  let text: string;
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error(`Google Sheets answered with an error (${response.status})`);
+    text = await response.text();
+  } catch (err) {
+    if (controller.signal.aborted)
+      throw new Error(`Google Sheets didn't answer within ${SHEET_TIMEOUT_MS / 1000} seconds`, { cause: err });
+    // fetch rejects with a TypeError for a dropped connection or an answer the browser won't let the page read
+    if (err instanceof TypeError)
+      throw new Error(`Couldn't reach the Google Sheet. Check your connection. ${SHARING_HINT}`, { cause: err });
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 
   const jsonMatch = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/);
   if (!jsonMatch) {
-    throw new Error("Failed to parse Google Sheets response");
+    throw new Error(`Google didn't send the sheet's data. ${SHARING_HINT}`);
   }
   return JSON.parse(jsonMatch[1]);
 }
@@ -111,10 +134,4 @@ export async function fetchOptionalTab(
   const data = await requestGviz(sheetId, sheetName);
   if (data.status === "error" || !data.table) return null;
   return tableText(data.table);
-}
-
-/** The stores in a sheet tab. */
-export async function fetchSheetData(sheetId: string, sheetName?: string): Promise<Store[]> {
-  const { headers, rows } = await fetchSheetTable(sheetId, sheetName);
-  return rowsToStores(headers, rows);
 }

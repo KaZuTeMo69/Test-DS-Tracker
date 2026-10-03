@@ -1,4 +1,4 @@
-import { memo, ReactNode, useMemo, useState } from "react";
+import { memo, ReactNode, useState } from "react";
 import { X } from "lucide-react";
 import CardFrame from "./CardFrame";
 import MapsButtons from "./MapsButtons";

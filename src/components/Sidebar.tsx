@@ -1,4 +1,15 @@
-import { lazy, memo, ReactNode, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  KeyboardEvent,
+  lazy,
+  memo,
+  ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { ChevronLeft, FileDown, FileUp, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useIsPhone } from "../hooks/useMediaQuery";
@@ -28,6 +39,13 @@ import { ChartSkeleton, ListSkeleton } from "./Skeleton";
 
 // The charts library is large and only the Growth tab uses it, so it loads when that tab first opens
 const CityInsights = lazy(() => import("./CityInsights"));
+
+// Enter or Space on a card that acts as a button does what a click does
+const pressKeys = (action: () => void) => (e: KeyboardEvent<HTMLElement>) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  e.preventDefault();
+  action();
+};
 const OpdCpoChart = lazy(() => import("./OpdCpoChart"));
 
 interface SidebarProps {
@@ -92,7 +110,11 @@ const StoreListItem = memo(function StoreListItem({
   const badge = "px-2 py-0.5 text-[11px] font-bold rounded-full";
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-current={selected || undefined}
       onClick={() => onSelect(s.id)}
+      onKeyDown={pressKeys(() => onSelect(s.id))}
       className={`store-list-item store-list-card cursor-pointer transition-colors ${selected ? "selected" : ""}`}
     >
       {/* The name has the whole width; only a very long one is cut short, with all of it in the tooltip */}
@@ -341,9 +363,19 @@ function usePanelParts(props: SidebarProps) {
           }}
         />
         <div className="flex items-center gap-2">
-          <label className="w-16 shrink-0 text-[11px] font-bold text-gray-400 uppercase tracking-widest">City</label>
+          <label
+            htmlFor="city-filter"
+            className="w-16 shrink-0 text-[11px] font-bold text-gray-400 uppercase tracking-widest"
+          >
+            City
+          </label>
           <div className="sidebar-select-wrapper min-w-0">
-            <select className="sidebar-select" value={cityFilter} onChange={(e) => setCityFilter(e.target.value)}>
+            <select
+              id="city-filter"
+              className="sidebar-select"
+              value={cityFilter}
+              onChange={(e) => setCityFilter(e.target.value)}
+            >
               <option value="">ALL CITIES</option>
               {allCities.map((city) => (
                 <option key={city} value={city}>
@@ -419,7 +451,11 @@ function usePanelParts(props: SidebarProps) {
           citySummaries.map((c) => (
             <div
               key={c.city}
+              role="button"
+              tabIndex={0}
+              aria-current={cityFilter === c.city || undefined}
               onClick={() => onCityFocus(c.city)}
+              onKeyDown={pressKeys(() => onCityFocus(c.city))}
               className={`city-card bg-[#111] border p-4 rounded-lg shadow-sm transition-all cursor-pointer group ${cityFilter === c.city ? "border-[#fbbf24] bg-[#161616] ring-1 ring-[#fbbf24]/10" : "border-[#222] hover:border-[#fbbf24]/30"}`}
             >
               <div className="flex justify-between items-center mb-4">

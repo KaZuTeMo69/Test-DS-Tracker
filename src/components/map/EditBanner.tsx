@@ -19,6 +19,7 @@ export default function EditBanner({ mode, layerName, zoneName, onFinish, onUndo
   const name = <b className="text-[#fbbf24]">{drawing ? layerName : zoneName || "Unnamed zone"}</b>;
   const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- only keeps clicks inside from reaching the map; the controls inside are buttons
     <div
       className="edit-banner absolute top-[84px] sm:top-4 left-1/2 -translate-x-1/2 w-[560px] max-w-[calc(100%-32px)] sm:max-w-[calc(100%-80px)] z-[1000] bg-[#111111]/95 backdrop-blur-md border border-[#fbbf24]/40 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
       onClick={stop}

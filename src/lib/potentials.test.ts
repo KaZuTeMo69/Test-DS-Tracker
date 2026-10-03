@@ -18,6 +18,8 @@ import {
   toStatus,
   withStatus,
   zonesAt,
+  webLinkOrNull,
+  number,
 } from "./potentials";
 import {
   KeyValueStore,
@@ -329,5 +331,23 @@ describe("KML and the store row", () => {
   it("counts days since added", () => {
     expect(daysSince("2026-09-20T09:00:00Z", NOW)).toBe(10);
     expect(daysSince("2026-10-20T09:00:00Z", NOW)).toBe(0);
+  });
+});
+
+describe("feasibility links", () => {
+  it("only a web address is opened as a link; anything else (from the sheet or a file) stays text", () => {
+    expect(webLinkOrNull(" https://drive.google.com/file/d/abc ")).toBe("https://drive.google.com/file/d/abc");
+    expect(webLinkOrNull("http://example.com/study.pdf")).toBe("http://example.com/study.pdf");
+    expect(webLinkOrNull("javascript:alert(1)")).toBeNull();
+    expect(webLinkOrNull("data:text/html,<script>alert(1)</script>")).toBeNull();
+    expect(webLinkOrNull("see the shared drive")).toBeNull();
+    expect(webLinkOrNull("")).toBeNull();
+  });
+});
+
+describe("numbers in a Potential's cells", () => {
+  it("reads Arabic-Indic digits too", () => {
+    expect(number("٥٤٠٬٠٠٠")).toBe(540000);
+    expect(number("SAR 450,000")).toBe(450000);
   });
 });

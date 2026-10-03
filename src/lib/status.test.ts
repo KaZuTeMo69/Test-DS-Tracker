@@ -54,6 +54,15 @@ describe("isLive / isPaid", () => {
     expect(isLive(store("Live"))).toBe(true);
     expect(isPaid(store(undefined, "Paid"))).toBe(true);
   });
+
+  it("go by whole words, not letters inside them: 'un' in a word doesn't make it unpaid", () => {
+    expect(isPaid(store(undefined, "Paid - refund requested"))).toBe(true);
+    expect(paidStatus(store(undefined, "Funds received"))).toBeNull();
+    expect(paidStatus(store(undefined, "Unpaid"))).toBe(false);
+    expect(isLive(store("Live (soft launch)"))).toBe(true);
+    expect(liveStatus(store("Running"))).toBeNull();
+    expect(liveStatus(store("Under construction"))).toBe(false);
+  });
 });
 
 describe("hasUnclearStatus", () => {

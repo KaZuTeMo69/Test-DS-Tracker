@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { strToU8, zipSync } from "fflate";
-import { parseKML, parseKmlBytes } from "./kml";
+import { MAX_ZONE_FILE_BYTES, parseKML, parseKmlBytes, zoneFileProblem } from "./kml";
 
 const kml = (body: string, head = "") =>
   `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Riyadh coverage</name>${head}${body}</Document></kml>`;
@@ -108,6 +108,28 @@ describe("parseKML", () => {
     expect(zone.polygons[0][0]).toHaveLength(4);
   });
 
+  it("reads coordinates over several lines, with altitudes, and leaves out bad or repeated points", () => {
+    const messy = `
+      46.60,24.70,120\t46.70,24.70,120
+      46.70,24.70,120 46.70,24.80 not,a,point 46.60,24.80,0 999,24.80
+      46.60,24.70,0`;
+    const [zone] = parseKML(kml(`<Placemark>${polygon(messy)}</Placemark>`)).zones;
+    expect(zone.polygons[0][0]).toEqual([
+      [24.7, 46.6],
+      [24.7, 46.7],
+      [24.8, 46.7],
+      [24.8, 46.6],
+    ]);
+  });
+
+  it("a file with only markers has no zones, and says how many markers it skipped", () => {
+    const pins = [1, 2, 3].map((i) => `<Placemark><Point><coordinates>46.6${i},24.7</coordinates></Point></Placemark>`);
+    const parsed = parseKML(kml(pins.join("")));
+    expect(parsed.zones).toHaveLength(0);
+    expect(parsed.lines).toHaveLength(0);
+    expect(parsed.skippedPoints).toBe(3);
+  });
+
   it("rejects text that isn't KML", () => {
     expect(() => parseKML("not xml at all")).toThrow("it isn't a KML file");
     expect(() => parseKML("<html><body>hi</body></html>")).toThrow("it isn't a KML file");
@@ -132,5 +154,25 @@ describe("parseKmlBytes", () => {
 
   it("explains a KMZ without KML inside", () => {
     expect(() => parseKmlBytes(zipSync({ "readme.txt": strToU8("hi") }))).toThrow("no KML inside");
+  });
+});
+
+describe("a file too large to read", () => {
+  const doc = `<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><name>Z</name>
+    <Polygon><outerBoundaryIs><LinearRing><coordinates>46.6,24.7 46.7,24.7 46.7,24.8 46.6,24.7</coordinates></LinearRing></outerBoundaryIs></Polygon>
+    </Placemark></Document></kml>`;
+
+  it("is refused by its size before it's opened (50 MB)", () => {
+    expect(MAX_ZONE_FILE_BYTES).toBe(50 * 1024 * 1024);
+    expect(zoneFileProblem(MAX_ZONE_FILE_BYTES + 1)).toBe("it's over 50 MB, too large to read");
+    expect(zoneFileProblem(1024)).toBeNull();
+    expect(() => parseKmlBytes(strToU8(doc), 100)).toThrow("too large to read");
+  });
+
+  it("a KMZ whose KML would unzip to more than the limit isn't unzipped", () => {
+    const kmz = zipSync({ "doc.kml": strToU8(doc + " ".repeat(5000)) });
+    expect(kmz.length).toBeLessThan(2000);
+    expect(() => parseKmlBytes(kmz, 4000)).toThrow(/^the KML inside is over/);
+    expect(parseKmlBytes(kmz).zones).toHaveLength(1);
   });
 });

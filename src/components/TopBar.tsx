@@ -151,8 +151,22 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
   const { stats, unclear, unclearOnly, onShowUnclear, issueCount, onShowIssues, loading } = props;
   const { leadDays, warningDays, includeVat } = useSettings();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+
+  // Esc closes the menu (just the menu, not the panel as well) and puts focus back on its button
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      setMenuOpen(false);
+      menuButtonRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   // The popover closes with Esc or a click anywhere else
   useEffect(() => {
@@ -395,6 +409,7 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
         )}
         <div className="relative">
           <button
+            ref={menuButtonRef}
             onClick={() => setMenuOpen(!menuOpen)}
             className={`${iconBtn} ${menuOpen ? "!border-[#fbbf24] !text-[#fbbf24]" : ""}`}
             title="Settings"
@@ -407,7 +422,7 @@ const TopBar = memo(function TopBar(props: TopBarProps) {
           <AnimatePresence>
             {menuOpen && (
               <>
-                <div className="fixed inset-0 z-[100]" onClick={() => setMenuOpen(false)} />
+                <div className="fixed inset-0 z-[100]" aria-hidden="true" onClick={() => setMenuOpen(false)} />
                 <motion.div
                   initial={{ opacity: 0, y: 8, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}

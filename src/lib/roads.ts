@@ -2,6 +2,7 @@ import { Store } from "../types";
 import { LatLng } from "./coords";
 import { hasCoords } from "./checks";
 import { isLive } from "./status";
+import { escapeXml } from "./kmlExport";
 
 /**
  * Road distances and routes from free services: OpenRouteService when the user has added a (free) key in
@@ -453,3 +454,12 @@ export const KEY_CHECK_MESSAGE: Record<KeyCheck, string> = {
   "no-route": "Key works: routes and road distances now come from OpenRouteService.",
   failed: "OpenRouteService had a problem checking the key. Try again in a minute.",
 };
+
+/**
+ * The route's heading in the directions panel: the road's name, and the distance and time. The routing plugin puts
+ * it in the page as HTML, and the road name comes from the routing service's answer, so everything is escaped.
+ */
+export function routeSummaryHtml(data: { name?: unknown; distance?: unknown; time?: unknown }): string {
+  const text = (v: unknown) => escapeXml(v === undefined || v === null ? "" : String(v));
+  return `<h2>${text(data.name)}</h2><h3>${text(data.distance)}, ${text(data.time)}</h3>`;
+}
