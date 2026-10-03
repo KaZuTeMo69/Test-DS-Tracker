@@ -48,15 +48,31 @@ interface GvizResponse {
   table?: GvizTable;
 }
 
-// One request to Google's public gviz endpoint; throws when there's no answer or it can't be read
+/** How long a sheet request may take before it's given up (the next sync tries again). */
+export const SHEET_TIMEOUT_MS = 30_000;
+
+// One request to Google's public gviz endpoint; throws when there's no answer in time, an error status, or an answer
+// that can't be read. A request that never answered would otherwise keep the auto-refresh waiting for good
 async function requestGviz(sheetId: string, sheetName?: string): Promise<GvizResponse> {
   let url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&t=${Date.now()}`;
   if (sheetName) {
     url += `&sheet=${encodeURIComponent(sheetName)}`;
   }
 
-  const response = await fetch(url);
-  const text = await response.text();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SHEET_TIMEOUT_MS);
+  let text: string;
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error(`Google Sheets answered with an error (${response.status})`);
+    text = await response.text();
+  } catch (err) {
+    if (controller.signal.aborted)
+      throw new Error(`Google Sheets didn't answer within ${SHEET_TIMEOUT_MS / 1000} seconds`, { cause: err });
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 
   const jsonMatch = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/);
   if (!jsonMatch) {

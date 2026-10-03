@@ -253,7 +253,7 @@ describe("a missing tab", () => {
   const stubFetch = (text: string) =>
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ({ text: async () => text })),
+      vi.fn(async () => ({ ok: true, status: 200, text: async () => text })),
     );
   afterEach(() => vi.unstubAllGlobals());
 
