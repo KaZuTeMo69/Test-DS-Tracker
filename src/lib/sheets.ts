@@ -51,6 +51,10 @@ interface GvizResponse {
 /** How long a sheet request may take before it's given up (the next sync tries again). */
 export const SHEET_TIMEOUT_MS = 30_000;
 
+// What to check when Google won't hand the sheet over: a sheet that isn't shared publicly is answered with Google's
+// sign-in page (which the browser may also refuse to read across sites, as a network error)
+const SHARING_HINT = "Check that the sheet is shared as “Anyone with the link can view”.";
+
 // One request to Google's public gviz endpoint; throws when there's no answer in time, an error status, or an answer
 // that can't be read. A request that never answered would otherwise keep the auto-refresh waiting for good
 async function requestGviz(sheetId: string, sheetName?: string): Promise<GvizResponse> {
@@ -69,6 +73,9 @@ async function requestGviz(sheetId: string, sheetName?: string): Promise<GvizRes
   } catch (err) {
     if (controller.signal.aborted)
       throw new Error(`Google Sheets didn't answer within ${SHEET_TIMEOUT_MS / 1000} seconds`, { cause: err });
+    // fetch rejects with a TypeError for a dropped connection or an answer the browser won't let the page read
+    if (err instanceof TypeError)
+      throw new Error(`Couldn't reach the Google Sheet. Check your connection. ${SHARING_HINT}`, { cause: err });
     throw err;
   } finally {
     clearTimeout(timer);
@@ -76,7 +83,7 @@ async function requestGviz(sheetId: string, sheetName?: string): Promise<GvizRes
 
   const jsonMatch = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/);
   if (!jsonMatch) {
-    throw new Error("Failed to parse Google Sheets response");
+    throw new Error(`Google didn't send the sheet's data. ${SHARING_HINT}`);
   }
   return JSON.parse(jsonMatch[1]);
 }

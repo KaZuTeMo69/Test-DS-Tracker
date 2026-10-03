@@ -48,3 +48,27 @@ describe("asking Google for a sheet tab", () => {
     expect(await fetchSheetTable("SHEET")).toEqual({ headers: ["Store Name"], rows: [["A"]] });
   });
 });
+
+describe("a sheet that isn't shared publicly", () => {
+  it("Google's sign-in page in place of the data says to share the sheet", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => answer("<!DOCTYPE html><html><title>Sign in - Google Accounts</title></html>")),
+    );
+    await expect(fetchSheetTable("SHEET")).rejects.toThrow(
+      "Google didn't send the sheet's data. Check that the sheet is shared as “Anyone with the link can view”.",
+    );
+  });
+
+  it("an answer the browser won't read (a redirect to sign in) or a dropped connection says the same", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    await expect(fetchSheetTable("SHEET")).rejects.toThrow(
+      /^Couldn't reach the Google Sheet\. Check your connection\. Check that the sheet is shared as/,
+    );
+  });
+});
