@@ -45,6 +45,7 @@ import { linkedView, useUrlState } from "./hooks/useUrlState";
 import { openingSheetHeight } from "./components/CardFrame";
 import CoverageSummary from "./components/CoverageSummary";
 import DetailPanel from "./components/DetailPanel";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { PotentialsQuality } from "./components/DataQualityPanel";
 import { ExtraFigures } from "./components/KpiFigures";
 import LayersPanel from "./components/LayersPanel";
@@ -689,42 +690,46 @@ export default function App() {
               showToast={showToast}
             />
 
-            <DetailPanel
-              store={mapMode || potentialForm ? null : selectedStore}
-              stores={stores}
-              coverage={coverage}
-              benchmark={selectedStore ? (benchmarks.of.get(selectedStore.id) ?? null) : null}
-              cpoBenchmark={selectedStore ? (orders.cpo.get(selectedStore.id) ?? null) : null}
-              onSelectZone={openZone}
-              onSelectStore={selectStore}
-              searchPin={searchPin}
-              route={searchPin ? routeInfo : null}
-              onClose={closeStore}
-              onInset={setCardInset}
-            />
-
-            {selectedPotential && !selectedStore && !mapMode && !potentialForm && (
-              <PotentialCard
-                key={selectedPotential.id}
-                potential={selectedPotential}
+            <ErrorBoundary part="This card" resetKey={selectedStore?.id} className="app-error-card">
+              <DetailPanel
+                store={mapMode || potentialForm ? null : selectedStore}
                 stores={stores}
-                layers={mapLayers.layers}
-                cityMedian={medianFor(cityMedians, selectedPotential.city)}
-                storeHeaders={data.storeHeaders}
-                draft={potentials.draftIds.has(selectedPotential.id)}
-                sheetLink={data.sheetId ? spreadsheetLink(data.sheetId) : null}
-                tab={potentials.tab}
-                tabHeaders={potentials.tabHeaders}
-                onEdit={(patch) => potentials.update(selectedPotential.id, patch)}
-                onStatus={(status, reason) => setPotentialStatus(selectedPotential, status, reason)}
-                onMove={() => editPotentialInForm(selectedPotential)}
-                onDelete={() => deletePotential(selectedPotential)}
-                onSelectStore={selectStore}
+                coverage={coverage}
+                benchmark={selectedStore ? (benchmarks.of.get(selectedStore.id) ?? null) : null}
+                cpoBenchmark={selectedStore ? (orders.cpo.get(selectedStore.id) ?? null) : null}
                 onSelectZone={openZone}
-                onCopied={showToast}
-                onClose={() => setSelectedPotentialId(null)}
+                onSelectStore={selectStore}
+                searchPin={searchPin}
+                route={searchPin ? routeInfo : null}
+                onClose={closeStore}
                 onInset={setCardInset}
               />
+            </ErrorBoundary>
+
+            {selectedPotential && !selectedStore && !mapMode && !potentialForm && (
+              <ErrorBoundary part="This card" resetKey={selectedPotential.id} className="app-error-card">
+                <PotentialCard
+                  key={selectedPotential.id}
+                  potential={selectedPotential}
+                  stores={stores}
+                  layers={mapLayers.layers}
+                  cityMedian={medianFor(cityMedians, selectedPotential.city)}
+                  storeHeaders={data.storeHeaders}
+                  draft={potentials.draftIds.has(selectedPotential.id)}
+                  sheetLink={data.sheetId ? spreadsheetLink(data.sheetId) : null}
+                  tab={potentials.tab}
+                  tabHeaders={potentials.tabHeaders}
+                  onEdit={(patch) => potentials.update(selectedPotential.id, patch)}
+                  onStatus={(status, reason) => setPotentialStatus(selectedPotential, status, reason)}
+                  onMove={() => editPotentialInForm(selectedPotential)}
+                  onDelete={() => deletePotential(selectedPotential)}
+                  onSelectStore={selectStore}
+                  onSelectZone={openZone}
+                  onCopied={showToast}
+                  onClose={() => setSelectedPotentialId(null)}
+                  onInset={setCardInset}
+                />
+              </ErrorBoundary>
             )}
 
             {potentialForm && (
@@ -740,20 +745,22 @@ export default function App() {
             )}
 
             {zoneSelection && !selectedStore && !selectedPotential && !mapMode && !potentialForm && (
-              <ZoneCard
-                key={zoneSelection.zone.id}
-                layer={zoneSelection.layer}
-                zone={zoneSelection.zone}
-                storesInside={coverage.storesIn.get(zoneSelection.zone.id) ?? []}
-                onSelectStore={selectStore}
-                onChange={(patch, delay) =>
-                  mapLayers.updateZone(zoneSelection.layer.id, zoneSelection.zone.id, patch, delay)
-                }
-                onClose={() => setSelectedZone(null)}
-                onEditShape={startEditingShape}
-                onDelete={deleteSelectedZone}
-                onInset={setCardInset}
-              />
+              <ErrorBoundary part="This card" resetKey={zoneSelection.zone.id} className="app-error-card">
+                <ZoneCard
+                  key={zoneSelection.zone.id}
+                  layer={zoneSelection.layer}
+                  zone={zoneSelection.zone}
+                  storesInside={coverage.storesIn.get(zoneSelection.zone.id) ?? []}
+                  onSelectStore={selectStore}
+                  onChange={(patch, delay) =>
+                    mapLayers.updateZone(zoneSelection.layer.id, zoneSelection.zone.id, patch, delay)
+                  }
+                  onClose={() => setSelectedZone(null)}
+                  onEditShape={startEditingShape}
+                  onDelete={deleteSelectedZone}
+                  onInset={setCardInset}
+                />
+              </ErrorBoundary>
             )}
 
             {!focusMode && (
