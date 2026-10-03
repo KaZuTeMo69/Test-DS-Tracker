@@ -29,6 +29,7 @@ import { storeRenewal } from "../lib/renewal";
 import { shownRent, vatLabel } from "../lib/settings";
 import { isLive } from "../lib/status";
 import DataQualityPanel from "./DataQualityPanel";
+import ErrorBoundary from "./ErrorBoundary";
 import LoadMore from "./LoadMore";
 import { PANEL_TABS, PanelButton, panelTab, RailBadges } from "./NavRail";
 
@@ -39,6 +40,7 @@ import { ChartSkeleton, ListSkeleton } from "./Skeleton";
 
 // The charts library is large and only the Growth tab uses it, so it loads when that tab first opens
 const CityInsights = lazy(() => import("./CityInsights"));
+const OpdCpoChart = lazy(() => import("./OpdCpoChart"));
 
 // Enter or Space on a card that acts as a button does what a click does
 const pressKeys = (action: () => void) => (e: KeyboardEvent<HTMLElement>) => {
@@ -46,7 +48,6 @@ const pressKeys = (action: () => void) => (e: KeyboardEvent<HTMLElement>) => {
   e.preventDefault();
   action();
 };
-const OpdCpoChart = lazy(() => import("./OpdCpoChart"));
 
 interface SidebarProps {
   layout: "overlay" | "sheet"; // a column over the map on large screens, a sheet over its bottom on smaller ones
@@ -400,7 +401,7 @@ function usePanelParts(props: SidebarProps) {
     </div>
   );
 
-  const content =
+  const tabContent =
     loading && currentTab !== "layers" && currentTab !== "potentials" ? (
       currentTab === "insights" ? (
         <ChartSkeleton label="Loading your stores from the Google Sheet" />
@@ -527,6 +528,12 @@ function usePanelParts(props: SidebarProps) {
         </Suspense>
       </>
     );
+  // A tab that fails shows a message in the panel instead of taking the page down; another tab shows as usual
+  const content = (
+    <ErrorBoundary part="This panel" resetKey={currentTab}>
+      {tabContent}
+    </ErrorBoundary>
+  );
 
   const footer =
     loading && currentTab !== "layers" && currentTab !== "potentials"
