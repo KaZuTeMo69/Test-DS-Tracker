@@ -1,5 +1,6 @@
 import { Component, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { versionLine } from "../lib/version";
 
 /**
  * A part of the app whose file couldn't be fetched (Chrome, Firefox and Safari word it differently). Usually a page
@@ -60,6 +61,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
             <span>Reload</span>
           </button>
           {!stale && <p className="app-error-detail">{detail}</p>}
+          <p className="app-error-detail">{versionLine()}</p>
         </div>
       </div>
     );

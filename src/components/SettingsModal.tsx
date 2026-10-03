@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS, MAX_DAYS, MAX_PERCENT, Settings, toWholeNumber, VAT_R
 import { formatDate, today } from "../lib/contract";
 import { checkOrsKey, KEY_CHECK_MESSAGE, KeyCheck } from "../lib/roads";
 import { PotentialsTab } from "../hooks/usePotentials";
+import { APP_COMMIT, APP_VERSION, builtOn } from "../lib/version";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -386,6 +387,14 @@ export default function SettingsModal({
           <button onClick={onClose} className="zone-card-btn primary settings-done">
             Done
           </button>
+        </div>
+
+        {/* Which build this is, to say when reporting a problem */}
+        <div className="settings-version" data-version>
+          <span>Version {APP_VERSION}</span>
+          <span>
+            Build {APP_COMMIT} · {builtOn()}
+          </span>
         </div>
       </div>
     </div>

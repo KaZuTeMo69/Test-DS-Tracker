@@ -42,6 +42,12 @@ describe("the Settings window", () => {
     expect(field.getAttribute("aria-invalid")).toBe("true");
   });
 
+  it("shows the app's version and build", () => {
+    open();
+    const line = document.querySelector("[data-version]")?.textContent ?? "";
+    expect(line).toMatch(/^Version \d+\.\d+\.\d+Build ([0-9a-f]{7}|local) · \d\d [A-Z][a-z]{2} \d{4}$/);
+  });
+
   it("turns VAT on with its switch", () => {
     const { onChange } = open();
     fireEvent.click(screen.getByRole("switch", { name: /Show rent including VAT/ }));

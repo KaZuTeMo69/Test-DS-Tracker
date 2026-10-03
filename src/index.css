@@ -1644,6 +1644,20 @@ body {
   padding: 7px 18px;
 }
 
+/* The app's version and build, under the buttons */
+.settings-version {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #262626;
+  font-family: var(--token-font-family-mono, "DM Mono", monospace);
+  font-size: 11px;
+  color: #8a8a8a;
+}
+
 /* Renewal timeline (Renewals tab). The panel is wider for it on large screens */
 @media (min-width: 1024px) {
   .sidebar.sidebar-wide {
