@@ -30,6 +30,16 @@ describe("rent for contracts under 12 months", () => {
     expect(rentFigures(240000, 24, 400, null)).toMatchObject({ annual: 240000, monthly: 20000, perSqm: 600 });
   });
 
+  it("without an area there's no rent per m² (never a division by zero)", () => {
+    expect(rentFigures(240000, 12, 0, null).perSqm).toBeNull();
+    expect(rentFigures(240000, 12, null, null).perSqm).toBeNull();
+    expect(rentFigures(90000, 6, 0, null)).toMatchObject({ annual: 180000, perSqm: null });
+  });
+
+  it("a term of 0 months is taken as unknown, not divided by", () => {
+    expect(rentFigures(240000, 0, 400, null)).toMatchObject({ annual: 240000, monthly: 20000, contractValue: null });
+  });
+
   it("unknown term: the rent is taken as annual", () => {
     expect(rentFigures(240000, null, 400, null)).toMatchObject({ annual: 240000, monthly: 20000, contractValue: null });
     expect(rentFigures(null, 6, 400, null)).toMatchObject({ annual: null, monthly: null, perSqm: null });

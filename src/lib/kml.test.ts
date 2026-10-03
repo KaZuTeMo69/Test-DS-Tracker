@@ -108,6 +108,28 @@ describe("parseKML", () => {
     expect(zone.polygons[0][0]).toHaveLength(4);
   });
 
+  it("reads coordinates over several lines, with altitudes, and leaves out bad or repeated points", () => {
+    const messy = `
+      46.60,24.70,120\t46.70,24.70,120
+      46.70,24.70,120 46.70,24.80 not,a,point 46.60,24.80,0 999,24.80
+      46.60,24.70,0`;
+    const [zone] = parseKML(kml(`<Placemark>${polygon(messy)}</Placemark>`)).zones;
+    expect(zone.polygons[0][0]).toEqual([
+      [24.7, 46.6],
+      [24.7, 46.7],
+      [24.8, 46.7],
+      [24.8, 46.6],
+    ]);
+  });
+
+  it("a file with only markers has no zones, and says how many markers it skipped", () => {
+    const pins = [1, 2, 3].map((i) => `<Placemark><Point><coordinates>46.6${i},24.7</coordinates></Point></Placemark>`);
+    const parsed = parseKML(kml(pins.join("")));
+    expect(parsed.zones).toHaveLength(0);
+    expect(parsed.lines).toHaveLength(0);
+    expect(parsed.skippedPoints).toBe(3);
+  });
+
   it("rejects text that isn't KML", () => {
     expect(() => parseKML("not xml at all")).toThrow("it isn't a KML file");
     expect(() => parseKML("<html><body>hi</body></html>")).toThrow("it isn't a KML file");
