@@ -20,6 +20,7 @@ import {
   RoadsFailed,
   servicesFor,
   withFallback,
+  routeSummaryHtml,
 } from "./roads";
 
 const RIYADH = { lat: 24.7136, lng: 46.6753 };
@@ -440,5 +441,17 @@ describe("checkOrsKey", () => {
     // Accepted, but no road between the test points: the key is still fine
     expect(await checkOrsKey("k", { fetcher: answer(404, { error: { code: 2009 } }) })).toBe("ok");
     expect(KEY_CHECK_MESSAGE.key).toMatch(/refused/);
+  });
+});
+
+describe("the route heading in the directions panel", () => {
+  it("escapes what the routing service sends, as the plugin writes it as HTML", () => {
+    const html = routeSummaryHtml({
+      name: 'King Fahd Rd<img src=x onerror="alert(1)">',
+      distance: "12 km",
+      time: "15 min",
+    });
+    expect(html).toBe("<h2>King Fahd Rd&lt;img src=x onerror=&quot;alert(1)&quot;&gt;</h2><h3>12 km, 15 min</h3>");
+    expect(routeSummaryHtml({})).toBe("<h2></h2><h3>, </h3>");
   });
 });

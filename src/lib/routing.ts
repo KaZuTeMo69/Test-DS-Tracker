@@ -6,6 +6,7 @@ import {
   RoadError,
   RoadRoute,
   RoadService,
+  routeSummaryHtml,
   routeVia,
   servicesFor,
   withFallback,
@@ -187,6 +188,9 @@ export async function showRoute(
       containerClassName: "route-directions",
       collapsible: true,
       show: false,
+      // The road name comes from the routing service and the plugin writes this as HTML, so it's escaped. The
+      // plugin takes a function here, but its type definitions only allow a string
+      summaryTemplate: routeSummaryHtml as unknown as string,
     }).addTo(map);
     activeRoute.on("routesfound", (e: { routes: L.Routing.IRoute[] }) => {
       const summary = e.routes[0]?.summary;
