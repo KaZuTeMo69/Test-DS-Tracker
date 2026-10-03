@@ -19,6 +19,7 @@ import {
   withStatus,
   zonesAt,
   webLinkOrNull,
+  number,
 } from "./potentials";
 import {
   KeyValueStore,
@@ -341,5 +342,12 @@ describe("feasibility links", () => {
     expect(webLinkOrNull("data:text/html,<script>alert(1)</script>")).toBeNull();
     expect(webLinkOrNull("see the shared drive")).toBeNull();
     expect(webLinkOrNull("")).toBeNull();
+  });
+});
+
+describe("numbers in a Potential's cells", () => {
+  it("reads Arabic-Indic digits too", () => {
+    expect(number("٥٤٠٬٠٠٠")).toBe(540000);
+    expect(number("SAR 450,000")).toBe(450000);
   });
 });

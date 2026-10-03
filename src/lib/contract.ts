@@ -81,7 +81,8 @@ export function fromHijri(y: number, m: number, d: number): Date | null {
 }
 
 // Arabic-Indic (٠١٢…) and Persian (۰۱۲…) digits as 0–9
-const westernDigits = (text: string) => text.replace(/[٠-٩۰-۹]/g, (c) => String((c.charCodeAt(0) - 0x0660) % 0x90));
+export const westernDigits = (text: string) =>
+  text.replace(/[٠-٩۰-۹]/g, (c) => String((c.charCodeAt(0) - 0x0660) % 0x90));
 
 /**
  * Reads a date: Gregorian ("15 Jan 2024", "15 January 2024", "Jan 15, 2024", "2024-01-15" or "15/01/2024", day

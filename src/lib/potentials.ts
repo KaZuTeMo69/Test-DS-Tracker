@@ -5,6 +5,7 @@ import { normalizeHeader, parseDelimited, StoreField, storeColumnFields } from "
 import { pointInZone, ZoneHit } from "./coverage";
 import { hexToKmlColor, zoneColor } from "./layers";
 import { parseCoordinateInput } from "./coords";
+import { westernDigits } from "./contract";
 
 // ── What a Potential is ──
 
@@ -166,8 +167,10 @@ const text = (v: unknown) => (typeof v === "string" ? v : typeof v === "number" 
 /** A number from a cell or a saved value: "1,200", "SAR 450,000", "85 m²"; null when there isn't one. */
 export function number(v: unknown): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
-  const m = text(v)
-    .replace(/,/g, "")
+  // Arabic-Indic digits and separators read as the store sheet's are
+  const m = westernDigits(text(v))
+    .replace(/[,\u066C]/g, "")
+    .replace(/\u066B/g, ".")
     .match(/-?\d+(?:\.\d+)?/);
   return m ? parseFloat(m[0]) : null;
 }

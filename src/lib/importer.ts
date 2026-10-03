@@ -1,5 +1,5 @@
 import { Store } from "../types";
-import { contractEndDate, formatDate, parseDate, parseDurationMonths } from "./contract";
+import { contractEndDate, formatDate, parseDate, parseDurationMonths, westernDigits } from "./contract";
 import { checkLocation } from "./location";
 import { rentFigures, serviceFeesAnnual } from "./rent";
 
@@ -8,9 +8,16 @@ import { rentFigures, serviceFeesAnnual } from "./rent";
  * Returns null for blank or non-numeric cells so missing data stays visible as missing.
  * Set multipliers to false for fields where K/M/B can't mean thousand/million/billion (area, coordinates).
  */
-function parseNum(val: unknown, multipliers = true): number | null {
+/**
+ * A number from a cell: "1,200", "SAR 450,000", "85 m²", "1.5M" (K/M/B when they stand alone), and Arabic-Indic
+ * digits with the Arabic thousands and decimal separators ("٢٠٠٬٠٠٠"). Null when there's no number in it.
+ */
+export function parseNum(val: unknown, multipliers = true): number | null {
   if (val === null || val === undefined) return null;
-  const s = String(val).replace(/,/g, "").trim();
+  const s = westernDigits(String(val))
+    .replace(/[,\u066C]/g, "")
+    .replace(/\u066B/g, ".")
+    .trim();
   const m = s.match(/-?\d+(?:\.\d+)?/);
   if (!m) return null;
   const n = parseFloat(m[0]);
